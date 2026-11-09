@@ -46,6 +46,7 @@ import { assertPromptDraftNameAvailable, newPromptDraftIdentity, promptStageComm
     type AssessmentRead } from './prompt-authoring-stage';
 import { PromptDraftStore } from './prompt-draft-store';
 import { IncrementalAssessment } from './incremental-assessment';
+import { AssessmentReadReceipts } from './assessment-read-receipts';
 import { capturePromptSourceEvidence, validatePromptStackProposal } from './prompt-stack-proposal';
 import { PlanningStackPublication } from './planning-stack-publication';
 import { IncrementalProposalController, type ProposalHandoff } from './incremental-proposal-controller';
@@ -2265,6 +2266,12 @@ export class ChatBackend implements ChatService {
         const documentationHashes = new Map<string, string>();
         const protectedProposal = retryIndex < 0 && (docsReview || promptStage?.stage === 'prompt-write');
         const protectedAssessment = promptStage?.stage === 'prompt-ass';
+        const readExecutionId = randomUUID();
+        // Persistent coverage proves inspection, while this short-lived owner proves that
+        // the continuation belongs to the active execution that performed the first read.
+        const assessmentReadReceipts = protectedAssessment ? new AssessmentReadReceipts({
+            root, projectHandle: request.projectHandle, chatId: key, turnId: readExecutionId,
+            leaseToken: request.leaseToken, ownerId: this.leases.get(key)!.ownerId }) : undefined;
         let proposalController: IncrementalProposalController | undefined;
         let finishedDocument: ProposalHandoff<import('@dope/chat').ChatDocumentationProposal> | undefined;
         let finishedPrompt: ProposalHandoff<ChatPromptStackProposal> | undefined;
@@ -2681,6 +2688,15 @@ export class ChatBackend implements ChatService {
                             (record.offset as number) > 0 ?
                             (await assessmentController!.status()).required.find(item =>
                                 item.path === record.path) : undefined;
+                        const brokerHash = protectedAssessment && (record.offset as number ?? 0) > 0 &&
+                            record.expectedSourceHash === undefined ?
+                            assessmentReadReceipts!.resolve(record.path as string, record.offset as number,
+                                expectedPage, { root, projectHandle: request.projectHandle,
+                                    chatId: key, turnId: readExecutionId, leaseToken: request.leaseToken,
+                                    ownerId: this.leases.get(key)?.ownerId ?? '' }, Date.now(),
+                                this.turns.get(key)?.abort === abort &&
+                                this.leases.get(key)?.token === request.leaseToken && !abort.signal.aborted &&
+                                !signal?.aborted && this.active(request.projectHandle) === root) : undefined;
                         const invalid = !Number.isSafeInteger(record.offset ?? 0) || (record.offset as number ?? 0) < 0 ?
                             ['INVALID_OFFSET', 'Use a nonnegative UTF-8 byte offset.'] :
                             !Number.isSafeInteger(record.maxBytes ?? 4096) || (record.maxBytes as number ?? 4096) < 1 ||
@@ -2690,34 +2706,31 @@ export class ChatBackend implements ChatService {
                             (typeof record.expectedSourceHash !== 'string' ||
                             !/^[a-f0-9]{64}$/u.test(record.expectedSourceHash)) ?
                             ['INVALID_SOURCE_IDENTITY', 'Use the sourceHash returned by the first page.'] :
-                            (record.offset as number ?? 0) > 0 && !record.expectedSourceHash &&
+                            (record.offset as number ?? 0) > 0 && !record.expectedSourceHash && !brokerHash &&
                             !(docsReview && documentationHashes.has(record.path as string)) ?
-                            ['SOURCE_IDENTITY_REQUIRED', 'Start with offset 0 to obtain sourceHash, then retry the later range.'] :
+                            ['SOURCE_IDENTITY_REQUIRED', 'Start at offset 0 in this execution, then use the verified nextOffset.'] :
                             expectedPage && !expectedPage.coveredBytes ?
                             ['INVALID_OFFSET', 'Read offset 0 successfully before continuing this Assessment file.'] :
                             expectedPage && record.offset !== expectedPage.nextOffset ?
                             ['INVALID_OFFSET', `Use the verified nextOffset ${expectedPage.nextOffset} for this Assessment file.`] :
-                            expectedPage && record.expectedSourceHash !== expectedPage.expectedSourceHash ?
+                            expectedPage && (record.expectedSourceHash ?? brokerHash) !== expectedPage.expectedSourceHash ?
                             ['STALE_SOURCE', 'Use the exact sourceHash from the last verified read; current file identity is rechecked.'] :
                             undefined;
                         if (invalid) {
                             toolEvents.push({ name: toolName, status: 'failed', truncated: false,
                                 code: invalid[0] as 'INVALID_OFFSET', stage: 'argument-validation',
                                 brokerExecuted: false, ...rangeMeta });
-                            if (invalid[0] === 'SOURCE_IDENTITY_REQUIRED' && protectedAssessment) {
-                                const required = (await assessmentController!.status()).required.find(item =>
-                                    item.path === record.path && item.nextOffset === record.offset &&
-                                    item.coveredBytes > 0 && item.expectedSourceHash);
-                                if (required) return `SOURCE_IDENTITY_REQUIRED: Continuation rejected; this page did not count as inspected. Previous verified receipt for ${required.path} has nextOffset ${required.nextOffset} and sourceHash ${required.expectedSourceHash}. Retry read_file with that exact offset and expectedSourceHash; the broker will recheck current file identity.`;
-                            }
                             return `${invalid[0]}: ${invalid[1]}`;
                         }
                         const page = await this.grounder!.readFileRange(root, record.path as string,
                             record.offset === undefined ? 0 : record.offset as number,
                             record.maxBytes === undefined ? 4096 : record.maxBytes as number,
-                            (record.expectedSourceHash as string | undefined) ??
+                            (record.expectedSourceHash as string | undefined) ?? brokerHash ??
                                 (docsReview ? documentationHashes.get(record.path as string) : undefined));
-                        if (signal?.aborted || this.active(request.projectHandle) !== root)
+                        if (signal?.aborted || abort.signal.aborted ||
+                            this.turns.get(key)?.abort !== abort ||
+                            this.leases.get(key)?.token !== request.leaseToken ||
+                            this.active(request.projectHandle) !== root)
                             throw new Error('Project discovery cancelled');
                         const payload = JSON.stringify(page);
                         const payloadBytes = Buffer.byteLength(payload, 'utf8');
@@ -2737,6 +2750,7 @@ export class ChatBackend implements ChatService {
                             start: page.offset, end: page.endOffset, sourceHash: page.sourceHash,
                             text: page.text });
                         if (protectedAssessment) await assessmentController!.readPage(page);
+                        if (protectedAssessment) assessmentReadReceipts!.record(page);
                         toolEvents.push({ name: toolName, status: 'completed', truncated: page.truncated,
                             stage: 'broker', brokerExecuted: true, ...rangeMeta, endOffset: page.endOffset });
                         return payload;

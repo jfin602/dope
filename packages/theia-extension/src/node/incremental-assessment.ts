@@ -104,10 +104,8 @@ export class IncrementalAssessment {
                 ...(partial.blocked[path] ? { reason: partial.blocked[path] } : {}) })),
             findings: categories.reduce((sum, category) => sum + partial.findings[category].length, 0),
             categories: categoryState, remaining: coverage.remaining,
-            nextAction: coverage.remaining.length ? `read_file ${coverage.remaining[0]} using offset ${coverage.progress[coverage.remaining[0]].nextOffset}` +
-                (coverage.progress[coverage.remaining[0]].expectedSourceHash ?
-                    ` and expectedSourceHash ${coverage.progress[coverage.remaining[0]].expectedSourceHash}` :
-                    ' and maxBytes 4096') :
+            nextAction: coverage.remaining.length ?
+                `read_file ${coverage.remaining[0]} using offset ${coverage.progress[coverage.remaining[0]].nextOffset}` :
                 !partial.pages.length ? 'read_file relevant source with offset 0' :
                 !partial.scope ? 'stage scope' : incomplete ? `stage ${incomplete} or a justified empty reason` :
                     !partial.tiers ? 'stage T1/T2/T3' : 'assessment_finish' };

@@ -12,6 +12,7 @@ import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
+import { AssessmentReadReceipts } from '../../packages/theia-extension/lib/node/assessment-read-receipts.js';
 import { PiRuntimeHost } from '../../packages/theia-extension/lib/node/pi-runtime-host.js';
 import { PromptDraftStore } from '../../packages/theia-extension/lib/node/prompt-draft-store.js';
 import { currentPromptDraft } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
@@ -46,8 +47,60 @@ const receipts = (value: unknown): { path?: string; sourceHash?: string; nextOff
         ...Object.values(item).flatMap(receipts)];
 };
 const model = { id: 'offline-assessment', name: 'Offline Assessment', api: 'openai-completions',
-    provider: 'dope-local', reasoning: false, input: ['text'], contextWindow: 32768,
+    provider: 'dope-local', reasoning: true, compat: { supportsReasoningEffort: true },
+    input: ['text'], contextWindow: 32768,
     maxTokens: 8192, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } };
+
+test('Assessment read receipts bind source, sequence, execution, owner and expiry', () => {
+    const owner = { root: '/fixture/a', projectHandle: 'project-a', chatId: 'chat-a',
+        turnId: 'turn-a', leaseToken: 'lease-a', ownerId: 'owner-a' };
+    const hash = 'a'.repeat(64);
+    const required = { path: 'docs/late-guide.md', coveredBytes: 4096,
+        nextOffset: 4096, expectedSourceHash: hash };
+    const ledger = new AssessmentReadReceipts(owner);
+    const resolve = (path = required.path, offset = 4096,
+        status: typeof required | undefined = required, current = owner, now = 1000) =>
+        ledger.resolve(path, offset, status, current, now);
+    assert.equal(resolve(), undefined, 'no initial verified read');
+    ledger.record({ path: required.path, sourceHash: hash, nextOffset: 4096 }, 1000);
+    assert.equal(resolve(), hash);
+    assert.equal(resolve(required.path, 5000), undefined);
+    assert.equal(resolve('docs/other.md'), undefined);
+    assert.equal(ledger.resolve(required.path, 4096, undefined, owner, 1000), undefined);
+    assert.equal(resolve(required.path, 4096, { ...required, expectedSourceHash: 'b'.repeat(64) }), undefined);
+    assert.equal(resolve(required.path, 4096, { ...required, nextOffset: 5000 }), undefined);
+    for (const field of Object.keys(owner) as (keyof typeof owner)[])
+        assert.equal(resolve(required.path, 4096, required,
+            { ...owner, [field]: `${owner[field]}-foreign` }), undefined, field);
+    assert.equal(resolve(required.path, 4096, required, owner, 1000 + 30 * 60_000), undefined);
+    assert.equal(ledger.resolve(required.path, 4096, required, owner, 1000, false), undefined,
+        'cancelled or switched executions cannot use a receipt');
+    ledger.record({ path: required.path, sourceHash: hash, nextOffset: null }, 1000);
+    assert.equal(resolve(), undefined, 'a completed page cannot be replayed');
+    assert.equal(new AssessmentReadReceipts(owner).resolve(required.path, 4096, required, owner, 1000),
+        undefined, 'a new execution starts without a receipt');
+});
+
+test('broker-resolved Assessment identity is rechecked against changed file bytes', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'dope-assessment-source-drift-'));
+    try {
+        const path = 'late-guide.md';
+        await writeFile(join(root, path), 'a'.repeat(5000));
+        const grounder = new ChatProjectGrounder({} as never);
+        const first = await grounder.readFileRange(root, path, 0, 4096);
+        const owner = { root, projectHandle: 'project', chatId: 'chat', turnId: 'turn',
+            leaseToken: 'lease', ownerId: 'owner' };
+        const ledger = new AssessmentReadReceipts(owner);
+        ledger.record(first);
+        const sourceHash = ledger.resolve(path, first.nextOffset!, {
+            path, coveredBytes: first.endOffset, nextOffset: first.nextOffset,
+            expectedSourceHash: first.sourceHash }, owner);
+        assert.equal(sourceHash, first.sourceHash);
+        await writeFile(join(root, path), `${'a'.repeat(4999)}b`);
+        await assert.rejects(grounder.readFileRange(root, path, first.nextOffset!, 4096,
+            sourceHash), /Stale file continuation/u);
+    } finally { await rm(root, { recursive: true, force: true }); }
+});
 
 test('real Pi worker and Chat broker seal five-file protected Assessment with late-page citation', async () => {
     const temporary = await mkdtemp(join(tmpdir(), 'dope-assessment-worker-'));
@@ -69,16 +122,20 @@ test('real Pi worker and Chat broker seal five-file protected Assessment with la
     let allowPlanProbe = false;
     let planProbe = false;
     let guideHash = '';
+    let extendedRequest: { messages: Record<string, unknown>[]; tools: { function: { name: string } }[];
+        reasoning_effort?: string } | undefined;
     const plan: { name: string; args: () => Record<string, unknown> }[] = [
         { name: 'assessment_status', args: () => ({}) },
-        ...paths.slice(0, 4).map(path => ({ name: 'read_file', args: () => ({ path, offset: 0, maxBytes: 4096 }) })),
         { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', offset: 4096 }) },
+        ...paths.slice(0, 4).map(path => ({ name: 'read_file', args: () => ({ path, offset: 0, maxBytes: 4096 }) })),
+        { name: 'read_file', args: () => ({ path: 'docs/other-guide.md', offset: 4096 }) },
         { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', offset: 4096,
             expectedSourceHash: '0'.repeat(64) }) },
         { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', offset: 5000,
             expectedSourceHash: guideHash }) },
+        { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', offset: 4096 }) },
         { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', offset: 4096,
-            expectedSourceHash: guideHash }) },
+            maxBytes: 2048 }) },
         { name: 'read_file', args: () => ({ path: 'RELEASE_NOTES.md', offset: 0 }) },
         { name: 'assessment_status', args: () => ({}) },
         { name: 'assessment_finish', args: () => ({}) },
@@ -107,11 +164,13 @@ test('real Pi worker and Chat broker seal five-file protected Assessment with la
     const server = createServer(async (request, response) => {
         let body = '';
         for await (const chunk of request) body += chunk;
-        const incoming = JSON.parse(body) as { messages: unknown[] };
+        const incoming = JSON.parse(body) as { messages: Record<string, unknown>[];
+            tools: { function: { name: string } }[]; reasoning_effort?: string };
         assert.ok(incoming.messages.length);
+        if (next === 14) extendedRequest = incoming;
         const operation = plan[next++];
         if (operation?.name === 'read_file' && operation.args().path === 'docs/late-guide.md' &&
-            operation.args().offset === 4096 && !guideHash) {
+            operation.args().offset === 4096 && !guideHash && next > 2) {
             const verified = receipts(incoming.messages).find(receipt =>
                 receipt.path === 'docs/late-guide.md' && receipt.nextOffset === 4096 &&
                 typeof receipt.sourceHash === 'string');
@@ -124,6 +183,7 @@ test('real Pi worker and Chat broker seal five-file protected Assessment with la
         const send = (delta: object, finish_reason: string | null) => response.write(
             `data: ${JSON.stringify({ ...base, choices: [{ index: 0, delta, finish_reason }] })}\n\n`);
         if (operation) {
+            send({ role: 'assistant', reasoning: 'Synthetic source check.' }, null);
             send({ role: 'assistant', tool_calls: [{ index: 0, id: `call-${next}`, type: 'function',
                 function: { name: operation.name, arguments: JSON.stringify(operation.args()) } }] }, null);
             send({}, 'tool_calls');
@@ -153,7 +213,7 @@ test('real Pi worker and Chat broker seal five-file protected Assessment with la
         try {
             await host.start();
             await host.openChatToolsSession({ ...model, baseUrl: endpoint }, root, undefined,
-                undefined, false, false, false, request.projectTools?.assessmentTools ?? false,
+                'low', false, false, false, request.projectTools?.assessmentTools ?? false,
                 request.projectTools?.operationPolicy as never);
             for await (const event of host.streamTurn(request.messages, request.maxOutputTokens ?? 4096,
                 request.signal, async call => {
@@ -210,10 +270,28 @@ test('real Pi worker and Chat broker seal five-file protected Assessment with la
         await assert.rejects(new PromptDraftStore(repository, grounder).read(root,
             { ...draft.identity, id: randomUUID() }, lease.token));
         assert.deepEqual(calls.map(call => call.name), plan.map(call => call.name));
-        assert.equal(calls.filter(call => call.name === 'read_file').length, 9);
-        const missing = calls.find(call => call.name === 'read_file' && call.args.offset === 4096 &&
-            call.args.expectedSourceHash === undefined)!;
-        assert.match(missing.output, /SOURCE_IDENTITY_REQUIRED.*nextOffset 4096 and sourceHash [a-f0-9]{64}/u);
+        assert.equal(extendedRequest?.reasoning_effort, 'low');
+        assert.equal(extendedRequest?.messages.length, 30);
+        assert.equal(extendedRequest?.tools.length, 7);
+        assert.ok(Buffer.byteLength(JSON.stringify(extendedRequest)) > 12_000,
+            'the long-history request includes source-like page content');
+        const history = extendedRequest!.messages;
+        for (let index = 2; index < history.length; index += 2) {
+            const assistantCall = history[index];
+            const toolReply = history[index + 1];
+            assert.equal(assistantCall.role, 'assistant');
+            assert.equal(toolReply.role, 'tool');
+            assert.equal((assistantCall.tool_calls as { id: string }[])[0].id, toolReply.tool_call_id);
+            assert.equal(typeof (assistantCall.reasoning ?? assistantCall.reasoning_content), 'string');
+        }
+        assert.equal(calls.filter(call => call.name === 'read_file').length, 11);
+        const guideCalls = calls.filter(call => call.name === 'read_file' &&
+            call.args.path === 'docs/late-guide.md' && call.args.offset === 4096 &&
+            call.args.expectedSourceHash === undefined);
+        assert.match(guideCalls[0].output, /^SOURCE_IDENTITY_REQUIRED:/u);
+        assert.match(calls.find(call => call.args.path === 'docs/other-guide.md')!.output,
+            /^SOURCE_IDENTITY_REQUIRED:/u);
+        assert.match(guideCalls[2].output, /^SOURCE_IDENTITY_REQUIRED:/u);
         assert.match(calls.find(call => call.args.expectedSourceHash === '0'.repeat(64))!.output,
             /^STALE_SOURCE:/u);
         assert.match(calls.find(call => call.args.offset === 5000)!.output,
@@ -229,12 +307,12 @@ test('real Pi worker and Chat broker seal five-file protected Assessment with la
             call.args.path === 'docs/late-guide.md' && call.args.offset === 0)!.output);
         const lateGuide = JSON.parse(calls.find(call => call.name === 'read_file' &&
             call.args.path === 'docs/late-guide.md' && call.args.offset === 4096 &&
-            call.args.expectedSourceHash === firstGuide.sourceHash)!.output);
+            call.args.expectedSourceHash === undefined && call.output.startsWith('{'))!.output);
         assert.equal(firstGuide.nextOffset, 4096);
         assert.equal(lateGuide.offset, 4096);
         assert.equal(lateGuide.nextOffset, null);
         assert.equal(firstGuide.text + lateGuide.text, guide);
-        assert.equal(missing.output.includes(firstGuide.sourceHash), true);
+        assert.equal(guideCalls[1].args.expectedSourceHash, undefined);
         const finished = JSON.parse(calls.at(-1)!.output);
         assert.equal(finished.complete, true);
         assert.equal(assistant?.execution.toolEvents?.filter(event => event.name === 'assessment_stage' &&
