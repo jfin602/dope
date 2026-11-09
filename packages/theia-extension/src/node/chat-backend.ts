@@ -1366,7 +1366,7 @@ export class ChatBackend implements ChatService {
         // The dedicated dispatch above is the authority for this operation, not scope prose.
         const operationPolicy = resolveOperationContextPolicy('managed', 'phase-roadmap',
             model.capabilities, chat.settings.reasoningControls);
-        void operationPolicy; // P4/P6/P7 consume this versioned snapshot at the enforcement boundaries.
+        // The dedicated generation session binds the same trusted operation as ordinary Chat dispatch.
         const connectionFingerprint = JSON.stringify(connection);
         for (const [id, value] of Object.entries(chat.settings.reasoningControls ?? {}))
             if (!model.capabilities.reasoningControls?.some(control => control.id === id && control.values.includes(value)))
@@ -1462,6 +1462,8 @@ export class ChatBackend implements ChatService {
                 let toolCalls = 0;
                 const toolEvents = generationToolEvents;
                 const tools = { root, roadmapGeneration: true, generationId: input.identity.generationId,
+                    operationPolicy: { commandId: input.identity.generationId,
+                        modelId: selection!.modelId, snapshot: operationPolicy },
                     execute: async (name: string, args: unknown, signal?: AbortSignal): Promise<string> => {
                         // Pi can dispatch a batch. Capture its order, but admit only one checked stage at a time.
                         const ordinal = ++toolCalls;
@@ -2098,7 +2100,8 @@ export class ChatBackend implements ChatService {
             promptStage: promptStage?.stage, docsReview, roadmapEdit: !!roadmapSkill,
             investigation: !ordinaryChat || !!opportunity || !!bridge || !!helpTurn
         }), model.capabilities, controls);
-        void operationPolicy; // This slice selects policy; later slices bind it to composition and Pi.
+        const boundOperationPolicy = { commandId: randomUUID(), modelId: selectedModel.modelId,
+            snapshot: operationPolicy };
         const composed = await this.composeTurn(root, contextChat, content, selections,
             model.capabilities, budget, turnPrompt, grounding, !!bridge, opportunity,
             connection.providerId === 'local', roadmapSkill,
@@ -2241,6 +2244,7 @@ export class ChatBackend implements ChatService {
             linkState: string | null; expiresAt: number } | undefined;
         const projectTools = this.grounder && !noProjectTools ? { root, roadmapTools: nativeRoadmap,
             proposalTools: protectedProposal, assessmentTools: protectedAssessment,
+            operationPolicy: boundOperationPolicy,
             execute: async (name: string, args: unknown, signal?: AbortSignal, toolCallId?: number): Promise<string> => {
                 if (noProjectTools) throw new Error('Project tools prohibited for this Chat turn');
                 if (name.startsWith('assessment_')) {
@@ -2538,7 +2542,9 @@ export class ChatBackend implements ChatService {
                 try { return await (async () => {
                 if (signal?.aborted || this.active(request.projectHandle) !== root ||
                     this.turns.get(key)?.abort !== abort) throw new Error('Project discovery cancelled');
-                if (toolEvents.length >= (protectedProposal ? 512 : protectedAssessment ? 128 : 16))
+                if (toolEvents.length >= (operationPolicy.discretionary?.run.toolCalls ??
+                    (operationPolicy.mode === 'unmanaged' ? Number.POSITIVE_INFINITY :
+                        protectedProposal ? 512 : protectedAssessment ? 128 : 16)))
                     throw new Error('Project discovery limit reached');
                 if (name === 'run_command') {
                     const record = args as Record<string, unknown>;

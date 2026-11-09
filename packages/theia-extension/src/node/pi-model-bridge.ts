@@ -1,5 +1,5 @@
 import type { AIInventoryState } from '@dope/contracts/lib/ai-registry-service';
-import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
+import { ModelRuntimeFailure, type ConversationRequest } from '@dope/contracts/lib/model-runtime';
 import { providerSetup } from './provider-setup';
 import type { PiRuntimeHost } from './pi-runtime-host';
 
@@ -49,6 +49,7 @@ export class PiModelBridge {
     async bind(selection: PiLocalSelection, host: Pick<PiRuntimeHost, 'openNoToolSession' | 'openWorkSession' | 'openChatToolsSession'>,
         cwd: string, options: { tools?: boolean; chatTools?: boolean; roadmapTools?: boolean;
             roadmapGeneration?: boolean; proposalTools?: boolean; assessmentTools?: boolean;
+            operationPolicy?: NonNullable<ConversationRequest['projectTools']>['operationPolicy'];
             reasoningMode?: string; workProcessAvailable?: boolean } = {}): Promise<PiLocalBinding> {
         if (!selection.connectionId?.trim() || !selection.modelId?.trim())
             throw unavailable('Select a Local model in AI Center first');
@@ -135,16 +136,21 @@ export class PiModelBridge {
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
             contextWindow: loaded, maxTokens: maxOutputTokens };
         const opened = options.chatTools && options.roadmapGeneration ?
-            await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, true) :
+            await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, true,
+                false, false, options.operationPolicy) :
             options.chatTools && options.proposalTools ?
-            await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, false, true) :
+            await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, false, true,
+                false, options.operationPolicy) :
             options.chatTools && options.assessmentTools ?
-            await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, false, false, true) :
+            await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, false, false, true,
+                options.operationPolicy) :
             options.chatTools && options.roadmapTools ?
-            await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, true) :
+            await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, true, false, false, false,
+                options.operationPolicy) :
             options.tools ? await host.openWorkSession(modelSpec, cwd, credential, thinkingLevel,
                 options.workProcessAvailable !== false) : options.chatTools ?
-                await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel) :
+                await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, false, false, false,
+                    options.operationPolicy) :
                 await host.openNoToolSession(modelSpec, cwd, credential, thinkingLevel);
         const expected = options.tools ? ['edit_file', 'list_files', 'read_command_output', 'read_file',
             ...(options.workProcessAvailable === false ? [] : ['run_command'])] :

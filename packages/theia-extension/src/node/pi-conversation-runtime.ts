@@ -66,6 +66,12 @@ export function classifyPiFailure(error: unknown): PiConversationFailure | undef
                 'Pi model-call policy budget was reached. The saved call origin identifies the boundary.' :
                 'Pi worker resource limit was reached. Shorten the turn or reduce tool output, then retry.',
             'unsupported-capability');
+        case 'policy_limit': return failure(
+            'The resolved operation policy limit was reached. Review the saved worker count and retry with a suitable operation.',
+            'unsupported-capability');
+        case 'policy_invalid': return failure(
+            'The Chat operation policy changed or did not match this tool session. Start a new authorized turn.',
+            'incomplete-answer');
         case 'continuation_unavailable': return failure(
             'Pi continuation unavailable or stale. Start a new authorized turn from the saved partial work.',
             'incomplete-answer');
@@ -236,6 +242,7 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
                 ...(request.projectTools.roadmapGeneration ? { roadmapGeneration: true } : {}),
                 ...(request.projectTools.proposalTools ? { proposalTools: true } : {}),
                 ...(request.projectTools.assessmentTools ? { assessmentTools: true } : {}) } : {}),
+                operationPolicy: request.projectTools?.operationPolicy,
                 reasoningMode: request.controls?.['reasoning.effort'] });
         if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');
         const maxOutputTokens = request.maxOutputTokens ?? Math.min(binding.reasoningEnabled ? 2048 : 1024,
@@ -272,7 +279,7 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
             }
         } : undefined;
         for await (const event of host.streamTurn(request.messages, maxOutputTokens, request.signal, onTool,
-            request.projectTools?.generationId)) {
+            request.projectTools?.generationId, request.projectTools?.operationPolicy)) {
             if (event.type === 'delta' || event.type === 'activity' || event.type === 'reset') {
                 yield event; continue;
             }

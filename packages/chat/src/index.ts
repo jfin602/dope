@@ -84,7 +84,7 @@ export interface ChatExecution {
     failure?: string; // User-safe summary; no raw provider payload.
     failureCode?: 'session_init' | 'provider_http' | 'provider_connection' | 'tool_protocol' |
         'model_generation' | 'worker_exit' | 'worker_protocol' | 'context_limit' | 'output_limit' |
-        'worker_timeout' | 'resource_limit' | 'chat_lease' | 'model_tool_call_invalid' |
+        'worker_timeout' | 'resource_limit' | 'policy_limit' | 'policy_invalid' | 'chat_lease' | 'model_tool_call_invalid' |
         'broker_tool_denied' | 'broker_tool_failed' | 'tool_reply_invalid' |
         'tool_reply_unmatched' | 'tool_reply_duplicate' | 'tool_reply_delivery_failed' |
         'worker_dispatch_failed' | 'session_closed_with_pending_tool' | 'tool_protocol_unknown' |
@@ -93,7 +93,7 @@ export interface ChatExecution {
     toolFailure?: { stage: string; requestId?: number; toolId?: number; toolName?: string;
         lastConfirmed?: { requestId: number; toolId: number; toolName: string; outcome: string };
         brokerResultAcknowledged: boolean; elapsedMs?: number;
-        failureOrigin?: 'tool_budget' | 'model_call_budget' | 'attempted_tool' |
+        failureOrigin?: 'tool_budget' | 'model_call_budget' | 'generation_budget' | 'operation_policy' | 'attempted_tool' |
             'missing_final_assistant' | 'response_aborted' | 'provider_failure' |
             'invalid_final_tool_call' | 'invalid_final_assistant';
         toolStarts?: number; toolAcknowledgements?: number;
@@ -470,7 +470,7 @@ function parseExecution(value: unknown): ChatExecution {
     if (v.failureCode !== undefined) execution.failureCode = choice(v.failureCode,
         ['session_init', 'provider_http', 'provider_connection', 'tool_protocol',
             'model_generation', 'worker_exit', 'worker_protocol', 'context_limit', 'output_limit',
-            'worker_timeout', 'resource_limit', 'chat_lease', 'model_tool_call_invalid',
+            'worker_timeout', 'resource_limit', 'policy_limit', 'policy_invalid', 'chat_lease', 'model_tool_call_invalid',
             'broker_tool_denied', 'broker_tool_failed', 'tool_reply_invalid',
             'tool_reply_unmatched', 'tool_reply_duplicate', 'tool_reply_delivery_failed',
             'worker_dispatch_failed', 'session_closed_with_pending_tool', 'tool_protocol_unknown',
@@ -482,7 +482,7 @@ function parseExecution(value: unknown): ChatExecution {
             'toolStarts', 'toolAcknowledgements', 'failedToolStart'], ['stage', 'brokerResultAcknowledged']);
         const stage = choice(detail.stage, ['session_init', 'provider_http', 'provider_connection',
             'tool_protocol', 'model_generation', 'worker_exit', 'worker_protocol', 'context_limit',
-            'output_limit', 'worker_timeout', 'resource_limit', 'model_tool_call_invalid',
+            'output_limit', 'worker_timeout', 'resource_limit', 'policy_limit', 'policy_invalid', 'model_tool_call_invalid',
             'broker_tool_denied', 'broker_tool_failed', 'tool_reply_invalid',
             'tool_reply_unmatched', 'tool_reply_duplicate', 'tool_reply_delivery_failed',
             'worker_dispatch_failed', 'session_closed_with_pending_tool', 'tool_protocol_unknown',
@@ -498,7 +498,7 @@ function parseExecution(value: unknown): ChatExecution {
                 !/^[a-z_]{1,64}$/u.test(detail.toolName))) throw new Error('Invalid Pi tool failure');
         let lastConfirmed: NonNullable<ChatExecution['toolFailure']>['lastConfirmed'];
         const failureOrigin = detail.failureOrigin === undefined ? undefined : choice(detail.failureOrigin,
-            ['tool_budget', 'model_call_budget', 'attempted_tool', 'missing_final_assistant',
+            ['tool_budget', 'model_call_budget', 'generation_budget', 'operation_policy', 'attempted_tool', 'missing_final_assistant',
                 'response_aborted', 'provider_failure', 'invalid_final_tool_call',
                 'invalid_final_assistant'] as const, 'Pi failure origin');
         const boundedCount = (value: unknown) => Number.isSafeInteger(value) && (value as number) >= 0 &&

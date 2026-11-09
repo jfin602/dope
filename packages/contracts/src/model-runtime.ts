@@ -89,6 +89,15 @@ export interface ConversationRequest {
     /** Backend-only authority for eligible local Pi project discovery. Never serialized to a provider. */
     projectTools?: { root: string; roadmapTools?: boolean; roadmapGeneration?: boolean; proposalTools?: boolean;
         assessmentTools?: boolean;
+        operationPolicy?: { commandId: string; modelId: string; snapshot: {
+            schemaVersion: 1; mode: 'managed' | 'unmanaged';
+            operation: 'chat' | 'investigation' | 'docs-review' | 'prompt-ass' | 'prompt-plan' |
+                'prompt-write' | 'phase-roadmap' | 'roadmap-edit';
+            model: { contextWindowTokens?: number; maxInputTokens?: number; maxOutputTokens?: number;
+                reasoningSupported: boolean; reasoningEnabled: boolean };
+            discretionary: null | { inputCompositionTokens: number; modelOutputTokens: number;
+                toolResultPageBytes: number; toolResultPayloadBytes: number;
+                run: { modelCalls: number; toolCalls: number; generationTokens: number } } } };
         generationId?: string;
         execute(name: string, args: unknown, signal?: AbortSignal, toolCallId?: number): Promise<string> };
 }

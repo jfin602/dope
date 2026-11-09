@@ -17,13 +17,15 @@ import { PiConversationLease } from '../../packages/theia-extension/lib/node/pi-
 import { ORDINARY_CHAT_RESPONSE_INSTRUCTION, SPECIALIZED_TURN_OUTPUT_INSTRUCTION } from '../../packages/theia-extension/lib/node/chat-context-composer.js';
 import { parseDocumentationSkillReview } from '../../packages/theia-extension/lib/node/documentation-skill-review.js';
 import { runChatInvestigationCommand } from '../../packages/theia-extension/lib/node/chat-command-broker.js';
+import { resolveOperationContextPolicy } from '../../packages/theia-extension/lib/node/operation-context-policy.js';
 import { RoadmapStore } from '../../packages/project-intelligence/lib/node/roadmap-store.js';
 import { RoadmapNativeStageOwner, NATIVE_ROADMAP_ACTION_FIELDS } from '../../packages/theia-extension/lib/node/roadmap-native-stage.js';
 
-test('emitted worker failures separate tool-17 budget from provider failure after six ACKs', async () => {
+test('resolved Assessment policy permits tool 17 and reports its real boundary separately from provider failure', async () => {
   const { mockProvider } = await import('../fixtures/pi-worker-mock-provider.mjs');
   for (const [stopAfter, expectedCode, expectedOrigin] of [
-    [17, 'resource_limit', 'tool_budget'],
+    [129, 'policy_limit', 'tool_budget'],
+    [33, 'policy_limit', 'model_call_budget'],
     [6, 'provider_http', 'provider_failure']
   ]) {
     const originalFetch = globalThis.fetch;
@@ -51,30 +53,96 @@ test('emitted worker failures separate tool-17 budget from provider failure afte
         provider: 'dope-local', api: 'openai-completions', baseUrl: 'http://127.0.0.1:9/v1',
         reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
         contextWindow: 8192, maxTokens: 512 };
+      const operationPolicy = { commandId: '11111111-1111-4111-8111-111111111111', modelId: model.id,
+        snapshot: resolveOperationContextPolicy('managed', 'prompt-ass',
+          { contextWindowTokens: model.contextWindow, maxOutputTokens: model.maxTokens }) };
       await accept(JSON.stringify({ id: 1, type: 'open', mode: 'chat-tools', assessmentTools: true,
-        cwd: '/tmp', model }));
+        cwd: '/tmp', model, operationPolicy }));
       await accept(JSON.stringify({ id: 2, type: 'turn',
-        messages: [{ role: 'user', content: 'Inspect Assessment pages.' }], maxOutputTokens: 512 }));
+        messages: [{ role: 'user', content: 'Inspect Assessment pages.' }], maxOutputTokens: 512,
+        operationPolicy }));
       await accept(JSON.stringify({ id: 3, type: 'close' }));
     } finally {
       process.stdout.write = originalWrite;
       globalThis.fetch = originalFetch;
     }
     const failure = frames.find(frame => frame.id === 2 && frame.ok === false);
-    const expectedAcks = stopAfter === 17 ? 16 : 6;
+    const expectedAcks = stopAfter === 129 ? 128 : stopAfter === 33 ? 32 : 6;
     assert.equal(toolRequests, expectedAcks);
     assert.equal(failure.errorCode, expectedCode);
     assert.equal(failure.failureOrigin, expectedOrigin);
-    assert.equal(failure.toolStarts, stopAfter);
+    assert.equal(failure.toolStarts, stopAfter === 33 ? 32 : stopAfter);
     assert.equal(failure.toolAcknowledgements, expectedAcks);
     assert.equal(failure.lastToolReceipt?.toolId, expectedAcks);
+    if (stopAfter === 129) assert.equal(frames.filter(frame => frame.data?.toolId === 17 &&
+      frame.data?.received === true).length, 1);
     assert.equal(failure.lastToolReceipt?.outcome, 'completed');
     if (stopAfter === 6) assert.deepEqual(frames.filter(frame => frame.tool).map(frame =>
       frame.tool.name).slice(0, 3), ['read_file', 'list_files', 'search_paths']);
-    assert.deepEqual(failure.failedToolStart, stopAfter === 17 ?
-      { ordinal: 17, toolName: 'read_file' } : undefined);
+    assert.deepEqual(failure.failedToolStart, stopAfter === 129 ?
+      { ordinal: 129, toolName: 'read_file' } : undefined);
     assert.ok(!JSON.stringify(failure).includes('src/page-'));
     assert.notEqual(failure.errorCode, 'tool_protocol_unknown');
+  }
+});
+test('worker rejects invalid and foreign policies, and applies ordinary Managed versus Unmanaged limits', async () => {
+  const { mockProvider } = await import('../fixtures/pi-worker-mock-provider.mjs');
+  const model = { id: 'offline-assessment', name: 'Offline Assessment', provider: 'dope-local',
+    api: 'openai-completions', baseUrl: 'http://127.0.0.1:9/v1', reasoning: false,
+    input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: 8192, maxTokens: 512 };
+  for (const [mode, expectedTools, expectedCode] of [
+    ['managed', 12, 'policy_limit'], ['unmanaged', 17, undefined]
+  ]) {
+    const originalFetch = globalThis.fetch;
+    const originalWrite = process.stdout.write.bind(process.stdout);
+    const { accept } = await import(`../../packages/pi-runtime/worker.mjs?policy-case=${mode}`);
+    const frames = [];
+    let tools = 0;
+    globalThis.fetch = mockProvider(17, 17, mode === 'managed' ? 12 : undefined);
+    process.stdout.write = chunk => {
+      let frame;
+      try { frame = JSON.parse(String(chunk)); } catch { return originalWrite(chunk); }
+      if (!Number.isSafeInteger(frame.id)) return originalWrite(chunk);
+      frames.push(frame);
+      if (frame.tool) {
+        tools++;
+        queueMicrotask(() => { void accept(JSON.stringify({ id: 200 + tools,
+          type: 'tool-result', requestId: frame.id, toolId: frame.tool.id,
+          result: { status: 'completed', output: `page ${tools}` } })); });
+      }
+      return true;
+    };
+    try {
+      const policy = { commandId: '22222222-2222-4222-8222-222222222222', modelId: model.id,
+        snapshot: resolveOperationContextPolicy(mode, 'chat',
+          { contextWindowTokens: model.contextWindow, maxOutputTokens: model.maxTokens }) };
+      await accept(JSON.stringify({ id: 0, type: 'open', mode: 'chat-tools', cwd: '/tmp', model,
+        operationPolicy: { ...policy, snapshot: { ...policy.snapshot, discretionary:
+          mode === 'managed' ? { ...policy.snapshot.discretionary,
+            run: { ...policy.snapshot.discretionary.run, toolCalls: '12' } } : {} } } }));
+      assert.equal(frames.at(-1).errorCode, 'policy_invalid');
+      await accept(JSON.stringify({ id: 1, type: 'open', mode: 'chat-tools', cwd: '/tmp', model,
+        operationPolicy: { ...policy, modelId: 'foreign-model' } }));
+      assert.equal(frames.at(-1).errorCode, 'policy_invalid');
+      await accept(JSON.stringify({ id: 2, type: 'open', mode: 'chat-tools', cwd: '/tmp', model,
+        operationPolicy: policy }));
+      assert.equal(frames.at(-1).ok, true);
+      await accept(JSON.stringify({ id: 3, type: 'turn', messages: [{ role: 'user', content: 'Read pages.' }],
+        maxOutputTokens: 512, operationPolicy: { ...policy, commandId: '33333333-3333-4333-8333-333333333333' } }));
+      assert.equal(frames.at(-1).errorCode, 'policy_invalid');
+      await accept(JSON.stringify({ id: 4, type: 'turn', messages: [{ role: 'user', content: 'Read pages.' }],
+        maxOutputTokens: 512, operationPolicy: policy }));
+      const result = frames.find(frame => frame.id === 4 && frame.ok !== undefined);
+      assert.equal(tools, expectedTools);
+      assert.equal(result.errorCode, expectedCode);
+      if (expectedCode) assert.equal(result.failedToolStart?.ordinal, expectedTools + 1);
+      else assert.equal(result.data?.finishReason, 'stop');
+      await accept(JSON.stringify({ id: 5, type: 'close' }));
+    } finally {
+      process.stdout.write = originalWrite;
+      globalThis.fetch = originalFetch;
+    }
   }
 });
 test('Pi worker resolves from the bundled browser backend and extension development layouts', () => {

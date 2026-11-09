@@ -1,6 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import type { ConversationRequest } from '@dope/contracts/lib/model-runtime';
 
 export interface PiRuntimeDiagnostics {
     version: string;
@@ -55,7 +56,7 @@ type Pending = { resolve(value: unknown): void; reject(error: Error): void; time
 
 export type PiWorkerFailureCode = 'session_init' | 'provider_http' | 'provider_connection' |
     'tool_protocol' | 'model_generation' | 'worker_exit' | 'worker_protocol' |
-    'context_limit' | 'output_limit' | 'worker_timeout' | 'resource_limit' |
+    'context_limit' | 'output_limit' | 'worker_timeout' | 'resource_limit' | 'policy_limit' | 'policy_invalid' |
     'model_tool_call_invalid' | 'broker_tool_denied' | 'broker_tool_failed' |
     'tool_reply_invalid' | 'tool_reply_unmatched' | 'tool_reply_duplicate' |
     'tool_reply_delivery_failed' | 'worker_dispatch_failed' |
@@ -78,14 +79,14 @@ export class PiWorkerFailure extends Error {
 }
 const workerFailureCodes = new Set<PiWorkerFailureCode>(['session_init', 'provider_http',
     'provider_connection', 'tool_protocol', 'model_generation', 'worker_exit', 'worker_protocol',
-    'context_limit', 'output_limit', 'worker_timeout', 'resource_limit',
+    'context_limit', 'output_limit', 'worker_timeout', 'resource_limit', 'policy_limit', 'policy_invalid',
     'model_tool_call_invalid', 'broker_tool_denied', 'broker_tool_failed',
     'tool_reply_invalid', 'tool_reply_unmatched', 'tool_reply_duplicate',
     'tool_reply_delivery_failed', 'worker_dispatch_failed',
     'session_closed_with_pending_tool', 'tool_protocol_unknown',
     'continuation_unavailable', 'continuation_expired', 'continuation_result_invalid',
     'continuation_pi_rejected', 'continuation_model_drift']);
-const failureOrigins = new Set(['tool_budget', 'model_call_budget', 'attempted_tool',
+const failureOrigins = new Set(['tool_budget', 'model_call_budget', 'generation_budget', 'operation_policy', 'attempted_tool',
     'missing_final_assistant', 'response_aborted', 'provider_failure',
     'invalid_final_tool_call', 'invalid_final_assistant']);
 const boundedCount = (value: unknown): value is number =>
@@ -180,10 +181,11 @@ export class PiRuntimeHost {
 
     openChatToolsSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string,
         thinkingLevel?: string, roadmapTools = false, roadmapGeneration = false, proposalTools = false,
-        assessmentTools = false):
+        assessmentTools = false, operationPolicy?: NonNullable<ConversationRequest['projectTools']>['operationPolicy']):
         Promise<{ version: string; tools: string[]; resources: string }> {
         return this.request({ type: 'open', mode: 'chat-tools', model, cwd, roadmapTools, roadmapGeneration,
             proposalTools, assessmentTools,
+            ...(operationPolicy ? { operationPolicy } : {}),
             ...(credential ? { credential } : {}), thinkingLevel });
     }
 
@@ -207,11 +209,13 @@ export class PiRuntimeHost {
 
     async *streamTurn(messages: readonly { role: 'system' | 'user' | 'assistant'; content: string }[],
         maxOutputTokens: number, signal?: AbortSignal,
-        onTool?: NonNullable<Pending['onTool']>, generationId?: string): AsyncIterable<PiTurnEvent> {
+        onTool?: NonNullable<Pending['onTool']>, generationId?: string,
+        operationPolicy?: NonNullable<ConversationRequest['projectTools']>['operationPolicy']): AsyncIterable<PiTurnEvent> {
         if (this.paused) throw new Error('Pi turn is awaiting a continuation decision');
         const id = ++this.nextId;
         yield* this.streamSegment({ type: 'turn', messages, maxOutputTokens,
-            ...(generationId ? { generationId } : {}) }, id, signal, onTool);
+            ...(generationId ? { generationId } : {}),
+            ...(operationPolicy ? { operationPolicy } : {}) }, id, signal, onTool);
     }
 
     async *resumeTurn(segmentIndex: number, signal?: AbortSignal,
