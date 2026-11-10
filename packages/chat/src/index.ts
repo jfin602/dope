@@ -202,7 +202,7 @@ export interface ChatRoadmapAction {
 }
 export interface ChatPlanningActivity {
     schemaVersion: 1;
-    kind: 'roadmap-intent' | 'roadmap-proposal' | 'roadmap-sequence' | 'roadmap-gate-proposal' | 'roadmap-gate-undo' | 'roadmap-publication' | 'roadmap-gate-focus' | 'roadmap-draft-proposal' | 'roadmap-draft-sequence' | 'implementation-plan' | 'implementation-plan-revision' | 'bridge-proposal' | 'documentation-proposal' | 'prompt-stack-proposal' | 'no-action' | 'error' | 'cancelled';
+    kind: 'roadmap-intent' | 'roadmap-proposal' | 'roadmap-sequence' | 'roadmap-gate-proposal' | 'roadmap-gate-undo' | 'roadmap-publication' | 'roadmap-gate-focus' | 'roadmap-draft-proposal' | 'roadmap-draft-sequence' | 'implementation-plan' | 'implementation-plan-revision' | 'bridge-proposal' | 'documentation-proposal' | 'prompt-stack-proposal' | 'prompt-assessment-revision' | 'no-action' | 'error' | 'cancelled';
     status: 'pending' | 'approved' | 'suggested' | 'no-action' | 'rejected' | 'denied' | 'stale' | 'superseded' | 'applied' | 'failed' | 'cancelled';
     refs: ChatContextRef[];
     proposalId?: string;
@@ -211,6 +211,9 @@ export interface ChatPlanningActivity {
     proposal?: import('./service').ChatPlanningProposal;
     documentProposal?: ChatDocumentationProposal;
     promptStackProposal?: ChatPromptStackProposal;
+    /** Review identity only. Authoritative candidate bytes live in the existing draft store. */
+    assessmentRevision?: { draftId: string; ownerUserMessageId: string; baseRevision: number;
+        count: number; digest: string };
     /** Broker-owned inventory and successful range reads; never model-authored. */
     documentationDiscovery?: { detected: number | null; omitted: string[];
         reads: { path: string; count: number }[] };
@@ -835,10 +838,10 @@ export function parseChatRoadmapAction(value: unknown): ChatRoadmapAction {
         ...(v.diagnostic === undefined ? {} : { diagnostic: string(v.diagnostic, 'Roadmap diagnostic') }) };
 }
 export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
-    const v = record(value, ['schemaVersion', 'kind', 'status', 'refs', 'proposalId', 'appliedRevision', 'proposal', 'documentProposal', 'promptStackProposal', 'documentationDiscovery', 'diagnostic', 'verifiedGuidance'],
+    const v = record(value, ['schemaVersion', 'kind', 'status', 'refs', 'proposalId', 'appliedRevision', 'proposal', 'documentProposal', 'promptStackProposal', 'assessmentRevision', 'documentationDiscovery', 'diagnostic', 'verifiedGuidance'],
         ['schemaVersion', 'kind', 'status', 'refs']);
     if (v.schemaVersion !== 1 || !Array.isArray(v.refs)) throw new Error('Invalid planning activity');
-    const kind = choice(v.kind, ['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-publication', 'roadmap-gate-focus', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'implementation-plan-revision', 'bridge-proposal', 'documentation-proposal', 'prompt-stack-proposal', 'no-action',
+    const kind = choice(v.kind, ['roadmap-intent', 'roadmap-proposal', 'roadmap-sequence', 'roadmap-gate-proposal', 'roadmap-gate-undo', 'roadmap-publication', 'roadmap-gate-focus', 'roadmap-draft-proposal', 'roadmap-draft-sequence', 'implementation-plan', 'implementation-plan-revision', 'bridge-proposal', 'documentation-proposal', 'prompt-stack-proposal', 'prompt-assessment-revision', 'no-action',
         'error', 'cancelled'] as const, 'planning activity kind');
     const status = choice(v.status, ['pending', 'approved', 'suggested', 'no-action', 'rejected', 'denied', 'stale', 'superseded', 'applied',
         'failed', 'cancelled'] as const, 'planning activity status');
@@ -852,7 +855,7 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
         (status === 'cancelled' && kind !== 'cancelled' && v.proposalId === undefined) ||
         (['no-action', 'failed'].includes(status) && v.proposalId !== undefined && kind !== 'documentation-proposal' && kind !== 'prompt-stack-proposal') ||
         (status === 'cancelled' && kind === 'cancelled' && v.proposalId !== undefined) ||
-        (!['documentation-proposal', 'prompt-stack-proposal'].includes(kind) ?
+        (!['documentation-proposal', 'prompt-stack-proposal', 'prompt-assessment-revision'].includes(kind) ?
             (status === 'applied') !== (v.appliedRevision !== undefined) : v.appliedRevision !== undefined) ||
         (v.verifiedGuidance !== undefined && kind !== 'no-action') ||
         (kind === 'documentation-proposal' && (v.documentProposal === undefined || v.proposalId === undefined ||
@@ -862,6 +865,19 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
             !['pending', 'approved', 'applied', 'failed', 'stale', 'superseded', 'denied', 'cancelled'].includes(status))) ||
         (kind !== 'prompt-stack-proposal' && v.promptStackProposal !== undefined))
         throw new Error('Invalid planning activity state');
+    let assessmentRevision: ChatPlanningActivity['assessmentRevision'];
+    if (kind === 'prompt-assessment-revision') {
+        const revision = record(v.assessmentRevision, ['draftId', 'ownerUserMessageId', 'baseRevision', 'count', 'digest'],
+            ['draftId', 'ownerUserMessageId', 'baseRevision', 'count', 'digest']);
+        if (typeof revision.draftId !== 'string' || typeof revision.ownerUserMessageId !== 'string' ||
+            !Number.isSafeInteger(revision.baseRevision) || (revision.baseRevision as number) < 1 ||
+            !Number.isSafeInteger(revision.count) || (revision.count as number) < 1 ||
+            (revision.count as number) > 48 || typeof revision.digest !== 'string' ||
+            !/^[a-f0-9]{64}$/u.test(revision.digest) || v.proposalId === undefined ||
+            !['pending', 'applied', 'denied', 'stale'].includes(status))
+            throw new Error('Invalid assessment revision review');
+        assessmentRevision = revision as NonNullable<ChatPlanningActivity['assessmentRevision']>;
+    } else if (v.assessmentRevision !== undefined) throw new Error('Unexpected assessment revision');
     const guidance = v.verifiedGuidance === undefined ? undefined : record(v.verifiedGuidance,
         ['capabilityId', 'version', 'text'], ['capabilityId', 'version', 'text']);
     let proposal: import('./service').ChatPlanningProposal | undefined;
@@ -1122,6 +1138,7 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
         ...(proposal === undefined ? {} : { proposal }),
         ...(documentProposal === undefined ? {} : { documentProposal }),
         ...(promptStackProposal === undefined ? {} : { promptStackProposal }),
+        ...(assessmentRevision === undefined ? {} : { assessmentRevision }),
         ...(documentationDiscovery === undefined ? {} : { documentationDiscovery }),
         ...(v.diagnostic === undefined ? {} : { diagnostic: string(v.diagnostic, 'planning diagnostic').slice(0, 2000) }),
         ...(guidance === undefined ? {} : { verifiedGuidance: {

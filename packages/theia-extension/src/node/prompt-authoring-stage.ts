@@ -86,12 +86,22 @@ export function priorPromptDraft(chat: Chat, stage: 'prompt-ass' | 'prompt-plan'
         const assistant = chat.messages[index];
         if (assistant.role !== 'assistant' || assistant.execution.status !== 'complete' ||
             !assistant.content.startsWith(heading[stage] + '\n')) continue;
+        if (stage === 'prompt-ass' && assistant.planningActivity?.kind === 'prompt-assessment-revision' &&
+            assistant.planningActivity.status !== 'applied') continue;
         // Retry saves another assistant attempt after the same user invocation.
         let userIndex = index - 1;
         while (userIndex >= 0 && chat.messages[userIndex].role === 'assistant') userIndex--;
         const user = chat.messages[userIndex];
-        if (user?.role === 'user' && boundPromptStage(user.skill) === stage)
+        if (user?.role === 'user' && boundPromptStage(user.skill) === stage) {
+            if (stage === 'prompt-ass' && assistant.planningActivity?.kind === 'prompt-assessment-revision') {
+                const owner = chat.messages.find(message => message.role === 'user' &&
+                    message.id === assistant.planningActivity?.assessmentRevision?.ownerUserMessageId);
+                if (owner?.role === 'user' && owner.promptDraft?.id ===
+                    assistant.planningActivity.assessmentRevision?.draftId) return { assistant, user: owner };
+                continue;
+            }
             return { assistant, user };
+        }
     }
     return undefined;
 }
@@ -153,7 +163,8 @@ export function promptStageInstruction(command: { stage: PromptStage; folder?: s
 /** Only an explicit small numeric request binds a count; a vague plan never invents one. */
 export function requestedWorkPromptCount(...texts: string[]): number | undefined {
     const source = texts.join('\n');
-    const matched = /\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)[-\s]+(?:(?:substantial|dependency-ordered|ordered|implementation|work)[-\s]+){0,4}(?:work[-\s]+)?(?:prompts?|steps?|tasks?)\b/iu.exec(source);
+    const matched = /\b(?:change|increase|reduce|expand|revise)[^\n.]{0,100}?\bto[ \t]+(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)\b/iu.exec(source) ??
+        /\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)[-\s]+(?:(?:substantial|dependency-ordered|ordered|implementation|work)[-\s]+){0,4}(?:work[-\s]+)?(?:prompts?|steps?|tasks?)\b/iu.exec(source);
     if (!matched) return undefined;
     const words = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
         'eleven', 'twelve'];

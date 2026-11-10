@@ -21,10 +21,41 @@ test('named prompt card advances from saved turns without duplicating historical
     assert.equal(currentPromptDraft(chat)?.state, 'plan');
     messages.push({ role: 'assistant', id: 'plan', execution: { status: 'complete' },
         content: `Plan record sha256: ${'a'.repeat(64)}; revision: 1.` } as ChatAssistantMessage);
-    assert.deepEqual(currentPromptDraft(chat), { identity, state: 'write', stageMessageId: 'plan', stageRevision: 1 });
+    assert.deepEqual(currentPromptDraft(chat), { identity, state: 'write', stageMessageId: 'plan', stageRevision: 1,
+        assessmentMessageId: 'ass', assessmentRevision: 1 });
     messages.push({ role: 'user', id: 'write-user', skill: { name: 'prompt-write' } } as Chat['messages'][number]);
     messages.push({ role: 'assistant', id: 'failed', execution: { status: 'failed', failure: 'Source changed' } } as ChatAssistantMessage);
     assert.equal(currentPromptDraft(chat)?.state, 'error');
+});
+
+test('Assessment revision stays in review until explicit acceptance and resets the Plan', () => {
+    const identity = { schemaVersion: 1, id: 'draft-1', revision: 1, slug: 'short-name',
+        projectId: 'project', chatId: 'chat', userMessageId: 'owner', leaseDigest: 'lease',
+        sourceHead: 'head', sourceVersion: '0.13.11', sourceFingerprint: 'source' } as const;
+    const messages = [
+        { role: 'user', id: 'owner', promptDraft: identity },
+        { role: 'assistant', id: 'ass', content: '# Unpublished prompt assessment\nOriginal',
+            execution: { status: 'complete' } },
+        { role: 'user', id: 'plan-user', skill: { name: 'prompt-plan' } },
+        { role: 'assistant', id: 'plan', content: `Plan record sha256: ${'a'.repeat(64)}; revision: 1.`,
+            execution: { status: 'complete' } },
+        { role: 'user', id: 'revise-user', skill: { name: 'prompt-ass' } },
+        { role: 'assistant', id: 'revision', content: '# Unpublished prompt assessment\nProposed',
+            execution: { status: 'complete' }, planningActivity: {
+                kind: 'prompt-assessment-revision', status: 'pending', proposalId: 'revision',
+                assessmentRevision: { draftId: identity.id, ownerUserMessageId: identity.userMessageId,
+                    baseRevision: 1, count: 4, digest: 'b'.repeat(64) } } }
+    ] as unknown as Chat['messages'];
+    const chat = { messages } as Chat;
+    assert.equal(currentPromptDraft(chat)?.state, 'review');
+    assert.equal(currentPromptDraft(chat)?.review?.count, 4);
+    (messages.at(-1) as ChatAssistantMessage).planningActivity!.status = 'denied';
+    assert.equal(currentPromptDraft(chat)?.state, 'write');
+    (messages.at(-1) as ChatAssistantMessage).planningActivity!.status = 'applied';
+    const revised = currentPromptDraft(chat);
+    assert.equal(revised?.state, 'plan');
+    assert.equal(revised?.stageMessageId, 'revision');
+    assert.equal(revised?.stageRevision, 2);
 });
 
 test('live continuation displays only text beyond the saved partial', () => {

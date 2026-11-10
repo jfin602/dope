@@ -67,7 +67,7 @@ export interface ChatTurnRequest { projectHandle: string; chatId: ChatId; leaseT
     /** Inert UI selection; the backend resolves it against the saved owner and sealed stage. */
     promptDraftTarget?: { draftId: string; ownerUserMessageId: string; stageMessageId: string;
         stage: 'assessment' | 'plan'; stageRevision: number; projectId: string;
-        sourceFingerprint: string; leaseDigest: string };
+        sourceFingerprint: string; leaseDigest: string; purpose?: 'revise-assessment' };
     /** Explicit, capped opt-in for an atomic preview of small unlinked Roadmap edits. */
     planningSteps?: 2 | 3;
     /** Explicit selected-checkpoint, local-only Bridge suggestion; never a write grant. */
@@ -198,6 +198,8 @@ export interface ChatService {
         proposalId: string, digest: string): Promise<{ id: string; status: string; paths: string[]; diagnostic?: string }>;
     recoverPromptStack(projectHandle: string, chatId: ChatId, leaseToken: string,
         proposalId: string, digest: string): Promise<{ id: string; status: string; paths: string[]; diagnostic?: string }>;
+    decidePromptAssessmentRevision(projectHandle: string, chatId: ChatId, leaseToken: string,
+        messageId: string, digest: string, decision: 'accept' | 'reject'): Promise<void>;
     reviewNativeRoadmap(projectHandle: string, chatId: ChatId, leaseToken: string, proposalId: string,
         operationIds: string[], decision: 'apply' | 'reject'):
         Promise<{ token: string; summary: string; preview?: ChatPlanningProposal['preview'] }>;

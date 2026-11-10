@@ -2,8 +2,10 @@ import { safeChatToolPath, sanitizeChatDiagnosticText, type Chat, type ChatAssis
 
 /** A single projection of saved turns. The owner identity comes only from a saved user message. */
 export function currentPromptDraft(chat: Chat): { identity: ChatPromptDraftIdentity;
-    state: 'assessment' | 'plan' | 'write' | 'ready' | 'error';
-    stageMessageId?: string; stageRevision?: number; recoveryStage?: 'assessment' | 'plan'; error?: string } | undefined {
+    state: 'assessment' | 'plan' | 'write' | 'ready' | 'review' | 'error';
+    stageMessageId?: string; stageRevision?: number; recoveryStage?: 'assessment' | 'plan'; error?: string;
+    assessmentMessageId?: string; assessmentRevision?: number;
+    review?: { messageId: string; digest: string; count: number } } | undefined {
     const messages = chat.messages;
     const lastIndex = (predicate: (message: ChatMessage, index: number) => boolean): number => {
         for (let index = messages.length - 1; index >= 0; index--) if (predicate(messages[index], index)) return index;
@@ -19,17 +21,36 @@ export function currentPromptDraft(chat: Chat): { identity: ChatPromptDraftIdent
         return messages.slice(index + 1, next < 0 ? undefined : next).filter(
             (message): message is ChatAssistantMessage => message.role === 'assistant').at(-1);
     };
-    const assessment = turn(ownerIndex);
+    const acceptedRevisionIndex = lastIndex((message, at) => at > ownerIndex &&
+        message.role === 'assistant' && message.planningActivity?.kind === 'prompt-assessment-revision' &&
+        message.planningActivity.status === 'applied' &&
+        message.planningActivity.assessmentRevision?.draftId === identity.id);
+    const assessmentIndex = acceptedRevisionIndex < 0 ? ownerIndex : acceptedRevisionIndex;
+    const assessment = acceptedRevisionIndex < 0 ? turn(ownerIndex) :
+        messages[acceptedRevisionIndex] as ChatAssistantMessage;
     if (!assessment || assessment.execution.status === 'pending' || assessment.execution.status === 'streaming')
         return { identity, state: 'assessment' };
+    const assessmentRevision = acceptedRevisionIndex < 0 ? 1 :
+        (assessment.planningActivity?.assessmentRevision?.baseRevision ?? 0) + 1;
     if (assessment.execution.status !== 'complete' || !assessment.content.startsWith('# Unpublished prompt assessment\n'))
         return { identity, state: 'error', error: assessment.execution.failure ?? 'Assessment did not complete' };
-    const planIndex = lastIndex((message, at) => at > ownerIndex && message.role === 'user' &&
+    const review = [...messages.slice(assessmentIndex + 1)].reverse().find(message =>
+        message.role === 'assistant' && message.planningActivity?.kind === 'prompt-assessment-revision' &&
+        message.planningActivity.status === 'pending' &&
+        message.planningActivity.assessmentRevision?.draftId === identity.id) as ChatAssistantMessage | undefined;
+    if (review?.planningActivity?.assessmentRevision)
+        return { identity, state: 'review', assessmentMessageId: assessment.id,
+            assessmentRevision, review: { messageId: review.id,
+                digest: review.planningActivity.assessmentRevision.digest,
+                count: review.planningActivity.assessmentRevision.count } };
+    const planIndex = lastIndex((message, at) => at > assessmentIndex && message.role === 'user' &&
         message.skill?.name === 'prompt-plan');
-    if (planIndex < 0) return { identity, state: 'plan', stageMessageId: assessment.id, stageRevision: 1 };
+    if (planIndex < 0) return { identity, state: 'plan', stageMessageId: assessment.id,
+        stageRevision: assessmentRevision, ...(acceptedRevisionIndex < 0 ? {} :
+            { assessmentMessageId: assessment.id, assessmentRevision }) };
     const plan = turn(planIndex);
     if (!plan || plan.execution.status === 'pending' || plan.execution.status === 'streaming')
-        return { identity, state: 'plan' };
+        return { identity, state: 'plan', assessmentMessageId: assessment.id, assessmentRevision };
     const revision = /Plan record sha256: [a-f0-9]{64}; revision: (\d+)/u.exec(plan.content);
     if (plan.execution.status !== 'complete' || !revision)
         return { identity, state: 'error', stageMessageId: assessment.id, stageRevision: 1,
@@ -37,13 +58,16 @@ export function currentPromptDraft(chat: Chat): { identity: ChatPromptDraftIdent
     const writeIndex = lastIndex((message, at) => at > planIndex && message.role === 'user' &&
         message.skill?.name === 'prompt-write');
     if (writeIndex < 0) return { identity, state: 'write', stageMessageId: plan.id,
-        stageRevision: Number(revision[1]) };
+        stageRevision: Number(revision[1]), assessmentMessageId: assessment.id,
+        assessmentRevision };
     const write = turn(writeIndex);
     if (!write || write.execution.status === 'pending' || write.execution.status === 'streaming')
-        return { identity, state: 'write' };
-    return write.execution.status === 'complete' ? { identity, state: 'ready' } :
+        return { identity, state: 'write', assessmentMessageId: assessment.id, assessmentRevision };
+    return write.execution.status === 'complete' ? { identity, state: 'ready',
+        assessmentMessageId: assessment.id, assessmentRevision } :
         { identity, state: 'error', stageMessageId: plan.id, stageRevision: Number(revision[1]),
-            recoveryStage: 'plan', error: write.execution.failure ?? 'Prompt writing did not complete' };
+            recoveryStage: 'plan', error: write.execution.failure ?? 'Prompt writing did not complete',
+            assessmentMessageId: assessment.id, assessmentRevision };
 }
 
 /** A live continuation shows only text beyond the already displayed saved partial. */

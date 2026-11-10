@@ -1603,6 +1603,9 @@ body.theia-light:not(.dope-dark) {
     color: var(--theia-errorForeground);
     overflow-wrap: anywhere;
 }
+.dope-chat-prompt-draft-outline { flex-basis: 100%; min-width: 0; overflow-wrap: anywhere; }
+.dope-chat-prompt-draft-outline summary { cursor: pointer; }
+.dope-chat-prompt-draft-outline ol { margin: 0.4rem 0 0 1.4rem; padding: 0; }
 .dope-chat-prompt-draft-name {
     min-width: 0;
     max-width: min(16rem, 100%);

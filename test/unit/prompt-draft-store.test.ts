@@ -104,6 +104,55 @@ test('source-neutral wireframe seals without a token read while source basis sta
     await assert.rejects(controller.status(), /source changed/i);
 }));
 
+test('reviewed Assessment candidate preserves the old Plan until Accept, then invalidates it atomically', () => fixture(async v => {
+    const outline = (count: number) => ({ kind: 'wireframe' as const, objective: 'Improve feature', count,
+        rationale: 'Split by independent responsibilities',
+        work: Array.from({ length: count }, (_, index) => ({ id: `step-${index + 1}`,
+            title: `Task ${index + 1}`, objective: `Implement task ${index + 1}`,
+            boundary: `Boundary ${index + 1}`, dependsOn: index ? [`step-${index}`] : [] })),
+        constraints: [], deferrals: [], closeout: { title: 'Manual closeout',
+            objective: 'Observe behavior', manualReason: 'Human check' }, sourceClaims: [] });
+    await v.store.begin(v.root, v.identity, v.lease);
+    const v1 = await v.store.stage(v.root, v.identity, v.lease, 'assessment', 0, outline(3), []);
+    const planned = await v.store.stage(v.root, v.identity, v.lease, 'plan', v1.revision,
+        { work: [{ id: 'step-1' }] }, v.refs);
+    const messageId = randomUUID();
+    const candidate = await v.store.proposeAssessment(v.root, v.identity, v.lease, 1,
+        messageId, outline(4), []);
+    assert.equal((candidate.assessment?.record as { count: number }).count, 3);
+    assert.equal(candidate.plan?.contentHash, planned.plan?.contentHash);
+    assert.equal((candidate.pendingAssessment?.value.record as { count: number }).count, 4);
+    await assert.rejects(v.store.proposeAssessment(v.root, v.identity, v.lease, 1,
+        randomUUID(), outline(4), []), /STAGE_STALE/);
+    await assert.rejects(v.store.decideAssessment(v.root, v.identity, v.lease, messageId,
+        '0'.repeat(64), 'accept'), /STAGE_STALE/);
+    const rejected = await v.store.decideAssessment(v.root, v.identity, v.lease, messageId,
+        candidate.pendingAssessment!.value.contentHash, 'reject');
+    assert.equal(rejected.plan?.contentHash, planned.plan?.contentHash);
+    assert.equal(rejected.assessment?.revision, 1);
+    const nextId = randomUUID();
+    const next = await v.store.proposeAssessment(v.root, v.identity, v.lease, 1,
+        nextId, outline(4), []);
+    v.changeBasis();
+    await assert.rejects(v.store.decideAssessment(v.root, v.identity, v.lease, nextId,
+        next.pendingAssessment!.value.contentHash, 'accept'), /source changed/i);
+    v.restoreBasis();
+    const accepted = await v.store.decideAssessment(v.root, v.identity, v.lease, nextId,
+        next.pendingAssessment!.value.contentHash, 'accept');
+    assert.equal(accepted.identity.id, v.identity.id);
+    assert.equal(accepted.identity.slug, v.identity.slug);
+    assert.equal(accepted.assessment?.revision, 2);
+    assert.equal((accepted.assessment?.record as { count: number }).count, 4);
+    assert.equal(accepted.plan, undefined);
+    assert.equal(accepted.history.find(item => item.stage === 'assessment')?.value.contentHash,
+        v1.assessment?.contentHash);
+    assert.equal(accepted.history.find(item => item.stage === 'plan')?.value.contentHash,
+        planned.plan?.contentHash);
+    await assert.rejects(v.store.decideAssessment(v.root, v.identity, v.lease, nextId,
+        next.pendingAssessment!.value.contentHash, 'accept'), /STAGE_STALE/);
+    await assert.rejects(lstat(join(v.root, 'docs', 'tasks', v.identity.slug)), /ENOENT/);
+}));
+
 test('historical partial category drafts remain stored but cannot seal as new wireframes', () => fixture(async v => {
     const controller = new IncrementalAssessment(v.repo, v.grounder, v.root, v.identity,
         v.lease, '/prompt-ass safe-task Inspect README.md', v.store);

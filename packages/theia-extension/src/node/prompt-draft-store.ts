@@ -37,6 +37,8 @@ export interface StoredPromptDraft {
             replacement: LegacyAssessmentRecord['tiers'] };
     };
     plan?: StoredPromptDraftStage;
+    pendingAssessment?: { messageId: string; baseRevision: number; baseHash: string;
+        value: StoredPromptDraftStage };
     history: { stage: PromptDraftStage; value: StoredPromptDraftStage }[];
     integrityHash: string;
 }
@@ -108,7 +110,8 @@ function checked(raw: unknown, identity: ChatPromptDraftIdentity): StoredPromptD
         !['active', 'aborted'].includes(value.state) || !Array.isArray(value.history) ||
         value.history.length > 8 || !hex(integrityHash) || integrityHash !== sha256(canonical(body)))
         throw new Error('Corrupt or foreign named prompt draft');
-    for (const stage of [value.assessment, value.plan, ...value.history.map(item => item.value)]) {
+    for (const stage of [value.assessment, value.plan, value.pendingAssessment?.value,
+        ...value.history.map(item => item.value)]) {
         if (!stage) continue;
         if (!Number.isSafeInteger(stage.revision) || stage.revision < 1 ||
             !hex(stage.contentHash) || stage.contentHash !== sha256(canonical(stage.record)) ||
@@ -123,6 +126,11 @@ function checked(raw: unknown, identity: ChatPromptDraftIdentity): StoredPromptD
     }
     if (value.plan && (!value.assessment || value.plan.dependencyHash !== value.assessment.contentHash))
         throw new Error('Stale named prompt plan dependency');
+    if (value.pendingAssessment && (!value.assessment ||
+        value.pendingAssessment.baseRevision !== value.assessment.revision ||
+        value.pendingAssessment.baseHash !== value.assessment.contentHash ||
+        !/^[0-9a-f-]{36}$/u.test(value.pendingAssessment.messageId)))
+        throw new Error('Stale assessment revision candidate');
     if (value.partialAssessment && !validPartial(value.partialAssessment))
         throw new Error('Corrupt partial prompt assessment');
     return value;
@@ -153,7 +161,8 @@ export class PromptDraftStore {
     async read(root: string, identity: ChatPromptDraftIdentity, leaseToken: string): Promise<StoredPromptDraft> {
         return this.transact(root, identity, leaseToken, async current => {
             if (!current || current.state !== 'active') throw new Error('Named prompt draft is unavailable or aborted');
-            for (const stage of [current.assessment, current.plan]) if (stage && stage.sourceRefs.length)
+            for (const stage of [current.assessment, current.plan, current.pendingAssessment?.value])
+                if (stage && stage.sourceRefs.length)
                 await verifyPromptSourceRefs(root, stage.sourceRefs.map(ref => ({ ...ref, schemaVersion: 1,
                     kind: 'file', label: ref.id, estimatedTokens: 0 })), this.grounder);
             for (const page of current.partialAssessment?.pages ?? []) {
@@ -259,6 +268,55 @@ export class PromptDraftStore {
             const snapshot = sealed({ ...base, revision: current.revision + 1,
                 ...(kind === 'assessment' ? { assessment: value } : { assessment: current.assessment!, plan: value }),
                 history });
+            return { snapshot, result: snapshot };
+        });
+    }
+
+    /** A checked replacement remains noncanonical and cannot invalidate dependent stages until Accept. */
+    async proposeAssessment(root: string, identity: ChatPromptDraftIdentity, leaseToken: string,
+        baseRevision: number, messageId: string, record: AssessmentWireframe,
+        sourceRefs: StoredPromptDraftStage['sourceRefs']): Promise<StoredPromptDraft> {
+        if (Buffer.byteLength(canonical(record), 'utf8') > 32_000 || sourceRefs.length > 32)
+            throw new Error('ASSESSMENT_STAGE_LIMIT: Revision exceeds draft bounds');
+        return this.transact(root, identity, leaseToken, async current => {
+            if (!current?.assessment || current.state !== 'active' ||
+                current.assessment.revision !== baseRevision || current.pendingAssessment)
+                throw new Error('ASSESSMENT_STAGE_STALE: Select the current Assessment card');
+            if (sourceRefs.length) await verifyPromptSourceRefs(root, sourceRefs.map(ref => ({ ...ref,
+                schemaVersion: 1, kind: 'file', label: ref.id, estimatedTokens: 0 })), this.grounder);
+            const value: StoredPromptDraftStage = { revision: baseRevision + 1,
+                contentHash: sha256(canonical(record)), record: record as unknown as Record<string, unknown>,
+                sourceRefs, sourceRefsHash: sha256(canonical(sourceRefs)) };
+            const { integrityHash: _integrityHash, ...body } = current;
+            const snapshot = sealed({ ...body, revision: current.revision + 1,
+                pendingAssessment: { messageId, baseRevision,
+                    baseHash: current.assessment.contentHash, value } });
+            return { snapshot, result: snapshot };
+        });
+    }
+
+    async decideAssessment(root: string, identity: ChatPromptDraftIdentity, leaseToken: string,
+        messageId: string, digest: string, decision: 'accept' | 'reject'): Promise<StoredPromptDraft> {
+        if (decision !== 'accept' && decision !== 'reject') throw new Error('Unknown Assessment decision');
+        return this.transact(root, identity, leaseToken, async current => {
+            const pending = current?.pendingAssessment;
+            if (!current?.assessment || current.state !== 'active' || !pending ||
+                pending.messageId !== messageId || pending.value.contentHash !== digest ||
+                current.assessment.revision !== pending.baseRevision ||
+                current.assessment.contentHash !== pending.baseHash)
+                throw new Error('ASSESSMENT_STAGE_STALE: Revision candidate or source changed');
+            if (decision === 'accept' && pending.value.sourceRefs.length)
+                await verifyPromptSourceRefs(root, pending.value.sourceRefs.map(ref => ({ ...ref,
+                    schemaVersion: 1, kind: 'file', label: ref.id, estimatedTokens: 0 })), this.grounder);
+            const { integrityHash: _integrityHash, pendingAssessment: _pending,
+                assessment: _assessment, plan: _plan, ...base } = current;
+            const history = decision === 'accept' ? [...current.history,
+                { stage: 'assessment' as const, value: current.assessment },
+                ...(current.plan ? [{ stage: 'plan' as const, value: current.plan }] : [])].slice(-8) :
+                current.history;
+            const snapshot = sealed({ ...base, revision: current.revision + 1,
+                assessment: decision === 'accept' ? pending.value : current.assessment,
+                ...(decision === 'reject' && current.plan ? { plan: current.plan } : {}), history });
             return { snapshot, result: snapshot };
         });
     }

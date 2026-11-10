@@ -3171,7 +3171,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             title.textContent = named.identity.slug; title.title = named.identity.slug;
             const status = document.createElement('span'); status.setAttribute('role', 'status');
             status.textContent = named.state === 'assessment' ? 'Assessment in progress' :
-                named.state === 'plan' ? named.stageMessageId ? 'Assessment ready · Plan next' : 'Plan in progress' :
+                named.state === 'review' ? `Assessment revision proposed · ${named.review?.count} work prompts` :
+                named.state === 'plan' ? named.stageMessageId ?
+                    named.assessmentRevision && named.assessmentRevision > 1 ?
+                        'Assessment revised · Plan needs updating' : 'Assessment ready · Plan next' :
+                    'Plan in progress' :
                 named.state === 'write' ? named.stageMessageId ? 'Plan ready · Write next' : 'Writing in progress' :
                 named.state === 'ready' ? 'Prompt proposal ready for review' : `Blocked · ${named.error}`;
             if (named.state === 'error') {
@@ -3180,12 +3184,30 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 status.removeAttribute('role');
             }
             card.append(title, status);
+            const assessmentSource = chat.messages.find(message => message.role === 'assistant' &&
+                message.id === (named.state === 'review' ? named.review?.messageId :
+                    named.assessmentMessageId ?? named.stageMessageId));
+            if (assessmentSource?.role === 'assistant') {
+                const count = /## Work prompts \((\d+)\)/u.exec(assessmentSource.content);
+                const tasks = [...assessmentSource.content.matchAll(/^- step-\d+: ([^\n—]+) —/gmu)]
+                    .map(match => match[1].trim());
+                if (count && tasks.length === Number(count[1])) {
+                    const details = document.createElement('details');
+                    details.className = 'dope-chat-prompt-draft-outline';
+                    const summary = document.createElement('summary');
+                    summary.textContent = `${count[1]} work prompts · View task division`;
+                    const list = document.createElement('ol');
+                    for (const task of tasks) { const item = document.createElement('li'); item.textContent = task; list.append(item); }
+                    details.append(summary, list); card.append(details);
+                }
+            }
             const reviewMessage = named.state === 'write' || named.state === 'ready' ||
                 named.recoveryStage === 'plan' ?
                 chat.messages.filter(message => message.role === 'assistant' &&
                     message.content.startsWith('# Unpublished prompt plan')).at(-1) :
-                chat.messages.filter(message => message.role === 'assistant' &&
-                    message.content.startsWith('# Unpublished prompt assessment')).at(-1);
+                chat.messages.find(message => message.role === 'assistant' &&
+                    message.id === (named.state === 'review' ? named.review?.messageId :
+                        named.assessmentMessageId ?? named.stageMessageId));
             if (reviewMessage) {
                 const review = this.button('Review saved stage', () => {
                     const row = [...this.content.querySelectorAll<HTMLElement>('.dope-chat-message')]
@@ -3203,11 +3225,34 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 });
                 action.title = 'Place command and trusted draft context in the composer'; card.append(action);
             }
+            const published = chat.messages.some(message => message.role === 'assistant' &&
+                message.planningActivity?.kind === 'prompt-stack-proposal' &&
+                message.planningActivity.status === 'applied');
+            if (!published && named.state !== 'assessment' && named.state !== 'review') {
+                const revise = this.button('Revise wireframe', () => {
+                    if (state.prepareAssessmentRevision())
+                        queueMicrotask(() => this.content.querySelector<HTMLTextAreaElement>(
+                            '.dope-chat-composer textarea')?.focus());
+                });
+                revise.title = 'Place a protected revision request and Assessment chip in the composer';
+                card.append(revise);
+            }
+            if (named.state === 'review' && named.review) {
+                const review = named.review;
+                const accept = this.button('Accept revision', () => {
+                    void state.decideAssessmentRevision(review.messageId, review.digest, 'accept');
+                });
+                const reject = this.button('Reject revision', () => {
+                    void state.decideAssessmentRevision(review.messageId, review.digest, 'reject');
+                });
+                card.append(accept, reject);
+            }
             const ownerIndex = chat.messages.findIndex(message => message.id === named.identity.userMessageId);
             const stageIndex = chat.messages.reduce((latest, message, index) =>
                 index >= ownerIndex && message.role === 'user' &&
                 (message.id === named.identity.userMessageId ||
-                    message.skill?.name === 'prompt-plan' || message.skill?.name === 'prompt-write') ? index : latest,
+                    message.skill?.name === 'prompt-ass' || message.skill?.name === 'prompt-plan' ||
+                    message.skill?.name === 'prompt-write') ? index : latest,
             ownerIndex);
             const nextUserIndex = chat.messages.findIndex((message, index) => index > stageIndex && message.role === 'user');
             const stageMessages = chat.messages.slice(stageIndex + 1, nextUserIndex < 0 ? undefined : nextUserIndex);
@@ -3925,7 +3970,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         current.state === 'error' && current.recoveryStage === chip.stage);
                 const row = document.createElement('li');
                 const label = document.createElement('span');
-                label.textContent = `${current?.identity.slug ?? 'Prompt draft'} · ${chip.stage === 'assessment' ? 'Assessment' : 'Plan'}${valid ? '' : ' · Stale'}`;
+                const revisionValid = chip.purpose === 'revise-assessment' &&
+                    current?.identity.id === chip.draftId &&
+                    (current.assessmentMessageId ?? current.stageMessageId) === chip.stageMessageId &&
+                    (current.assessmentRevision ?? current.stageRevision) === chip.stageRevision &&
+                    current.state !== 'review';
+                label.textContent = `${current?.identity.slug ?? 'Prompt draft'} · ${chip.purpose === 'revise-assessment' ?
+                    'Assessment revision' : chip.stage === 'assessment' ? 'Assessment' : 'Plan'}${valid || revisionValid ? '' : ' · Stale'}`;
                 const remove = this.button('×', () => state.removePromptDraftChip());
                 remove.setAttribute('aria-label', 'Remove prompt draft context');
                 row.append(label, remove); selectedContext.append(row);

@@ -834,6 +834,50 @@ export class ChatBackend implements ChatService {
         await this.repository.recordPlanningActivity(root, chatId, message.id, leaseToken,
             { ...activity, status: 'denied' }, { proposalId, status: 'pending', digest });
     }
+    async decidePromptAssessmentRevision(projectHandle: string, chatId: string, leaseToken: string,
+        messageId: string, digest: string, decision: 'accept' | 'reject'): Promise<void> {
+        const root = this.active(projectHandle);
+        if (decision !== 'accept' && decision !== 'reject')
+            throw new Error('Unknown Assessment revision decision');
+        if (this.turns.has(chatId) || !this.grounder)
+            throw new Error('Finish the current Chat turn before deciding the Assessment revision');
+        const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+        const message = chat?.messages.find(item => item.id === messageId);
+        const activity = message?.role === 'assistant' ? message.planningActivity : undefined;
+        const revision = activity?.assessmentRevision;
+        const owner = chat?.messages.find(item => item.id === revision?.ownerUserMessageId);
+        if (!activity || activity.kind !== 'prompt-assessment-revision' ||
+            activity.status !== 'pending' || !revision || activity.proposalId !== messageId ||
+            revision.digest !== digest || owner?.role !== 'user' || !owner.promptDraft ||
+            owner.promptDraft.id !== revision.draftId)
+            throw new Error('Pending Assessment revision belongs to another Chat or has changed');
+        const identity = verifyPromptDraftIdentity(owner.promptDraft, root, chatId, owner.id,
+            leaseToken, true);
+        const store = new PromptDraftStore(this.repository, this.grounder);
+        try {
+            const saved = await store.read(root, identity, leaseToken);
+            if (saved.pendingAssessment?.messageId === messageId &&
+                saved.pendingAssessment.value.contentHash === digest) {
+                if (decision === 'accept' && message?.role === 'assistant' &&
+                    message.content !== renderAssessment(saved.pendingAssessment.value.record as unknown as AssessmentRecord))
+                    throw new Error('Assessment review bytes changed');
+                await store.decideAssessment(root, identity, leaseToken, messageId, digest, decision);
+            } else if (decision !== 'accept' || saved.assessment?.contentHash !== digest ||
+                saved.assessment.revision !== revision.baseRevision + 1) {
+                throw new Error('Assessment revision candidate is stale');
+            }
+        } catch (error) {
+            if (decision === 'accept' && /source changed|source drift|collides|stale/iu.test(String(error))) {
+                await this.repository.recordPlanningActivity(root, chatId, messageId, leaseToken,
+                    { ...activity, status: 'stale', diagnostic: String(error).slice(0, 300) },
+                    { proposalId: messageId, status: 'pending' });
+            }
+            throw error;
+        }
+        await this.repository.recordPlanningActivity(root, chatId, messageId, leaseToken,
+            { ...activity, status: decision === 'accept' ? 'applied' : 'denied' },
+            { proposalId: messageId, status: 'pending' });
+    }
     async publishPromptStack(projectHandle: string, chatId: string, leaseToken: string,
         proposalId: string, digest: string): Promise<{ id: string; status: string; paths: string[]; diagnostic?: string }> {
         const root = this.active(projectHandle);
@@ -1851,12 +1895,14 @@ export class ChatBackend implements ChatService {
         if (skill && createHash('sha256').update(skill.body).digest('hex') !== skill.digest)
             throw new Error('Saved skill instructions changed; start a fresh turn');
         const promptStage = promptStageCommand(content, boundPromptStage(skill));
+        const assessmentRevision = promptStage?.stage === 'prompt-ass' &&
+            request.promptDraftTarget?.purpose === 'revise-assessment';
         if (/^\/prompt-(?:ass|plan|write)(?=\s|$)/u.test(content) && !promptStage)
             throw new Error('Protected prompt authoring skill identity changed; start a fresh turn');
         if (request.promptStackRevision && (promptStage?.stage !== 'prompt-write' || retryIndex >= 0))
             throw new Error('Prompt revision requires a fresh protected /prompt-write turn');
         const userMessageId = retryIndex >= 0 ? chat.messages[retryIndex - 1].id : randomUUID();
-        const namedDraft = promptStage?.stage === 'prompt-ass' ?
+        const namedDraft = promptStage?.stage === 'prompt-ass' && !assessmentRevision ?
             retryIndex >= 0 ? await (async () => {
                 const draft = verifyPromptDraftIdentity(
                     (chat.messages[retryIndex - 1] as ChatUserMessage).promptDraft,
@@ -1887,7 +1933,7 @@ export class ChatBackend implements ChatService {
             return { assistant, user };
         };
         const priorAssessment = selectedPrompt ? selectedPair(selectedPrompt.assessment) :
-            promptStage && promptStage.stage !== 'prompt-ass' ?
+            promptStage && (promptStage.stage !== 'prompt-ass' || assessmentRevision) ?
             priorPromptDraft(chat, 'prompt-ass', retryIndex >= 0 ? retryIndex - 1 : undefined) : undefined;
         const priorPlan = selectedPrompt ? selectedPair(selectedPrompt.plan) :
             promptStage?.stage === 'prompt-write' ?
@@ -1904,6 +1950,9 @@ export class ChatBackend implements ChatService {
                 promptStage.folder = identity.slug;
             }
         }
+        if (assessmentRevision && (!priorAssessment?.user.promptDraft ||
+            promptStage?.folder !== priorAssessment.user.promptDraft.slug || retryIndex >= 0))
+            throw new Error('ASSESSMENT_STAGE_STALE: Select the current Assessment card to revise its slug');
         if (selectedPrompt && priorAssessment?.user.promptDraft && promptStage?.stage === 'prompt-write') {
             const identity = verifyPromptDraftIdentity(priorAssessment.user.promptDraft, root,
                 request.chatId, priorAssessment.user.id, request.leaseToken);
@@ -1952,8 +2001,10 @@ export class ChatBackend implements ChatService {
             const target = request.promptDraftTarget;
             const identity = priorAssessment?.user.promptDraft;
             const selected = target.stage === 'assessment' ? priorAssessment : priorPlan;
-            const stage = target.stage === 'assessment' ? 'prompt-plan' : 'prompt-write';
+            const stage = target.purpose === 'revise-assessment' ? 'prompt-ass' :
+                target.stage === 'assessment' ? 'prompt-plan' : 'prompt-write';
             if (!promptStage || promptStage.stage !== stage || retryIndex >= 0 ||
+                (target.purpose === 'revise-assessment' && target.stage !== 'assessment') ||
                 !identity || !selected || selected.assistant.id !== target.stageMessageId ||
                 priorAssessment.user.id !== target.ownerUserMessageId || identity.id !== target.draftId ||
                 identity.projectId !== target.projectId || identity.sourceFingerprint !== target.sourceFingerprint ||
@@ -1965,7 +2016,8 @@ export class ChatBackend implements ChatService {
             const sealedStage = target.stage === 'assessment' ? stored.assessment : stored.plan;
             if (!sealedStage || sealedStage.revision !== target.stageRevision)
                 throw new Error('Selected prompt draft stage changed; choose the current card again');
-        } else if (promptStage && promptStage.stage !== 'prompt-ass' && retryIndex < 0 && !selectedPrompt) {
+        } else if (promptStage && (promptStage.stage !== 'prompt-ass' || assessmentRevision) &&
+            retryIndex < 0 && !selectedPrompt) {
             throw new Error('Select the current Prompt Stack Draft card before submitting this command');
         }
         const promptSourceBasis = promptStage?.stage === 'prompt-write' ?
@@ -2029,6 +2081,7 @@ export class ChatBackend implements ChatService {
             (promptStage ? `\n${promptStageInstruction(promptStage, {
                 assessment: priorAssessment?.assistant, plan: priorPlan?.assistant }, promptSourceVersion,
                 savedAssessmentRecord, savedPlanRecord)}` +
+                (assessmentRevision ? `\nThis is a reviewed revision candidate for the existing Assessment. The currently accepted wireframe is ${JSON.stringify(savedAssessmentRecord)}. Follow the owner's changes in ${JSON.stringify(content)}. Preserve the original task slug. Stage a complete replacement wireframe with assessment_stage and assessment_finish. The old Assessment and Plan remain current until separate owner Accept; do not claim acceptance or publication.` : '') +
                 (promptRequestedCount ? `\nRequested work-prompt count: exactly ${promptRequestedCount}; keep one separate terminal manual closeout.` : '') : '') +
             (selectedPrompt ? `\nRevise the selected saved proposal through bounded proposal_stage_prompt calls. The previous candidate remains valid until replacement passes every check. Stage the complete replacement in dependency order. Saved prior file identities: ${JSON.stringify(
                 selectedPrompt.proposal.files.map(file => ({ path: file.path, hash: file.afterHash })).slice(2))}
@@ -2965,7 +3018,8 @@ export class ChatBackend implements ChatService {
             await mutate({ type: 'begin-assistant', chatId: key, message: assistant });
             if (protectedAssessment) {
                 assessmentController = new IncrementalAssessment(this.repository, this.grounder!, root,
-                    namedDraft!, request.leaseToken, content);
+                    (assessmentRevision ? priorAssessment!.user.promptDraft : namedDraft)!,
+                    request.leaseToken, content, undefined, !!assessmentRevision);
                 finishedAssessment = await assessmentController.begin();
                 if (finishedAssessment) {
                     const recovered = await assessmentController.finish();
@@ -3317,6 +3371,27 @@ export class ChatBackend implements ChatService {
                                         `${status.findings} verified findings. Next: ${status.nextAction}`);
                                 }
                                 output = renderAssessment(finishedAssessment);
+                                if (assessmentRevision) {
+                                    const target = request.promptDraftTarget!;
+                                    const identity = priorAssessment!.user.promptDraft!;
+                                    const saved = await new PromptDraftStore(this.repository, this.grounder!).proposeAssessment(
+                                        root, identity, request.leaseToken, target.stageRevision, assistant!.id,
+                                        finishedAssessment as import('./prompt-authoring-stage').AssessmentWireframe,
+                                        sourceRefs.filter(ref => ref.kind === 'file' && ref.sourceHash &&
+                                            ref.origin === 'tool').map(ref => ({ id: ref.id,
+                                            sourceHash: ref.sourceHash!, projectId: ref.projectId!,
+                                            ...(ref.contentHash ? { contentHash: ref.contentHash } : {}),
+                                            ...(ref.start !== undefined ? { start: ref.start } : {}),
+                                            ...(ref.end !== undefined ? { end: ref.end } : {}) })));
+                                    promptActivity = { schemaVersion: 1, kind: 'prompt-assessment-revision',
+                                        status: 'pending', refs: [...preview.refs, ...sourceRefs],
+                                        proposalId: assistant!.id,
+                                        assessmentRevision: { draftId: identity.id,
+                                            ownerUserMessageId: identity.userMessageId,
+                                            baseRevision: target.stageRevision,
+                                            count: (finishedAssessment as import('./prompt-authoring-stage').AssessmentWireframe).count,
+                                            digest: saved.pendingAssessment!.value.contentHash } };
+                                }
                             } else if (promptStage.stage === 'prompt-plan') {
                                 if (!priorAssessment?.user.promptDraft || !savedAssessmentRecord)
                                     throw new Error('PLAN_ASSESSMENT_REQUIRED: Complete a structured named assessment first');
@@ -3509,6 +3584,21 @@ export class ChatBackend implements ChatService {
             }
             throw new Error('Model stream ended without completion');
         } catch (error) {
+            if (assessmentRevision && assistant && priorAssessment?.user.promptDraft && this.grounder) {
+                const revisionAssistantId = assistant.id;
+                try {
+                    const committed = (await this.repository.read(root)).chats.find(item => item.id === key)
+                        ?.messages.find(item => item.id === revisionAssistantId);
+                    if (!(committed?.role === 'assistant' && committed.execution.status === 'complete' &&
+                        committed.planningActivity?.kind === 'prompt-assessment-revision')) {
+                        const store = new PromptDraftStore(this.repository, this.grounder);
+                        const saved = await store.read(root, priorAssessment.user.promptDraft, request.leaseToken);
+                        if (saved.pendingAssessment?.messageId === revisionAssistantId)
+                            await store.decideAssessment(root, priorAssessment.user.promptDraft, request.leaseToken,
+                                revisionAssistantId, saved.pendingAssessment.value.contentHash, 'reject');
+                    }
+                } catch { /* Preserve the original accepted Assessment when recovery cannot be completed. */ }
+            }
             if (nativeRoadmap && assistant && this.nativeStages?.get(key)) try {
                 this.client.notifyChatEvent({ projectHandle: request.projectHandle, kind: 'roadmap-stage',
                     chatId: key, messageId: assistant.id, snapshot: null,

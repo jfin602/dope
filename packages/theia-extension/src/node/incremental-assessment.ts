@@ -3,7 +3,7 @@ import { ChatRepository } from '@dope/chat/lib/node';
 import type { ChatProjectGrounder } from './chat-project-grounder';
 import { PromptDraftStore, type StoredPromptDraft } from './prompt-draft-store';
 import { validatedAssessmentWireframe, requestedWorkPromptCount, isAssessmentWireframe,
-    type AssessmentRead, type AssessmentRecord } from './prompt-authoring-stage';
+    type AssessmentRead, type AssessmentRecord, type AssessmentWireframe } from './prompt-authoring-stage';
 
 type Partial = NonNullable<StoredPromptDraft['partialAssessment']>;
 const initial = (requested: string[]): Partial => ({ requested, pages: [], blocked: {},
@@ -11,13 +11,33 @@ const initial = (requested: string[]): Partial => ({ requested, pages: [], block
 /** One Chat draft, one guarded store. The model supplies content, never authority or citation metadata. */
 export class IncrementalAssessment {
     private readonly store: PromptDraftStore;
-    constructor(repository: ChatRepository, private readonly grounder: ChatProjectGrounder,
+    private revisionCandidate?: AssessmentWireframe;
+    constructor(private readonly repository: ChatRepository, private readonly grounder: ChatProjectGrounder,
         private readonly root: string, private readonly identity: ChatPromptDraftIdentity,
         private readonly leaseToken: string, private readonly requestedText: string,
-        store?: PromptDraftStore) {
+        store?: PromptDraftStore, private readonly revisionMode = false) {
         this.store = store ?? new PromptDraftStore(repository, grounder);
     }
     async begin(): Promise<AssessmentRecord | undefined> {
+        if (this.revisionMode) {
+            let saved = await this.store.read(this.root, this.identity, this.leaseToken);
+            if (saved.pendingAssessment) {
+                const message = (await this.repository.read(this.root)).chats
+                    .find(chat => chat.id === this.identity.chatId)?.messages
+                    .find(item => item.id === saved.pendingAssessment?.messageId);
+                if (!(message?.role === 'assistant' && message.execution.status === 'complete' &&
+                    message.planningActivity?.kind === 'prompt-assessment-revision' &&
+                    message.planningActivity.status === 'pending')) {
+                    await this.store.decideAssessment(this.root, this.identity, this.leaseToken,
+                        saved.pendingAssessment.messageId,
+                        saved.pendingAssessment.value.contentHash, 'reject');
+                    saved = await this.store.read(this.root, this.identity, this.leaseToken);
+                }
+            }
+            if (!saved.assessment || saved.pendingAssessment)
+                throw new Error('ASSESSMENT_STAGE_STALE: A current Assessment without pending revision is required');
+            return undefined;
+        }
         try { await this.store.begin(this.root, this.identity, this.leaseToken); }
         catch (error) {
             if (!(error instanceof Error) || !error.message.includes('already started')) throw error;
@@ -32,6 +52,7 @@ export class IncrementalAssessment {
     }
     async readPage(page: { path: string; offset: number; endOffset: number;
         fileBytes: number; sourceHash: string }): Promise<'complete' | 'page' | 'idempotent'> {
+        if (this.revisionMode) return 'page';
         if ((page.fileBytes === 0 ? page.offset !== 0 || page.endOffset !== 0 :
             page.endOffset <= page.offset) || page.endOffset > page.fileBytes) return 'idempotent';
         const { draft, partial } = await this.snapshot();
@@ -50,6 +71,7 @@ export class IncrementalAssessment {
             'complete' : 'page';
     }
     async blockedRead(path: string, reason: string): Promise<void> {
+        if (this.revisionMode) return;
         const { draft, partial } = await this.snapshot();
         if (draft.assessment || !partial.requested.includes(path)) return;
         await this.store.updatePartialAssessment(this.root, this.identity, this.leaseToken,
@@ -81,6 +103,15 @@ export class IncrementalAssessment {
             expectedSourceHash?: string }[];
         remaining: string[]; nextAction: string; finishReady: boolean; blockedBy: string[];
         revision: number }> {
+        if (this.revisionMode) {
+            const draft = await this.store.read(this.root, this.identity, this.leaseToken);
+            return { assessment: this.identity.slug, sources: 'revision source reads', required: [], remaining: [],
+                findings: this.revisionCandidate?.sourceClaims.length ?? 0,
+                nextAction: this.revisionCandidate ? 'Call assessment_finish.' :
+                    'Stage one replacement wireframe for owner review.',
+                finishReady: !!this.revisionCandidate, blockedBy: this.revisionCandidate ? [] : ['wireframe'],
+                revision: draft.revision };
+        }
         const { draft, partial } = await this.snapshot();
         const complete = draft.assessment?.record as AssessmentRecord | undefined;
         if (complete && !isAssessmentWireframe(complete))
@@ -104,6 +135,16 @@ export class IncrementalAssessment {
     async stage(raw: unknown, refs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']>,
         evidence: readonly AssessmentRead[]): Promise<{ accepted: true; idempotent: boolean;
             category: string; findings: number; nextAction: string }> {
+        if (this.revisionMode) {
+            const wireframe = validatedAssessmentWireframe(raw, refs, evidence,
+                requestedWorkPromptCount(this.requestedText));
+            const idempotent = JSON.stringify(this.revisionCandidate) === JSON.stringify(wireframe);
+            if (this.revisionCandidate && !idempotent)
+                throw new Error('ASSESSMENT_CONFLICTING_REPLAY: Revision candidate changed');
+            this.revisionCandidate = wireframe;
+            return { accepted: true, idempotent, category: 'wireframe',
+                findings: wireframe.sourceClaims.length, nextAction: 'Call assessment_finish.' };
+        }
         const { draft, partial } = await this.snapshot();
         if (draft.assessment) throw new Error('ASSESSMENT_STAGE_SEALED: Assessment is already complete');
         if (partial.scope || partial.tiers || Object.values(partial.findings).some(items => items.length))
@@ -122,6 +163,13 @@ export class IncrementalAssessment {
     }
     async finish(): Promise<{ record: AssessmentRecord; revision: number;
         refs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']> }> {
+        if (this.revisionMode) {
+            if (!this.revisionCandidate) throw new Error('ASSESSMENT_WIREFRAME_INCOMPLETE: Submit a wireframe first');
+            const draft = await this.store.read(this.root, this.identity, this.leaseToken);
+            if (!draft.assessment) throw new Error('ASSESSMENT_STAGE_STALE: Assessment missing');
+            return { record: this.revisionCandidate, revision: draft.assessment.revision,
+                refs: [] };
+        }
         const { draft, partial } = await this.snapshot();
         if (draft.assessment) {
             const record = draft.assessment.record as unknown as AssessmentRecord;

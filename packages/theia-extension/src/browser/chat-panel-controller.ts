@@ -641,15 +641,18 @@ export class ChatPanelController {
             const chip = this.promptDraftChip;
             const current = this.chat && currentPromptDraft(this.chat);
             const expected = chip.stage === 'assessment' ? 'plan' : 'write';
-            if (!current || current.state !== expected &&
-                !(current.state === 'error' && current.recoveryStage === chip.stage) ||
+            const revising = chip.purpose === 'revise-assessment';
+            if (!current || (revising ? current.state === 'review' || current.state === 'assessment' :
+                current.state !== expected &&
+                !(current.state === 'error' && current.recoveryStage === chip.stage)) ||
                 current.identity.id !== chip.draftId ||
-                current.stageMessageId !== chip.stageMessageId ||
-                current.stageRevision !== chip.stageRevision ||
+                (revising ? current.assessmentMessageId ?? current.stageMessageId : current.stageMessageId) !== chip.stageMessageId ||
+                (revising ? current.assessmentRevision ?? current.stageRevision : current.stageRevision) !== chip.stageRevision ||
                 current.identity.projectId !== chip.projectId ||
                 current.identity.sourceFingerprint !== chip.sourceFingerprint ||
                 current.identity.leaseDigest !== chip.leaseDigest ||
-                !this.draft.startsWith(chip.stage === 'assessment' ? '/prompt-plan' : '/prompt-write')) {
+                !this.draft.startsWith(revising ? `/prompt-ass ${current.identity.slug} ` :
+                    chip.stage === 'assessment' ? '/prompt-plan' : '/prompt-write')) {
                 this.error = 'Prompt draft chip is stale. Remove it and select the current card.';
                 this.changed(); return false;
             }
@@ -951,6 +954,36 @@ export class ChatPanelController {
         this.draft = stage === 'assessment' ? '/prompt-plan ' : '/prompt-write ';
         this.error = ''; this.changed();
         return true;
+    }
+    prepareAssessmentRevision(): boolean {
+        const current = this.chat && currentPromptDraft(this.chat);
+        if (!this.lease || !current || this.running || this.pending ||
+            ['assessment', 'review'].includes(current.state)) return false;
+        const messageId = current.assessmentMessageId ??
+            (current.state === 'plan' ? current.stageMessageId : undefined);
+        const revision = current.assessmentRevision ??
+            (current.state === 'plan' ? current.stageRevision : undefined);
+        if (!messageId || !revision) return false;
+        const identity = current.identity;
+        this.promptDraftChip = { draftId: identity.id, ownerUserMessageId: identity.userMessageId,
+            stageMessageId: messageId, stage: 'assessment', stageRevision: revision,
+            projectId: identity.projectId, sourceFingerprint: identity.sourceFingerprint,
+            leaseDigest: identity.leaseDigest, purpose: 'revise-assessment' };
+        this.draft = `/prompt-ass ${identity.slug} `;
+        this.error = ''; this.changed();
+        return true;
+    }
+    async decideAssessmentRevision(messageId: string, digest: string,
+        decision: 'accept' | 'reject'): Promise<void> {
+        const lease = this.lease;
+        if (!lease || this.running || this.pending) return;
+        this.pending = true; this.changed();
+        try {
+            await lease.connection.decidePromptAssessmentRevision(lease.handle, lease.chatId,
+                lease.token, messageId, digest, decision);
+            await this.refresh(true);
+        } catch (error) { this.error = String(error); }
+        finally { this.pending = false; this.changed(); }
     }
     removePromptDraftChip(): void { this.promptDraftChip = undefined; this.changed(); }
     prepareDocumentationRevision(proposalId: string, digest: string): boolean {

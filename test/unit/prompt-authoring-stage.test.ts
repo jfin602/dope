@@ -73,6 +73,7 @@ test('structured plan checks requested ten work tasks, source, order, T2/T3 and 
     assert.equal(requestedWorkPromptCount('Build ten work tasks plus closeout'), 10);
     assert.equal(requestedWorkPromptCount('Use one work prompt and a manual closeout'), 1);
     assert.equal(requestedWorkPromptCount('Use four implementation prompts'), 4);
+    assert.equal(requestedWorkPromptCount('Change this Assessment from three implementation prompts to four. Separate UI and backend work.'), 4);
     assert.equal(check(plan).work.length, 10);
     assert.match(renderPlan(check(plan)), /Final manual closeout \(T3\)/);
     const receipt = `Plan record sha256: ${'a'.repeat(64)}; revision: 1.`;

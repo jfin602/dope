@@ -40,6 +40,40 @@ test('Revise Proposal selects one pending card in the composer and preserves an 
     assert.equal(controller.prepareDocumentationRevision('proposal', 'stale'), false);
 });
 
+test('Revise wireframe prefills a protected same-draft chip without sending', async () => {
+    const identity = { schemaVersion: 1, id: 'draft', revision: 1, slug: 'safe-task',
+        projectId: 'project', chatId: 'chat', userMessageId: 'owner', leaseDigest: 'lease',
+        sourceHead: 'head', sourceVersion: '0.13.11', sourceFingerprint: 'fingerprint' };
+    const revision = { draftId: 'draft', ownerUserMessageId: 'owner', baseRevision: 1,
+        count: 4, digest: 'a'.repeat(64) };
+    const chat = { id: 'chat', messages: [
+        { role: 'user', id: 'owner', promptDraft: identity },
+        { role: 'assistant', id: 'assessment', content: '# Unpublished prompt assessment\nOriginal',
+            execution: { status: 'complete' } },
+        { role: 'user', id: 'plan-user', skill: { name: 'prompt-plan' } },
+        { role: 'assistant', id: 'plan', content: `Plan record sha256: ${'b'.repeat(64)}; revision: 1.`,
+            execution: { status: 'complete' } } ] };
+    const calls: unknown[][] = [];
+    const connection = { decidePromptAssessmentRevision: async (...args: unknown[]) => { calls.push(args); } };
+    const controller = new ChatPanelController(() => { throw new Error('unused'); }, () => {});
+    Object.assign(controller, { workspace: 'file:///project', chatId: 'chat', snapshot: { chats: [chat] },
+        lease: { workspace: 'file:///project', chatId: 'chat', handle: 'handle', token: 'lease', connection },
+        refresh: async () => {} });
+    assert.equal(controller.prepareAssessmentRevision(), true);
+    assert.equal(controller.draft, '/prompt-ass safe-task ');
+    assert.deepEqual(controller.promptDraftChip, { draftId: 'draft', ownerUserMessageId: 'owner',
+        stageMessageId: 'assessment', stage: 'assessment', stageRevision: 1, projectId: 'project',
+        sourceFingerprint: 'fingerprint', leaseDigest: 'lease', purpose: 'revise-assessment' });
+    assert.equal(calls.length, 0);
+    chat.messages.push({ role: 'user', id: 'revise-user', skill: { name: 'prompt-ass' } } as never,
+        { role: 'assistant', id: 'candidate', content: '# Unpublished prompt assessment\nProposed',
+            execution: { status: 'complete' }, planningActivity: { kind: 'prompt-assessment-revision',
+                status: 'pending', proposalId: 'candidate', assessmentRevision: revision } } as never);
+    assert.equal(controller.prepareAssessmentRevision(), false);
+    await controller.decideAssessmentRevision('candidate', revision.digest, 'reject');
+    assert.deepEqual(calls[0], ['handle', 'chat', 'lease', 'candidate', revision.digest, 'reject']);
+});
+
 test('Docs card decisions share pending state and deny stale, foreign and repeated clicks', async () => {
     const proposal = { id: 'proposal', digest: 'digest', root: '/project', chatId: 'chat', messageId: 'answer' };
     const activity = { kind: 'documentation-proposal', status: 'pending', proposalId: 'proposal', documentProposal: proposal };
