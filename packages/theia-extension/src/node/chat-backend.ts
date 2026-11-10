@@ -40,8 +40,8 @@ import { discoverDocumentation, documentationReviewObjective } from './documenta
 import type { DocumentationReadPage } from './documentation-skill-review';
 import { assertPromptDraftNameAvailable, newPromptDraftIdentity, promptStageCommand, priorPromptDraft,
     verifyPromptDraftIdentity, verifyPromptDraftSource, verifyPromptDraftSourceBasis, verifyPromptSourceRefs,
-    promptStageInstruction, finishedPromptText, requestedWorkPromptCount, requestedPaths,
-    renderAssessment, validatedPlan, planReceiptCurrent,
+    promptStageInstruction, finishedPromptText, requestedPaths,
+    renderAssessment, validatedPlan, planReceiptCurrent, isAssessmentWireframe,
     type AssessmentRecord, type PlanRecord,
     type AssessmentRead } from './prompt-authoring-stage';
 import { PromptDraftStore } from './prompt-draft-store';
@@ -1938,6 +1938,12 @@ export class ChatBackend implements ChatService {
                     staged.plan.revision)))
                 throw new Error('Selected structured plan is missing or stale; choose the current Plan card');
         }
+        if (promptStage?.stage === 'prompt-plan' &&
+            (!savedAssessmentRecord || !isAssessmentWireframe(savedAssessmentRecord)))
+            throw new Error('PLAN_WIREFRAME_REQUIRED: Select a checked current Assessment wireframe');
+        if (promptStage?.stage === 'prompt-plan' && priorAssessment && savedAssessmentRecord &&
+            priorAssessment.assistant.content !== renderAssessment(savedAssessmentRecord))
+            throw new Error('PLAN_ASSESSMENT_STALE: Selected Assessment card does not match the saved wireframe');
         if (request.promptDraftTarget) {
             const target = request.promptDraftTarget;
             const identity = priorAssessment?.user.promptDraft;
@@ -2006,10 +2012,8 @@ export class ChatBackend implements ChatService {
             chat.messages.filter(message => message.role === 'user').map(message => message.content)) : undefined;
         const discovery = docsReview ? await discoverDocumentation(root, reviewObjective!) : undefined;
         const promptRequestedCount = promptStage?.stage === 'prompt-write' ? savedPlanRecord?.work.length :
-            promptStage?.stage === 'prompt-plan' ?
-                savedAssessmentRecord && 'kind' in savedAssessmentRecord &&
-                savedAssessmentRecord.kind === 'wireframe' ? savedAssessmentRecord.count :
-                    requestedWorkPromptCount(priorAssessment?.user.content ?? '', content) : undefined;
+            promptStage?.stage === 'prompt-plan' && savedAssessmentRecord &&
+                isAssessmentWireframe(savedAssessmentRecord) ? savedAssessmentRecord.count : undefined;
         const discoveryPrompt = discovery ? `\nVerified local discovery: ${discovery.enumerated} documents enumerated, ` +
             `${discovery.searched} searched. Candidate paths and section byte offsets (search is not a model read): ` +
             JSON.stringify(discovery.candidates) + `\nOmissions: ${JSON.stringify(discovery.omitted)}. ` +
@@ -2808,7 +2812,8 @@ export class ChatBackend implements ChatService {
                             estimatedTokens: Math.ceil(Buffer.byteLength(page.text, 'utf8') / 3) + 4,
                             contentHash: createHash('sha256').update(page.text).digest('hex'),
                             sourceHash: page.sourceHash });
-                        if (promptStage?.stage === 'prompt-ass') assessmentReads.push({ path: page.path,
+                        if (promptStage?.stage === 'prompt-ass' || promptStage?.stage === 'prompt-plan')
+                            assessmentReads.push({ path: page.path,
                             start: page.offset, end: page.endOffset, sourceHash: page.sourceHash,
                             text: page.text });
                         const assessmentReadProgress = protectedAssessment ?
@@ -3290,7 +3295,7 @@ export class ChatBackend implements ChatService {
                                 throw new Error('Prompt authoring output was truncated');
                             // /prompt-write is bound to the two previously verified drafts. It need not
                             // make a redundant model read when their source identities are still current.
-                            if (promptStage.stage !== 'prompt-write')
+                            if (promptStage.stage !== 'prompt-write' && sourceRefs.length)
                                 await verifyPromptSourceRefs(root, sourceRefs, this.grounder!);
                             if (promptStage.stage === 'prompt-write') {
                                 if (!finishedPrompt)
@@ -3312,10 +3317,14 @@ export class ChatBackend implements ChatService {
                                 if (!priorAssessment?.user.promptDraft || !savedAssessmentRecord)
                                     throw new Error('PLAN_ASSESSMENT_REQUIRED: Complete a structured named assessment first');
                                 const record = validatedPlan(output, savedAssessmentRecord, sourceRefs,
-                                    promptRequestedCount);
+                                    promptRequestedCount, assessmentReads);
                                 const store = new PromptDraftStore(this.repository, this.grounder!);
                                 const draft = await store.read(root, priorAssessment.user.promptDraft,
                                     request.leaseToken);
+                                if (draft.assessment?.contentHash !== stagedAssessmentHash ||
+                                    retryIndex < 0 &&
+                                    draft.assessment?.revision !== request.promptDraftTarget?.stageRevision)
+                                    throw new Error('PLAN_ASSESSMENT_STALE: Reviewed wireframe changed during Planning');
                                 const saved = await store.stage(root, priorAssessment.user.promptDraft, request.leaseToken,
                                     'plan', draft.revision, record as unknown as Record<string, unknown>,
                                     sourceRefs.filter(ref => ref.kind === 'file' && ref.sourceHash &&

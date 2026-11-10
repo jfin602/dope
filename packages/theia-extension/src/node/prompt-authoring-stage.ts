@@ -139,14 +139,15 @@ export function promptStageInstruction(command: { stage: PromptStage; folder?: s
             prior.plan.content.slice(0, 12_000)}`].filter(Boolean).join('\n\n');
     const common = 'Use the saved Chat discussion and only brokered project reads. Do not write canonical files, publish prompts, grant or run Work, or award Roadmap status. For each claim distinguish listed/searched paths from files actually read. Read source and tests with read_file when making factual claims; report omissions. Keep the final response under 12,000 characters.';
     if (command.stage === 'prompt-ass') return `${common}\nThe owner selected immutable task name ${JSON.stringify(command.folder)}. Decide only the work-prompt count and task division. Honor an explicit owner count; otherwise justify a bounded count. One work prompt is valid. Read only relevant source with read_file; a factual source claim needs a short exact quote from a successful read. A wireframe with no factual source claim needs no token read. Submit one assessment_stage call with {kind:"wireframe",objective,count,rationale,work:[{id:"step-1",title,objective,boundary,dependsOn:[]}],constraints:[],deferrals:[],closeout:{title,objective,manualReason},sourceClaims:[]}. Add grounded {claim,path,quote} sourceClaims only when making source claims. Then call assessment_finish. Do not produce detailed implementation, T1/T2/T3 or efficiency gates here. The tool receipt, not prose, seals the draft.`;
-    if (command.stage === 'prompt-plan') return `${common}\n${inherited}\nReturn one compact JSON object with exact keys work, closeout, efficiencyAudit. work is an ordered array of bounded {id,title,objective,tier,dependsOn,workingSet,validationTargets,buildNeeds,acceptanceCriteria} records; tier is T1 for focused implementation or T2 for explicit cross-boundary integration. Use stable step-N IDs and prior IDs for dependencies. workingSet contains only broker-read source/test paths; read_file each relevant source and late page before claiming it. buildNeeds states the actual narrow compiled-output requirement or "none". closeout has {title,objective,manualReason,browserRequired:true,acceptanceCriteria,tier:"T3"} and is separate from work. efficiencyAudit has exactly ten concise findings in docs/workflow.md order: single responsibility, 8/10/15-minute runtime, test precision, build precision, evidence distribution, command deduplication, model economy and deferral, runnable/traceable contract, UI Design Compliance (ADR 0016 and theme tokens if applicable), Human Usability (ADR 0037, entry/feedback/recovery/keyboard/narrow if applicable). Never invent CI, browser demo files, CommonJS adapters or dependencies. Do not return Markdown or claim publication.`;
+    if (command.stage === 'prompt-plan') return `${common}\n${inherited}\nExpand the selected checked Assessment wireframe without changing its count, step IDs, order, titles, primary boundaries or earlier dependencies. A material split/merge needs a separately reviewed Assessment revision; do not disguise it as a Plan. Return one bounded JSON object with exact keys work, closeout, efficiencyAudit. Each work step has {id,title,assessmentObjective,boundary,objective,tier,dependsOn,workingSet,requirements,preservedBehavior,risks,deferrals,validationTargets,buildNeeds,acceptanceCriteria,sourceClaims,estimatedMinutes}. Copy title, assessmentObjective and boundary exactly from the wireframe; objective is the detailed implementation goal. Use T1 for ordinary focused implementation and T2 only when integration warrants it; ordinary T1 estimatedMinutes must be <=8. Read each named source and test with read_file in this Plan turn. Each sourceClaims item is {claim,path,quote}, with a short verbatim quote from a successful brokered read. Dope checks every workingSet and test path. Include source-backed requirements, preservation, risks, deferrals and focused tests/builds. Use no invented modules, CI or dependencies. closeout has {title,objective,manualReason,browserRequired:true,acceptanceCriteria,tier:"T3"} and remains separate. efficiencyAudit has exactly ten concise findings in docs/workflow.md order: responsibility, 8/10/15-minute runtime, tests, builds, evidence, deduplication, model economy, runnable grammar, UI design/ADR 0016 and usability/ADR 0037; state not applicable truthfully for non-UI work. No Markdown packet, publication or Work claim.`;
     const planTests = prior.plan?.execution?.sourceRefs?.filter(ref => ref.kind === 'file' &&
         (/(?:^|\/)test(?:s)?\//u.test(ref.id) || /\.test\.[^.]+$/u.test(ref.id))).map(ref => ref.id) ?? [];
-    const requestedCount = requestedWorkPromptCount(prior.plan?.content ?? '', prior.assessment?.content ?? '');
+    const requestedCount = planRecord?.work.length ??
+        requestedWorkPromptCount(prior.plan?.content ?? '', prior.assessment?.content ?? '');
     return `${common}\n${inherited}\nDope supplies folder ${JSON.stringify(command.folder)} and source version ${JSON.stringify(sourceVersion)}. ` +
         (requestedCount ? `Stage exactly ${requestedCount} work prompts plus one separate manual closeout. ` : '') +
         `The saved plan read these test files: ${JSON.stringify(planTests)}. Include each in a step workingSet when changing tests. ` +
-        'Use proposal_status for progress. Stage one ordered plan step per proposal_stage_prompt call with direct typed fields: target:stable step ID, kind:work, title, objective, tier:T1 or T2, dependsOn, workingSet, requirements, constraints, acceptanceCriteria, validationTargets, complete. For T2 include integrationChecks. Optional detailed sections use the same target, kind:section, heading, text, complete:true on the last section. Stage exactly one final target closeout with kind:closeout, title, objective, manualReason, acceptanceCriteria, browserRequired:true, efficiencyAudit:exactly ten findings, complete:true. The ten findings follow docs/workflow.md order: responsibility, runtime, tests, builds, evidence, deduplication, model economy, runnable grammar, UI design and usability. Dope owns counters, hashes and stage identity; supply none. Keep all prior candidate bytes in Dope, use only compact status receipts, and call proposal_finish({finalMessage:"Short factual review message"}) after all requested work steps and the closeout. Use plan-step IDs, dependency order, concrete tests and criteria, an explicit T2 gate, and one terminal manual closeout. Do not return a whole-stack JSON answer or claim publication.';
+        'Use proposal_status for progress. Stage one ordered plan step per proposal_stage_prompt call with direct typed fields: target:stable step ID, kind:work, title, objective, tier:T1 or T2, dependsOn, workingSet, requirements, constraints, acceptanceCriteria, validationTargets, complete. For T2 include integrationChecks. Optional detailed sections use the same target, kind:section, heading, text, complete:true on the last section. Stage exactly one final target closeout with kind:closeout, title, objective, manualReason, acceptanceCriteria, browserRequired:true, efficiencyAudit:exactly ten findings, complete:true. The ten findings follow docs/workflow.md order: responsibility, runtime, tests, builds, evidence, deduplication, model economy, runnable grammar, UI design and usability. Dope owns counters, hashes and stage identity; supply none. Keep all prior candidate bytes in Dope, use only compact status receipts, and call proposal_finish({finalMessage:"Short factual review message"}) after all requested work steps and the closeout. Use plan-step IDs, dependency order, concrete tests and criteria, T2 only when present in the saved Plan, and one terminal manual closeout. Do not return a whole-stack JSON answer or claim publication.';
 }
 
 /** Only an explicit small numeric request binds a count; a vague plan never invents one. */
@@ -238,7 +239,9 @@ export function validatedAssessmentWireframe(raw: unknown,
 }
 export interface PlanWorkRecord { id: string; title: string; objective: string; tier: 'T1' | 'T2';
     dependsOn: string[]; workingSet: string[]; validationTargets: string[]; buildNeeds: string;
-    acceptanceCriteria: string[] }
+    acceptanceCriteria: string[]; assessmentObjective?: string; boundary?: string;
+    requirements?: string[]; preservedBehavior?: string[]; risks?: string[]; deferrals?: string[];
+    sourceClaims?: AssessmentFinding[]; estimatedMinutes?: number }
 export interface PlanRecord { work: PlanWorkRecord[]; closeout: { title: string; objective: string;
     manualReason: string; browserRequired: true; acceptanceCriteria: string[]; tier: 'T3' };
     efficiencyAudit: string[] }
@@ -250,7 +253,8 @@ const planStrings = (value: unknown, min = 1, max = 12): value is string[] =>
     Array.isArray(value) && value.length >= min && value.length <= max && value.every(item => planText(item));
 /** A noncanonical plan may be staged only after its requested count, source and gate claims check out. */
 export function validatedPlan(modelText: string, assessment: AssessmentRecord,
-    refs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']>, requestedCount?: number): PlanRecord {
+    refs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']>, requestedCount?: number,
+    evidence: readonly AssessmentRead[] = []): PlanRecord {
     if (Buffer.byteLength(modelText, 'utf8') > 32_000) throw new Error('PLAN_PAYLOAD_LIMIT: Shorten the structured plan');
     let parsed: unknown;
     try { parsed = JSON.parse(modelText.trim()); } catch { throw new Error('PLAN_JSON: Return one structured JSON object'); }
@@ -259,8 +263,11 @@ export function validatedPlan(modelText: string, assessment: AssessmentRecord,
         throw new Error('PLAN_SHAPE: Supply work, closeout and efficiencyAudit only');
     const value = parsed as Record<string, unknown>;
     if (!Array.isArray(value.work) || value.work.length < 1 || value.work.length > 48 ||
+        isAssessmentWireframe(assessment) && value.work.length !== assessment.count ||
         requestedCount !== undefined && value.work.length !== requestedCount)
-        throw new Error(`PLAN_WORK_COUNT: Supply ${requestedCount ?? '1–48'} work tasks plus a separate closeout`);
+        throw new Error(isAssessmentWireframe(assessment) ?
+            `PLAN_REDIVISION_REVIEW_REQUIRED: Preserve ${assessment.count} reviewed work tasks; request an Assessment revision for a material count change` :
+            `PLAN_WORK_COUNT: Supply ${requestedCount ?? '1–48'} work tasks plus a separate closeout`);
     const readPaths = new Set(refs.filter(ref => ref.kind === 'file' && ref.origin === 'tool' && ref.sourceHash)
         .map(ref => ref.id));
     if (!readPaths.size) throw new Error('PLAN_READ_REQUIRED: Read actual source with read_file before planning');
@@ -274,12 +281,21 @@ export function validatedPlan(modelText: string, assessment: AssessmentRecord,
     const seen = new Set<string>();
     const work = value.work.map((raw: unknown, index: number) => {
         if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
-            !planKeys(raw, ['id', 'title', 'objective', 'tier', 'dependsOn', 'workingSet',
-                'validationTargets', 'buildNeeds', 'acceptanceCriteria']))
+            !planKeys(raw, isAssessmentWireframe(assessment) ?
+                ['id', 'title', 'assessmentObjective', 'boundary', 'objective', 'tier', 'dependsOn',
+                    'workingSet', 'requirements', 'preservedBehavior', 'risks', 'deferrals',
+                    'validationTargets', 'buildNeeds', 'acceptanceCriteria', 'sourceClaims', 'estimatedMinutes'] :
+                ['id', 'title', 'objective', 'tier', 'dependsOn', 'workingSet',
+                    'validationTargets', 'buildNeeds', 'acceptanceCriteria']))
             throw new Error(`PLAN_WORK_SHAPE: Step ${index + 1} needs responsibility, files, tests and build needs`);
         const item = raw as PlanWorkRecord;
         if (item.id !== `step-${index + 1}` || seen.has(item.id))
             throw new Error(`PLAN_STEP_ID: Expected stable step-${index + 1}`);
+        const outline = isAssessmentWireframe(assessment) ? assessment.work[index] : undefined;
+        if (outline && (item.title !== outline.title || item.assessmentObjective !== outline.objective ||
+            item.boundary !== outline.boundary || !Array.isArray(item.dependsOn) ||
+            JSON.stringify(item.dependsOn) !== JSON.stringify(outline.dependsOn)))
+            throw new Error(`PLAN_REDIVISION_REVIEW_REQUIRED: ${item.id} changes a reviewed task boundary; request an Assessment revision`);
         if (!planText(item.title) || !planText(item.objective) ||
             !(item.tier === 'T2' ? /\b(?:integrate|validate|implement|change|repair|wire|add|remove)\b/iu :
                 /\b(?:implement|change|repair|wire|add|remove)\b/iu).test(item.objective) ||
@@ -288,23 +304,50 @@ export function validatedPlan(modelText: string, assessment: AssessmentRecord,
             !Array.isArray(item.dependsOn) || item.dependsOn.some(id => typeof id !== 'string' || !seen.has(id)) ||
             !['T1', 'T2'].includes(item.tier))
             throw new Error(`PLAN_WORK_CONTENT: ${item.id} needs genuine implementation responsibility, prior dependencies, focused validation and build needs`);
+        if (outline && (!planStrings(item.requirements) || !planStrings(item.preservedBehavior) ||
+            !planStrings(item.risks) || !planStrings(item.deferrals, 0) ||
+            !Number.isSafeInteger(item.estimatedMinutes) || item.estimatedMinutes! < 1 ||
+            item.tier === 'T1' && item.estimatedMinutes! > 8 ||
+            !Array.isArray(item.sourceClaims) || item.sourceClaims.length < 1 ||
+            item.sourceClaims.length > 6))
+            throw new Error(`PLAN_DETAIL: ${item.id} needs requirements, preservation, risk, deferral, source claims and a feasible estimate`);
         if (/\b(?:read tiers?|T[123] read|source read only)\b/iu.test(item.objective) ||
-            /\b(?:CI pipeline|CommonJS|browser demo|npm install|new dependency)\b/iu.test(
+            !outline && /\b(?:CI pipeline|CommonJS|browser demo|npm install|new dependency)\b/iu.test(
                 [item.title, item.objective, item.buildNeeds, ...item.validationTargets].join(' ')) &&
             !(isAssessmentWireframe(assessment) ? assessment.sourceClaims :
                 [...assessment.observations, ...assessment.dependencies]).some(finding =>
                 /\b(?:CI pipeline|CommonJS|browser demo|npm install|new dependency)\b/iu.test(finding.claim)))
             throw new Error(`PLAN_UNSUPPORTED_ASSUMPTION: ${item.id} asserts a read tier or unverified infrastructure`);
-        for (const path of item.workingSet) if (!supported.has(path))
+        for (const path of item.workingSet) if (!(outline ? readPaths : supported).has(path))
             throw new Error(`PLAN_UNSUPPORTED_SOURCE: ${item.id} names ${path} without broker-read assessment or plan evidence`);
         const targets = item.validationTargets.flatMap(target => requestedPaths(target));
-        if (!targets.length || targets.some(path => !supported.has(path)))
+        if (!targets.length || targets.some(path => !(outline ? readPaths : supported).has(path)))
             throw new Error(`PLAN_TEST_TARGET: ${item.id} needs an actual broker-read test target`);
+        if (outline) {
+            const claims = item.sourceClaims!.map(({ claim, path, quote }) =>
+                validatedAssessmentFinding({ claim, path, quote }, 'observations', refs, evidence));
+            if (claims.some(claim => !readPaths.has(claim.path)))
+                throw new Error(`PLAN_UNSUPPORTED_SOURCE: ${item.id} claim was not read in this Plan turn`);
+            if (/\b(?:CI pipeline|CommonJS|browser demo|npm install|new dependency)\b/iu.test(
+                [item.title, item.objective, item.buildNeeds, ...item.requirements!].join(' ')) &&
+                !claims.some(claim => /(?:package\.json|\.github\/workflows\/|\.ya?ml$)/u.test(claim.path)))
+                throw new Error(`PLAN_UNSUPPORTED_ASSUMPTION: ${item.id} needs brokered project configuration evidence`);
+            const cited = new Set(claims.map(claim => claim.path));
+            for (const path of requestedPaths([item.objective, ...item.requirements!,
+                ...item.preservedBehavior!, ...item.risks!, ...item.deferrals!, item.buildNeeds,
+                ...item.acceptanceCriteria].join(' '))) if (!cited.has(path))
+                throw new Error(`PLAN_UNSUPPORTED_SOURCE: ${item.id} names ${path} without a verified source claim`);
+            item.sourceClaims = claims;
+        }
         if (item.tier === 'T2') t2++;
         seen.add(item.id);
         return item;
     });
-    if (!t2 && value.work.length > 1) throw new Error('PLAN_T2_REQUIRED: Include an explicit cross-boundary integration work task');
+    if (isAssessmentWireframe(assessment) && assessment.work.some((step, index) =>
+        /\b(?:integration|cross.boundary)\b/iu.test(step.boundary) && work[index].tier !== 'T2'))
+        throw new Error('PLAN_T2_REQUIRED: The reviewed integration boundary needs T2');
+    if (!isAssessmentWireframe(assessment) && !t2 && value.work.length > 1)
+        throw new Error('PLAN_T2_REQUIRED: Include an explicit cross-boundary integration work task');
     const closeout = value.closeout;
     if (!closeout || typeof closeout !== 'object' || Array.isArray(closeout) ||
         !planKeys(closeout, ['title', 'objective', 'manualReason', 'browserRequired', 'acceptanceCriteria', 'tier']) ||
@@ -315,6 +358,10 @@ export function validatedPlan(modelText: string, assessment: AssessmentRecord,
         (closeout as PlanRecord['closeout']).browserRequired !== true ||
         (closeout as PlanRecord['closeout']).tier !== 'T3')
         throw new Error('PLAN_T3_CLOSEOUT: Supply exactly one separate final manual browser closeout');
+    if (isAssessmentWireframe(assessment) &&
+        ((closeout as PlanRecord['closeout']).title !== assessment.closeout.title ||
+            (closeout as PlanRecord['closeout']).objective !== assessment.closeout.objective))
+        throw new Error('PLAN_REDIVISION_REVIEW_REQUIRED: Final closeout changed; request an Assessment revision');
     const audit = value.efficiencyAudit;
     const gates = [/responsib|boundary/iu, /8.{0,30}10.{0,30}15|runtime|minute/iu,
         /test|validation/iu, /build|compil|lib\//iu, /evidence|integration|T2|T3/iu,
@@ -326,12 +373,33 @@ export function validatedPlan(modelText: string, assessment: AssessmentRecord,
         throw new Error('PLAN_EFFICIENCY_DUPLICATE: Supply ten distinct workflow findings');
     for (let index = 0; index < gates.length; index++) if (!gates[index].test(audit[index]))
         throw new Error(`PLAN_EFFICIENCY_GATE_${index + 1}: Wrong or missing docs/workflow.md gate`);
+    if (isAssessmentWireframe(assessment)) {
+        const ui = work.some(step => step.workingSet.some(path =>
+            /(?:^|\/)(?:browser|frontend|ui)\/|\.(?:css|scss|tsx|jsx)$/iu.test(path)));
+        if (ui && (!/ADR 0016/iu.test(audit[8]) || !/theme|token/iu.test(audit[8]) ||
+            !/ADR 0037/iu.test(audit[9]) || !/entry/iu.test(audit[9]) ||
+            !/feedback|recovery/iu.test(audit[9]) || !/keyboard|narrow/iu.test(audit[9]) ||
+            /not applicable|inapplicable|non-UI/iu.test(audit[8] + audit[9])))
+            throw new Error('PLAN_UI_GATES: UI work needs applicable design and usability evidence');
+        if (!ui && (!/not applicable|inapplicable|non-UI/iu.test(audit[8]) ||
+            !/not applicable|inapplicable|non-UI/iu.test(audit[9])))
+            throw new Error('PLAN_UI_GATES: Mark non-UI gates truthfully not applicable');
+    }
     return { work, closeout: closeout as PlanRecord['closeout'], efficiencyAudit: audit };
 }
 
 export function renderPlan(record: PlanRecord): string {
     return `${heading['prompt-plan']}\n\nDraft only. This command did not change project files or start Work.\n\n` +
-        record.work.map(step => `- ${step.id} (${step.tier}): ${step.title} — ${step.objective}\n  Files: ${step.workingSet.join(', ')}; depends on: ${step.dependsOn.join(', ') || 'none'}; validation: ${step.validationTargets.join('; ')}; build: ${step.buildNeeds}`).join('\n') +
+        record.work.map(step => `- ${step.id} (${step.tier}): ${step.title} — ${step.objective}\n` +
+            `  Boundary: ${step.boundary ?? 'legacy plan'}; depends on: ${step.dependsOn.join(', ') || 'none'}; ` +
+            `estimate: ${step.estimatedMinutes ?? 'unrecorded'} minutes\n` +
+            `  Requirements: ${step.requirements?.join('; ') ?? 'legacy plan'}; ` +
+            `preserve: ${step.preservedBehavior?.join('; ') ?? 'legacy plan'}; ` +
+            `risks: ${step.risks?.join('; ') ?? 'legacy plan'}; ` +
+            `deferrals: ${step.deferrals?.join('; ') || 'none'}\n` +
+            `  Files: ${step.workingSet.join(', ')}; validation: ${step.validationTargets.join('; ')}; ` +
+            `build: ${step.buildNeeds}; acceptance: ${step.acceptanceCriteria.join('; ')}\n` +
+            `  Source: ${step.sourceClaims?.map(claim => `${claim.path} bytes ${claim.start}–${claim.end}`).join('; ') || 'legacy plan'}`).join('\n') +
         `\n\nFinal manual closeout (T3): ${record.closeout.title} — ${record.closeout.objective}\n\n` +
         `Prompt Efficiency Gates:\n${record.efficiencyAudit.map((finding, index) => `${index + 1}. ${finding}`).join('\n')}\n`;
 }

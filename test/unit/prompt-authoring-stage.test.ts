@@ -99,6 +99,99 @@ test('structured plan checks requested ten work tasks, source, order, T2/T3 and 
         index === 9 ? 'Tenth gate checks browser packaging' : item) }), /PLAN_EFFICIENCY_GATE_10/);
 });
 
+test('wireframe Plan preserves one, three and ten reviewed boundaries with detailed broker evidence', () => {
+    const sourceText = 'export const feature = true;';
+    const testText = 'test feature behavior';
+    const refs = [
+        { kind: 'file', id: 'src/feature.js', origin: 'tool', sourceHash: 'a'.repeat(64),
+            start: 0, end: Buffer.byteLength(sourceText) },
+        { kind: 'file', id: 'test/feature.test.ts', origin: 'tool', sourceHash: 'b'.repeat(64),
+            start: 0, end: Buffer.byteLength(testText) }] as never;
+    const evidence = [{ path: 'src/feature.js', start: 0, end: Buffer.byteLength(sourceText),
+        sourceHash: 'a'.repeat(64), text: sourceText },
+    { path: 'test/feature.test.ts', start: 0, end: Buffer.byteLength(testText),
+        sourceHash: 'b'.repeat(64), text: testText }];
+    const audit = [
+        'Single responsibility and boundary per step',
+        'Runtime target 8 minutes, soft 10 and hard 15 minutes',
+        'Test precision uses focused feature tests',
+        'Build precision requires no compiled output for this fixture',
+        'Evidence distribution reserves independent manual browser T3',
+        'Command deduplication avoids repeat aggregate runs',
+        'Model economy uses Medium and defers unrelated scope',
+        'Runnable traceable grammar preserves version and closeout',
+        'UI design ADR 0016 theme tokens: non-UI work is not applicable',
+        'Human usability ADR 0037 keyboard recovery: non-UI work is not applicable' ];
+    const make = (count: number) => {
+        const outline = Array.from({ length: count }, (_, index) => ({ id: `step-${index + 1}`,
+            title: `Feature slice ${index + 1}`, objective: `Implement feature slice ${index + 1}`,
+            boundary: index === count - 1 && count > 1 ? 'Integration boundary' :
+                `Source slice ${index + 1}`, dependsOn: index ? [`step-${index}`] : [] }));
+        const assessment = { kind: 'wireframe', objective: 'Improve feature', count,
+            rationale: 'Separate bounded slices', work: outline, constraints: [], deferrals: [],
+            closeout: { title: 'Manual closeout', objective: 'Observe feature in browser',
+                manualReason: 'Human observation' }, sourceClaims: [] } as never;
+        const work = outline.map((step, index) => ({ id: step.id, title: step.title,
+            assessmentObjective: step.objective, boundary: step.boundary,
+            objective: `Implement bounded feature slice ${index + 1}`,
+            tier: step.boundary === 'Integration boundary' ? 'T2' : 'T1',
+            dependsOn: step.dependsOn, workingSet: ['src/feature.js'],
+            requirements: ['Keep source behavior bounded'],
+            preservedBehavior: ['Retain the feature export'],
+            risks: ['Regression in feature behavior'], deferrals: [],
+            validationTargets: ['Run test/feature.test.ts'], buildNeeds: 'none',
+            acceptanceCriteria: ['Feature behavior passes focused checks'],
+            sourceClaims: [{ claim: 'Feature source exports a constant', path: 'src/feature.js',
+                quote: 'export const feature' }], estimatedMinutes: index === count - 1 && count > 1 ? 12 : 6 }));
+        const plan = { work, closeout: { title: 'Manual closeout',
+            objective: 'Observe feature in browser', manualReason: 'Human observation',
+            browserRequired: true, tier: 'T3', acceptanceCriteria: ['Observe behavior'] },
+            efficiencyAudit: audit };
+        const check = (candidate: unknown, source = refs, pages = evidence) =>
+            validatedPlan(JSON.stringify(candidate), assessment, source, count, pages);
+        return { plan, check };
+    };
+    for (const count of [1, 3, 10]) {
+        const { plan, check } = make(count);
+        const saved = check(plan);
+        assert.deepEqual(saved.work.map(step => step.id),
+            Array.from({ length: count }, (_, index) => `step-${index + 1}`));
+        assert.match(renderPlan(saved), /Requirements: Keep source behavior bounded/);
+        assert.throws(() => check({ ...plan, work: plan.work.slice(0, -1) }), /REDIVISION_REVIEW_REQUIRED/);
+        assert.throws(() => check({ ...plan, work: plan.work.map((step, index) => index === 0 ?
+            { ...step, boundary: 'Different boundary' } : step) }), /REDIVISION_REVIEW_REQUIRED/);
+        assert.throws(() => check({ ...plan, work: plan.work.map((step, index) => index === 0 ?
+            { ...step, workingSet: ['src/missing.js'] } : step) }), /UNSUPPORTED_SOURCE/);
+        assert.throws(() => check(plan, [] as never), /READ_REQUIRED/);
+        assert.throws(() => check({ ...plan, work: plan.work.map((step, index) => index === 0 ?
+            { ...step, sourceClaims: [{ ...step.sourceClaims[0], quote: 'invented' }] } : step) }),
+        /UNSUPPORTED_SOURCE/);
+    }
+    const { plan, check } = make(3);
+    assert.throws(() => check({ ...plan, work: plan.work.map((step, index) => index === 2 ?
+        { ...step, tier: 'T1', estimatedMinutes: 6 } : step) }), /T2_REQUIRED/);
+    assert.throws(() => check({ ...plan, efficiencyAudit: audit.slice(0, 9) }), /EFFICIENCY_COUNT/);
+    assert.throws(() => check({ ...plan, work: plan.work.map((step, index) => index === 0 ?
+        { ...step, estimatedMinutes: 12 } : step) }), /PLAN_DETAIL/);
+    assert.throws(() => check({ ...plan, efficiencyAudit: audit.map((gate, index) => index === 8 ?
+        'UI design ADR 0016 theme tokens when applicable' : gate) }), /UI_GATES/);
+    const uiSource = 'export const panel = true;';
+    const uiRefs = [...refs, { kind: 'file', id: 'src/browser/panel.tsx', origin: 'tool',
+        sourceHash: 'c'.repeat(64), start: 0, end: Buffer.byteLength(uiSource) }] as never;
+    const uiEvidence = [...evidence, { path: 'src/browser/panel.tsx', start: 0,
+        end: Buffer.byteLength(uiSource), sourceHash: 'c'.repeat(64), text: uiSource }];
+    const single = make(1);
+    const uiStep = { ...single.plan.work[0], workingSet: ['src/browser/panel.tsx'],
+        sourceClaims: [{ claim: 'Panel export exists', path: 'src/browser/panel.tsx',
+            quote: 'export const panel' }] };
+    const uiPlan = { ...single.plan, work: [uiStep] };
+    assert.throws(() => single.check(uiPlan, uiRefs, uiEvidence), /UI_GATES/);
+    const uiAudit = [...audit];
+    uiAudit[8] = 'UI design ADR 0016 uses semantic theme tokens and visual evidence';
+    uiAudit[9] = 'Human usability ADR 0037 checks entry, feedback, recovery, keyboard and narrow layouts';
+    assert.equal(single.check({ ...uiPlan, efficiencyAudit: uiAudit }, uiRefs, uiEvidence).work.length, 1);
+});
+
 const choice = (id: string, title: string, tier: 'T1' | 'T2', dependsOn: string[] = []) => ({
     tier, model: 'GPT-6 Sol Medium', estimatedMinutes: 6,
     ...(tier === 'T2' ? { integrationChecks: ['Run the affected integration test'] } : {}),
@@ -112,6 +205,11 @@ const choice = (id: string, title: string, tier: 'T1' | 'T2', dependsOn: string[
 test('native prompt commands bind leading protected invocation and draft exact validated bytes', async () => {
     const prior = { assessment: { id: 'assessment-1', content: '# Unpublished prompt assessment\n\nDraft only. This command did not change project files or start Work.\n\nScope checked.' },
         plan: { id: 'plan-1', content: '# Unpublished prompt plan\n\nDraft only. This command did not change project files or start Work.\n\nTwo steps.' } } as never;
+    const singleWrite = promptStageInstruction({ stage: 'prompt-write', folder: 'c0-feature' }, prior,
+        '0.13.11', undefined, { work: [{ tier: 'T1' }] } as never);
+    assert.match(singleWrite, /Stage exactly 1 work prompts/);
+    assert.match(singleWrite, /T2 only when present in the saved Plan/);
+    assert.doesNotMatch(singleWrite, /explicit T2 gate/);
     assert.deepEqual(promptStageCommand('/prompt-ass c0-feature Build a feature', 'prompt-ass'),
         { stage: 'prompt-ass', folder: 'c0-feature', details: 'Build a feature' });
     assert.throws(() => promptStageCommand('/prompt-ass', 'prompt-ass'), /Usage/);

@@ -9,7 +9,7 @@ import test from 'node:test';
 import { ChatRepository } from '../../packages/chat/lib/node/chat-repository.js';
 import { discoverRoadmapTaskStacks } from '../../packages/agent-core/lib/node/roadmap-task-discovery.js';
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
-import { newPromptDraftIdentity } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
+import { newPromptDraftIdentity, validatedPlan } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
 import { PromptDraftStore } from '../../packages/theia-extension/lib/node/prompt-draft-store.js';
 import { IncrementalAssessment } from '../../packages/theia-extension/lib/node/incremental-assessment.js';
 import { capturePromptSourceEvidence } from '../../packages/theia-extension/lib/node/prompt-stack-proposal.js';
@@ -226,6 +226,62 @@ test('checked plan projection comes from durable noncanonical record', () => fix
     const reopened = new PromptDraftStore(new ChatRepository(), new ChatProjectGrounder({} as never),
         async () => basis);
     assert.match(await reopened.planView(v.root, v.identity, v.lease), /step-1 \(T1\): Implement feature/);
+    await assert.rejects(lstat(join(v.root, 'docs', 'tasks', 'safe-task')), /ENOENT/);
+}));
+
+test('checked one and three step Plans persist against the exact wireframe hash', () => fixture(async v => {
+    await writeFile(join(v.root, 'feature.test.ts'), 'test feature source\n');
+    const source = await v.grounder.readFileRange(v.root, 'README.md', 0, 4096);
+    const testPage = await v.grounder.readFileRange(v.root, 'feature.test.ts', 0, 4096);
+    const refs = [source, testPage].map(page => ({ kind: 'file', origin: 'tool', id: page.path,
+        sourceHash: page.sourceHash, projectId: hash(v.root),
+        start: page.offset, end: page.endOffset })) as never;
+    const evidence = [source, testPage].map(page => ({ path: page.path, start: page.offset,
+        end: page.endOffset, sourceHash: page.sourceHash, text: page.text }));
+    const audit = ['Single responsibility per step', 'Runtime 8 minutes, soft 10, hard 15',
+        'Test precision uses focused feature tests', 'Build precision uses no compiled output',
+        'Evidence distribution reserves manual T3', 'Command deduplication avoids repeats',
+        'Model economy defers unrelated work', 'Runnable traceable grammar and version',
+        'UI design ADR 0016 theme tokens: non-UI not applicable',
+        'Human usability ADR 0037 keyboard recovery: non-UI not applicable'];
+    for (const count of [1, 3]) {
+        const outline = Array.from({ length: count }, (_, index) => ({ id: `step-${index + 1}`,
+            title: `Feature step ${index + 1}`, objective: `Implement feature step ${index + 1}`,
+            boundary: `Source step ${index + 1}`, dependsOn: index ? [`step-${index}`] : [] }));
+        const wireframe = { kind: 'wireframe', objective: 'Improve feature', count,
+            rationale: 'Bounded slices', work: outline, constraints: [], deferrals: [],
+            closeout: { title: 'Manual closeout', objective: 'Observe feature',
+                manualReason: 'Human review' }, sourceClaims: [] };
+        const store = count === 1 ? v.store : new PromptDraftStore(v.repo, v.grounder,
+            async () => basis);
+        if (count === 1) await store.begin(v.root, v.identity, v.lease);
+        const current = await store.read(v.root, v.identity, v.lease);
+        const assessed = await store.stage(v.root, v.identity, v.lease, 'assessment',
+            current.revision, wireframe, refs);
+        const candidate = { work: outline.map(step => ({ id: step.id, title: step.title,
+            assessmentObjective: step.objective, boundary: step.boundary,
+            objective: `Implement bounded feature in ${step.id}`, tier: 'T1',
+            dependsOn: step.dependsOn, workingSet: ['README.md'],
+            requirements: ['Use source one'], preservedBehavior: ['Keep source one'],
+            risks: ['Regression in feature'], deferrals: [],
+            validationTargets: ['Run feature.test.ts'], buildNeeds: 'none',
+            acceptanceCriteria: ['Feature works'], sourceClaims: [{ claim: 'README has source one',
+                path: 'README.md', quote: 'source one' }], estimatedMinutes: 6 })),
+            closeout: { title: 'Manual closeout', objective: 'Observe feature',
+                manualReason: 'Human review', browserRequired: true, tier: 'T3',
+                acceptanceCriteria: ['Observe result'] }, efficiencyAudit: audit };
+        const plan = validatedPlan(JSON.stringify(candidate), wireframe as never,
+            refs, count, evidence);
+        const saved = await store.stage(v.root, v.identity, v.lease, 'plan', assessed.revision,
+            plan as never, refs);
+        assert.equal(saved.plan?.dependencyHash, saved.assessment?.contentHash);
+        assert.equal((saved.plan?.record.work as unknown[]).length, count);
+        assert.match(await store.planView(v.root, v.identity, v.lease), /Requirements: Use source one/);
+        await assert.rejects(store.stage(v.root, v.identity, v.lease, 'plan', assessed.revision,
+            plan as never, refs), /Stale/);
+        assert.equal((await store.read(v.root, v.identity, v.lease)).plan?.contentHash,
+            saved.plan?.contentHash);
+    }
     await assert.rejects(lstat(join(v.root, 'docs', 'tasks', 'safe-task')), /ENOENT/);
 }));
 

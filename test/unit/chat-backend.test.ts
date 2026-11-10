@@ -151,11 +151,18 @@ test('native prompt stages save an exact review candidate and publish only after
                     { path: 'test/feature.test.ts', offset: 0, maxBytes: 4096 });
                 answers[1] = JSON.stringify({ work: Array.from({ length: 10 }, (_, index) => index + 1).map(number => ({
                     id: `step-${number}`, title: `Implement feature ${number}`,
+                    assessmentObjective: `Implement feature responsibility ${number}`,
+                    boundary: `Feature responsibility ${number}`,
                     objective: `Implement feature responsibility ${number} in the inspected source`,
                     tier: number === 10 ? 'T2' : 'T1', dependsOn: number > 1 ? [`step-${number - 1}`] : [],
                     workingSet: ['src/feature.js'],
+                    requirements: ['Keep the feature source behavior bounded'],
+                    preservedBehavior: ['Retain the feature export'],
+                    risks: ['Feature regressions need focused checks'], deferrals: [],
                     validationTargets: ['Run test/feature.test.ts'], buildNeeds: 'none',
-                    acceptanceCriteria: [`Feature ${number} works`] })),
+                    acceptanceCriteria: [`Feature ${number} works`],
+                    sourceClaims: [{ claim: 'Feature source exports a constant', path: 'src/feature.js',
+                        quote: 'export const feature' }], estimatedMinutes: number === 10 ? 12 : 6 })),
                     closeout: { title: 'Manual feature closeout', objective: 'Observe feature in browser',
                         manualReason: 'Human observation', browserRequired: true, tier: 'T3',
                         acceptanceCriteria: ['Observe feature behavior'] },
@@ -168,8 +175,8 @@ test('native prompt stages save an exact review candidate and publish only after
                         'Command deduplication avoids repeat aggregate runs',
                         'Model economy uses Medium and defers unrelated work',
                         'Runnable traceable grammar preserves version and closeout',
-                        'UI design follows ADR 0016 theme tokens when applicable',
-                        'Human usability follows ADR 0037 keyboard recovery when applicable' ] });
+                        'UI design follows ADR 0016 theme tokens; non-UI work is not applicable',
+                        'Human usability follows ADR 0037 keyboard recovery; non-UI work is not applicable' ] });
             }
         }
         if (turn === 2 || turn === 3 || turn === 5) {
