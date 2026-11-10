@@ -156,7 +156,7 @@ export async function composePhaseStackDraft(input: ComposeStackInput): Promise<
         const filename = `P${number}-${name}.txt`;
         files.push({ filename, text, path: `docs/tasks/${input.folderName}/${filename}` });
     }
-    if (!ordered.some(choice => choice.tier === 'T2'))
+    if (!ordered.some(choice => choice.tier === 'T2') && input.sourceKind !== 'chat-plan')
         throw new Error('Draft needs an explicit affected-system T2 integration prompt');
     const closeout = input.closeout, number = files.length + 1;
     const closeoutTitle = line(closeout.title, 'closeout title');

@@ -146,8 +146,8 @@ export function promptStageInstruction(command: { stage: PromptStage; folder?: s
         requestedWorkPromptCount(prior.plan?.content ?? '', prior.assessment?.content ?? '');
     return `${common}\n${inherited}\nDope supplies folder ${JSON.stringify(command.folder)} and source version ${JSON.stringify(sourceVersion)}. ` +
         (requestedCount ? `Stage exactly ${requestedCount} work prompts plus one separate manual closeout. ` : '') +
-        `The saved plan read these test files: ${JSON.stringify(planTests)}. Include each in a step workingSet when changing tests. ` +
-        'Use proposal_status for progress. Stage one ordered plan step per proposal_stage_prompt call with direct typed fields: target:stable step ID, kind:work, title, objective, tier:T1 or T2, dependsOn, workingSet, requirements, constraints, acceptanceCriteria, validationTargets, complete. For T2 include integrationChecks. Optional detailed sections use the same target, kind:section, heading, text, complete:true on the last section. Stage exactly one final target closeout with kind:closeout, title, objective, manualReason, acceptanceCriteria, browserRequired:true, efficiencyAudit:exactly ten findings, complete:true. The ten findings follow docs/workflow.md order: responsibility, runtime, tests, builds, evidence, deduplication, model economy, runnable grammar, UI design and usability. Dope owns counters, hashes and stage identity; supply none. Keep all prior candidate bytes in Dope, use only compact status receipts, and call proposal_finish({finalMessage:"Short factual review message"}) after all requested work steps and the closeout. Use plan-step IDs, dependency order, concrete tests and criteria, T2 only when present in the saved Plan, and one terminal manual closeout. Do not return a whole-stack JSON answer or claim publication.';
+        `The saved plan read these test files: ${JSON.stringify(planTests)}. Preserve its exact per-step working sets and validation targets; request a Plan revision for a changed test path. ` +
+        'Use proposal_status for progress. Stage one ordered plan step per proposal_stage_prompt call with direct typed fields: target:stable step ID, kind:work, title, objective, tier:T1 or T2, dependsOn, workingSet, requirements, constraints, acceptanceCriteria, validationTargets, complete. For T2 include integrationChecks. Optional detailed sections use the same target, kind:section, heading, text, complete:true on the last section. Stage exactly one final target closeout with kind:closeout, title, objective, manualReason, acceptanceCriteria, browserRequired:true, efficiencyAudit:exactly ten findings, complete:true. The ten findings follow docs/workflow.md order: responsibility, runtime, tests, builds, evidence, deduplication, model economy, runnable grammar, UI design and usability. Dope owns counters, hashes and stage identity; supply none. Keep all prior candidate bytes in Dope, use only compact status receipts, and call proposal_finish({finalMessage:"Short factual review message"}) after all requested work steps and the closeout. Copy each selected Plan step ID, title, objective, tier, dependencies, working set, requirements, acceptance and validation exactly. Leave constraints empty; Dope renders saved preservation, risks, deferrals and build needs. For T2, copy its validation targets into integrationChecks. Optional sections may elaborate the Plan but must name only its declared files and tests. Copy the saved ten efficiency findings and closeout exactly. Use plan-step IDs, dependency order, T2 only when present in the saved Plan, and one terminal manual closeout. Do not return a whole-stack JSON answer or claim publication.';
 }
 
 /** Only an explicit small numeric request binds a count; a vague plan never invents one. */
@@ -391,7 +391,8 @@ export function validatedPlan(modelText: string, assessment: AssessmentRecord,
 export function renderPlan(record: PlanRecord): string {
     return `${heading['prompt-plan']}\n\nDraft only. This command did not change project files or start Work.\n\n` +
         record.work.map(step => `- ${step.id} (${step.tier}): ${step.title} — ${step.objective}\n` +
-            `  Boundary: ${step.boundary ?? 'legacy plan'}; depends on: ${step.dependsOn.join(', ') || 'none'}; ` +
+            `  Assessment objective: ${step.assessmentObjective ?? 'legacy plan'}; ` +
+            `boundary: ${step.boundary ?? 'legacy plan'}; depends on: ${step.dependsOn.join(', ') || 'none'}; ` +
             `estimate: ${step.estimatedMinutes ?? 'unrecorded'} minutes\n` +
             `  Requirements: ${step.requirements?.join('; ') ?? 'legacy plan'}; ` +
             `preserve: ${step.preservedBehavior?.join('; ') ?? 'legacy plan'}; ` +
@@ -399,8 +400,11 @@ export function renderPlan(record: PlanRecord): string {
             `deferrals: ${step.deferrals?.join('; ') || 'none'}\n` +
             `  Files: ${step.workingSet.join(', ')}; validation: ${step.validationTargets.join('; ')}; ` +
             `build: ${step.buildNeeds}; acceptance: ${step.acceptanceCriteria.join('; ')}\n` +
-            `  Source: ${step.sourceClaims?.map(claim => `${claim.path} bytes ${claim.start}–${claim.end}`).join('; ') || 'legacy plan'}`).join('\n') +
-        `\n\nFinal manual closeout (T3): ${record.closeout.title} — ${record.closeout.objective}\n\n` +
+            `  Source: ${step.sourceClaims?.map(claim => `${claim.claim} — “${claim.quote}” ` +
+                `(${claim.path} bytes ${claim.start}–${claim.end})`).join('; ') || 'legacy plan'}`).join('\n') +
+        `\n\nFinal manual closeout (T3): ${record.closeout.title} — ${record.closeout.objective}\n` +
+        `Manual reason: ${record.closeout.manualReason}; browser required: yes; ` +
+        `acceptance: ${record.closeout.acceptanceCriteria.join('; ')}\n\n` +
         `Prompt Efficiency Gates:\n${record.efficiencyAudit.map((finding, index) => `${index + 1}. ${finding}`).join('\n')}\n`;
 }
 export function planReceiptCurrent(content: string, contentHash: string | undefined,
@@ -607,6 +611,32 @@ export async function composeSavedPromptStack(proposed: ComposeStackInput, folde
                     status: 'draft', delegablePaths: step.workingSet, humanReservedPaths: [] } };
         }),
         closeout: { ...proposed.closeout, model: proposed.closeout?.model ?? 'GPT-6 Sol High' } };
+    if (records && (!isAssessmentWireframe(records.assessment) ||
+        records.assessment.count !== records.plan.work.length ||
+        records.assessment.work.some((step, index) =>
+            step.id !== records.plan.work[index]?.id ||
+            step.title !== records.plan.work[index]?.title ||
+            step.objective !== records.plan.work[index]?.assessmentObjective ||
+            step.boundary !== records.plan.work[index]?.boundary ||
+            JSON.stringify(step.dependsOn) !== JSON.stringify(records.plan.work[index]?.dependsOn)) ||
+        input.work.length !== records.plan.work.length ||
+        input.work.some((choice, index) => {
+            const planned = records.plan.work[index], item = choice.workItem;
+            return item.id !== planned.id || item.title !== planned.title ||
+                item.objective !== planned.objective || choice.tier !== planned.tier ||
+                JSON.stringify(item.dependsOn) !== JSON.stringify(planned.dependsOn) ||
+                JSON.stringify(item.workingSet) !== JSON.stringify(planned.workingSet) ||
+                JSON.stringify(item.requirements) !== JSON.stringify(planned.requirements) ||
+                JSON.stringify(item.validationTargets) !== JSON.stringify(planned.validationTargets) ||
+                JSON.stringify(item.acceptanceCriteria) !== JSON.stringify(planned.acceptanceCriteria);
+        }) || JSON.stringify(input.efficiencyAudit) !== JSON.stringify(records.plan.efficiencyAudit) ||
+        input.closeout.title !== records.plan.closeout.title ||
+        input.closeout.objective !== records.plan.closeout.objective ||
+        input.closeout.manualReason !== records.plan.closeout.manualReason ||
+        input.closeout.browserRequired !== records.plan.closeout.browserRequired ||
+        JSON.stringify(input.closeout.acceptanceCriteria) !==
+            JSON.stringify(records.plan.closeout.acceptanceCriteria)))
+        throw new Error('PROMPT_PLAN_MISMATCH: Revise the checked Plan before changing prompt responsibilities');
     const examplePhrases = /^(?:Implement change|Integrate change|Check affected system|Requested behavior works|Affected system passes|Run focused test|Run affected integration test|Observe expected behavior)$/iu;
     if (input.work.some(choice =>
         choice.workItem.acceptanceCriteria.some(value => examplePhrases.test(value)) ||

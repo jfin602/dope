@@ -1,7 +1,7 @@
 import type { ChatAssistantMessage, ChatPromptStackProposal } from '@dope/chat';
 import type { ComposeStackInput, WorkPromptChoice, CloseoutChoice } from '@dope/agent-core/lib/phase-stack-composer';
 import type { ProposalDomainHandler, ProposalSnapshot, ProposalStage } from './incremental-proposal-controller';
-import { composeSavedPromptStack, verifyPromptDraftSource, type AssessmentRecord,
+import { composeSavedPromptStack, isAssessmentWireframe, requestedPaths, verifyPromptDraftSource, type AssessmentRecord,
     type PlanRecord } from './prompt-authoring-stage';
 import { capturePromptSourceEvidence, createPromptStackProposal } from './prompt-stack-proposal';
 import type { ChatProjectGrounder } from './chat-project-grounder';
@@ -67,7 +67,9 @@ export class IncrementalPromptStack implements ProposalDomainHandler<ChatPromptS
             const planned = this.selected?.plan.closeout;
             if (planned && (value.title !== planned.title || value.objective !== planned.objective ||
                 value.manualReason !== planned.manualReason ||
-                JSON.stringify(value.acceptanceCriteria) !== JSON.stringify(planned.acceptanceCriteria)))
+                JSON.stringify(value.acceptanceCriteria) !== JSON.stringify(planned.acceptanceCriteria) ||
+                JSON.stringify(value.efficiencyAudit) !== JSON.stringify(this.selected!.plan.efficiencyAudit) ||
+                value.model !== undefined && value.model !== 'GPT-6 Sol High'))
                 throw new Error('PROMPT_CLOSEOUT_PLAN_MISMATCH');
             return;
         }
@@ -93,8 +95,14 @@ export class IncrementalPromptStack implements ProposalDomainHandler<ChatPromptS
                 value.tier !== planned.tier ||
                 JSON.stringify(value.dependsOn ?? []) !== JSON.stringify(planned.dependsOn) ||
                 JSON.stringify(value.workingSet) !== JSON.stringify(planned.workingSet) ||
+                JSON.stringify(value.requirements ?? []) !== JSON.stringify(planned.requirements ?? []) ||
+                (value.constraints?.length ?? 0) !== 0 ||
                 JSON.stringify(value.acceptanceCriteria) !== JSON.stringify(planned.acceptanceCriteria) ||
-                JSON.stringify(value.validationTargets) !== JSON.stringify(planned.validationTargets)))
+                JSON.stringify(value.validationTargets) !== JSON.stringify(planned.validationTargets) ||
+                value.estimatedMinutes !== undefined && value.estimatedMinutes !== planned.estimatedMinutes ||
+                value.model !== undefined && value.model !== (planned.tier === 'T2' ? 'GPT-6 Sol High' : 'GPT-6 Sol Medium') ||
+                value.tier === 'T2' && JSON.stringify(value.integrationChecks) !==
+                    JSON.stringify(planned.validationTargets)))
                 throw new Error('PROMPT_WORK_PLAN_MISMATCH');
             const completed = new Set(snapshot.stages.filter(item => item.complete).map(item => item.target));
             if (snapshot.stages.length && !snapshot.stages.at(-1)!.complete ||
@@ -106,6 +114,13 @@ export class IncrementalPromptStack implements ProposalDomainHandler<ChatPromptS
                 value.text.length > 8_000 || /[\u0000-\u0008\u000b-\u001f\u007f]/u.test(value.text))
                 throw new Error('PROMPT_SECTION_STAGE');
             if (snapshot.stages.at(-1)?.target !== stage.target) throw new Error('PROMPT_SECTION_ORDER');
+            const planned = this.selected?.plan.work.find(item => item.id === stage.target);
+            if (planned) {
+                const allowed = new Set([...planned.workingSet,
+                    ...planned.validationTargets.flatMap(target => requestedPaths(target))]);
+                if (requestedPaths(value.text).some(path => !allowed.has(path)))
+                    throw new Error('PROMPT_SECTION_PLAN_MISMATCH: Revise the checked Plan for new files or tests');
+            }
         }
     }
 
@@ -136,18 +151,37 @@ export class IncrementalPromptStack implements ProposalDomainHandler<ChatPromptS
             groups.size - 1 !== (this.selected?.plan.work.length ?? this.requestedWorkCount))
             throw new Error('PROPOSAL_PROMPT_WORK_COUNT');
         const closeout = groups.get('closeout')![0] as Closeout;
-        const work: WorkPromptChoice[] = [...groups.entries()].slice(0, -1).map(([id, values]) => {
+        const work: WorkPromptChoice[] = [...groups.entries()].slice(0, -1).map(([id, values], index) => {
             const meta = values[0] as Work;
-            return { tier: meta.tier, model: meta.model ?? 'GPT-6 Sol Medium',
-                estimatedMinutes: meta.estimatedMinutes ?? 6, integrationChecks: meta.integrationChecks,
-                detailSections: values.slice(1) as Section[],
+            const planned = this.selected?.plan.work[index];
+            const planDetails: Section[] = planned ? [
+                { kind: 'section', heading: 'Reviewed boundary', text: [planned.assessmentObjective,
+                    planned.boundary].filter(Boolean).map(v => `- ${v}`).join('\n') || '- Use the checked Plan boundary' },
+                { kind: 'section', heading: 'Preserved behavior', text: planned.preservedBehavior?.map(v => `- ${v}`).join('\n') || '- Keep existing behavior' },
+                { kind: 'section', heading: 'Risks', text: planned.risks?.map(v => `- ${v}`).join('\n') || '- Check affected behavior' },
+                { kind: 'section', heading: 'Deferrals', text: planned.deferrals?.map(v => `- ${v}`).join('\n') || '- None' },
+                { kind: 'section', heading: 'Build and typecheck', text: planned.buildNeeds || 'No build required' }
+            ] : [];
+            if (planned && this.selected && isAssessmentWireframe(this.selected.assessment)) {
+                if (this.selected.assessment.constraints.length) planDetails.push({ kind: 'section',
+                    heading: 'Wireframe constraints',
+                    text: this.selected.assessment.constraints.map(v => `- ${v}`).join('\n') });
+                if (this.selected.assessment.deferrals.length) planDetails.push({ kind: 'section',
+                    heading: 'Wireframe deferrals',
+                    text: this.selected.assessment.deferrals.map(v => `- ${v}`).join('\n') });
+            }
+            return { tier: meta.tier, model: planned?.tier === 'T2' ? 'GPT-6 Sol High' : meta.model ?? 'GPT-6 Sol Medium',
+                estimatedMinutes: planned?.estimatedMinutes ?? meta.estimatedMinutes ?? 6,
+                integrationChecks: planned?.tier === 'T2' ? planned.validationTargets : meta.integrationChecks,
+                detailSections: [...planDetails, ...values.slice(1) as Section[]],
                 workItem: { id, title: meta.title, objective: meta.objective,
                     dependsOn: meta.dependsOn ?? [], workingSet: meta.workingSet,
-                    requirements: meta.requirements ?? [], constraints: meta.constraints ?? [],
+                    requirements: planned?.requirements ?? meta.requirements ?? [],
+                    constraints: planned ? [] : meta.constraints ?? [],
                     acceptanceCriteria: meta.acceptanceCriteria, validationTargets: meta.validationTargets,
                     status: 'draft', delegablePaths: meta.workingSet, humanReservedPaths: [] } };
         });
-        if (!work.some(item => item.tier === 'T2') ||
+        if (!this.selected && !work.some(item => item.tier === 'T2') ||
             this.selected && work.filter(item => item.tier === 'T2').length !==
             this.selected.plan.work.filter(item => item.tier === 'T2').length)
             throw new Error('PROPOSAL_PROMPT_T2_GATE');

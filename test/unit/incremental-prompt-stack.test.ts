@@ -171,3 +171,61 @@ test('failed revision leaves the prior exact candidate intact until a complete r
         await assert.rejects(stat(join(f.root, 'docs/tasks/c13-incremental-fixture')), /ENOENT/);
     } finally { await f.dispose(); }
 });
+
+test('one checked Plan step composes without invented T2 and preserves supporting records', async () => {
+    const f = await fixture();
+    try {
+        const selected = { assessment: { kind: 'wireframe', objective: 'Implement verified feature',
+            count: 1, rationale: 'One bounded source responsibility',
+            work: [{ id: 'step-1', title: 'Implement verified feature 1',
+                objective: 'Implement the verified behavior', boundary: 'Source feature', dependsOn: [] }],
+            constraints: ['Retain source identity'], deferrals: ['Defer unrelated UI'], sourceClaims: [],
+            closeout: { title: closeout.title, objective: closeout.objective,
+                manualReason: closeout.manualReason } },
+        plan: { work: [{ id: 'step-1', title: 'Implement verified feature 1',
+            assessmentObjective: 'Implement the verified behavior', boundary: 'Source feature',
+            objective: 'Implement source bound feature 1 in the inspected project', tier: 'T1',
+            dependsOn: [], workingSet: ['src/feature-1.ts'], requirements: ['Implement verified behavior'],
+            preservedBehavior: ['Keep the current feature contract'], risks: ['Check the affected behavior'],
+            deferrals: ['Defer unrelated features'], buildNeeds: 'Compile changed package output only',
+            acceptanceCriteria: ['Feature 1 produces its expected result on the inspected source'],
+            validationTargets: ['Run test/unit/feature-1.test.ts for the changed behavior'],
+            estimatedMinutes: 6 }],
+            closeout: { title: closeout.title, objective: closeout.objective,
+                manualReason: closeout.manualReason, browserRequired: true, tier: 'T3',
+                acceptanceCriteria: closeout.acceptanceCriteria },
+            efficiencyAudit: closeout.efficiencyAudit } } as never;
+        const identity = { ...f.identity, messageId: randomUUID() };
+        const handler = new IncrementalPromptStack(f.root, 'c13-incremental-fixture', '0.13.11',
+            { assessment: f.assessment, plan: f.plan }, f.grounder, 1, f.basis, 1, selected);
+        const controller = new IncrementalProposalController(f.repo, identity, f.authority, handler);
+        await controller.begin();
+        const first = { ...work(1), requirements: ['Implement verified behavior'], constraints: [] };
+        await assert.rejects(controller.stage(stage(1, 0, 'step-1', 0,
+            { ...first, objective: 'Add a different feature' }), 'prompt'), /PLAN_MISMATCH/);
+        await controller.stage(stage(1, 0, 'step-1', 0, first, false), 'prompt');
+        await assert.rejects(controller.stage(stage(2, 1, 'step-1', 1,
+            { kind: 'section', heading: 'Extra work', text: 'Edit src/other.ts' }), 'prompt'),
+        /SECTION_PLAN_MISMATCH/);
+        await controller.stage(stage(2, 1, 'step-1', 1,
+            { kind: 'section', heading: 'Focused procedure',
+                text: 'Implement the verified behavior and run test/unit/feature-1.test.ts.' }), 'prompt');
+        await assert.rejects(controller.stage(stage(3, 2, 'closeout', 0,
+            { ...closeout, efficiencyAudit: [...closeout.efficiencyAudit].reverse() }), 'prompt'),
+        /PLAN_MISMATCH/);
+        await controller.stage(stage(3, 2, 'closeout', 0, closeout), 'prompt');
+        const proposal = (await controller.finish({ finalMessage: 'One step ready for review.' })).candidate;
+        assert.equal(proposal.files.length, 5);
+        assert.match(proposal.files[0].after, /Work prompts \(1\)/);
+        assert.match(proposal.files[1].after, /Preserve:|Keep the current feature contract/);
+        assert.match(proposal.files[3].after, /Build and typecheck/iu);
+        assert.match(proposal.files[3].after, /Retain source identity/);
+        assert.match(proposal.files[3].after, /Source feature/);
+        assert.doesNotMatch(proposal.files[3].after, /Required affected-system T2 integration/);
+        assert.match(proposal.files[4].path, /P2-manual-feature-closeout\.txt$/u);
+        assert.deepEqual((await importPhaseStack('c13-incremental-fixture', proposal.files.slice(3)
+            .map(file => ({ filename: file.path.split('/').at(-1)!, text: file.after })))).entries
+            .map(entry => entry.execution), ['agent-task', 'manual-gate']);
+        await assert.rejects(stat(join(f.root, 'docs/tasks/c13-incremental-fixture')), /ENOENT/);
+    } finally { await f.dispose(); }
+});

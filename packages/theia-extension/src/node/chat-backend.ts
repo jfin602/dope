@@ -1944,6 +1944,10 @@ export class ChatBackend implements ChatService {
         if (promptStage?.stage === 'prompt-plan' && priorAssessment && savedAssessmentRecord &&
             priorAssessment.assistant.content !== renderAssessment(savedAssessmentRecord))
             throw new Error('PLAN_ASSESSMENT_STALE: Selected Assessment card does not match the saved wireframe');
+        if (promptStage?.stage === 'prompt-write' &&
+            (!savedAssessmentRecord || !isAssessmentWireframe(savedAssessmentRecord) || !savedPlanRecord ||
+                priorAssessment?.assistant.content !== renderAssessment(savedAssessmentRecord)))
+            throw new Error('PROMPT_PLAN_REQUIRED: Select a checked wireframe and its current detailed Plan');
         if (request.promptDraftTarget) {
             const target = request.promptDraftTarget;
             const identity = priorAssessment?.user.promptDraft;

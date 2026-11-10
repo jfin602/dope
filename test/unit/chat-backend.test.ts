@@ -94,23 +94,23 @@ test('native prompt stages save an exact review candidate and publish only after
     await writeFile(join(root, 'test', 'feature.test.ts'), 'test feature behavior\n');
     await writeFile(join(root, 'package.json'), '{"name":"fixture","version":"1.2.3"}\n');
     const answers: string[] = [];
-    const audit = ['One implementation responsibility remains in each feature step.',
-        'The narrow implementation is estimated within the ordinary time budget.',
-        'Focused feature tests cover changed behavior without unrelated suites.',
-        'Compiled package output is built only when the imported test requires it.',
-        'Cross-package evidence belongs in the T2 integration step.',
-        'Nested command scripts are inspected before any aggregate is repeated.',
-        'Ordinary steps use moderate model effort and defer unrelated scope.',
-        'Every prompt keeps contiguous numbering and one terminal closeout.',
-        'The feature has no UI changes, so UI design evidence is inapplicable.',
-        'The feature has no new human workflow, so usability evidence is inapplicable.'];
+    const audit = ['Single responsibility in each implementation boundary',
+        'Runtime target 8 minutes, soft 10, hard 15',
+        'Test precision uses focused feature tests',
+        'Build precision uses changed lib outputs only',
+        'Evidence distribution puts integration in T2 and browser in T3',
+        'Command deduplication avoids repeat aggregate runs',
+        'Model economy uses Medium and defers unrelated work',
+        'Runnable traceable grammar preserves version and closeout',
+        'UI design follows ADR 0016 theme tokens; non-UI work is not applicable',
+        'Human usability follows ADR 0037 keyboard recovery; non-UI work is not applicable'];
     const work = (number: number, tier: 'T1' | 'T2', dependsOn: string[] = []) => ({
         kind: 'work', id: `step-${number}`, title: `Implement feature ${number}`,
         objective: `Implement feature responsibility ${number} in the inspected source`, tier, dependsOn,
-        requirements: ['Read the verified source'], constraints: ['No implicit Work run'],
+        requirements: ['Keep the feature source behavior bounded'],
         acceptanceCriteria: [`Feature ${number} works`],
         validationTargets: ['Run test/feature.test.ts'], workingSet: ['src/feature.js'],
-        ...(tier === 'T2' ? { integrationChecks: ['Run the affected feature integration check'] } : {}) });
+        ...(tier === 'T2' ? { integrationChecks: ['Run test/feature.test.ts'] } : {}) });
     const closeout = { kind: 'closeout', title: 'Manual feature closeout', objective: 'Observe feature in browser',
         manualReason: 'Human observation', acceptanceCriteria: ['Observe feature behavior'],
         browserRequired: true, efficiencyAudit: audit };
@@ -166,17 +166,7 @@ test('native prompt stages save an exact review candidate and publish only after
                     closeout: { title: 'Manual feature closeout', objective: 'Observe feature in browser',
                         manualReason: 'Human observation', browserRequired: true, tier: 'T3',
                         acceptanceCriteria: ['Observe feature behavior'] },
-                    efficiencyAudit: [
-                        'Single responsibility in each implementation boundary',
-                        'Runtime target 8 minutes, soft 10, hard 15',
-                        'Test precision uses focused feature tests',
-                        'Build precision uses changed lib outputs only',
-                        'Evidence distribution puts integration in T2 and browser in T3',
-                        'Command deduplication avoids repeat aggregate runs',
-                        'Model economy uses Medium and defers unrelated work',
-                        'Runnable traceable grammar preserves version and closeout',
-                        'UI design follows ADR 0016 theme tokens; non-UI work is not applicable',
-                        'Human usability follows ADR 0037 keyboard recovery; non-UI work is not applicable' ] });
+                    efficiencyAudit: audit });
             }
         }
         if (turn === 2 || turn === 3 || turn === 5) {
@@ -277,6 +267,8 @@ test('native prompt stages save an exact review candidate and publish only after
         assert.ok(proposal);
         assert.match(proposal.files[0].after, /## Objective/u);
         assert.match(proposal.files[1].after, /Prompt Efficiency Gates:/u);
+        assert.match(proposal.files[1].after, /Feature source exports a constant — “export const feature”/u);
+        assert.match(proposal.files[1].after, /Manual reason: Human observation; browser required: yes/u);
         assert.doesNotMatch(proposal.files[1].after, /Plan record sha256:/u);
         assert.deepEqual(proposal.files.map(file => file.path), [
             'docs/tasks/clamp-api-correction/prompt-assessment.md',
