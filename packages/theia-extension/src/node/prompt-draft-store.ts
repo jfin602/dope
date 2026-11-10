@@ -4,7 +4,7 @@ import { ChatRepository } from '@dope/chat/lib/node';
 import type { ChatProjectGrounder } from './chat-project-grounder';
 import { renderAssessment, renderPlan, validateAssessmentTiers, verifyPromptDraftSourceBasis, verifyPromptSourceRefs,
     type AssessmentRecord, type LegacyAssessmentRecord, type AssessmentWireframe,
-    type AssessmentFinding, type AssessmentCategory, type PlanRecord } from './prompt-authoring-stage';
+    type AssessmentFinding, type AssessmentCategory, type PlanRecord, type PlanWorkRecord } from './prompt-authoring-stage';
 import { capturePromptSourceEvidence } from './prompt-stack-proposal';
 
 export type PromptDraftStage = 'assessment' | 'plan';
@@ -37,6 +37,10 @@ export interface StoredPromptDraft {
             replacement: LegacyAssessmentRecord['tiers'] };
     };
     plan?: StoredPromptDraftStage;
+    partialPlan?: { assessmentHash: string; assessmentRevision: number;
+        work: PlanWorkRecord[]; closeout?: PlanRecord['closeout'];
+        efficiencyAudit: (string | null)[];
+        sourceRefs: StoredPromptDraftStage['sourceRefs'] };
     pendingAssessment?: { messageId: string; baseRevision: number; baseHash: string;
         value: StoredPromptDraftStage };
     history: { stage: PromptDraftStage; value: StoredPromptDraftStage }[];
@@ -44,6 +48,7 @@ export interface StoredPromptDraft {
 }
 
 const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
+export const planStepHash = (step: PlanWorkRecord): string => sha256(canonical(step));
 const hex = (value: unknown): value is string => typeof value === 'string' && /^[a-f0-9]{64}$/u.test(value);
 function canonical(value: unknown): string {
     if (value === null || typeof value === 'string' || typeof value === 'boolean') return JSON.stringify(value);
@@ -133,6 +138,15 @@ function checked(raw: unknown, identity: ChatPromptDraftIdentity): StoredPromptD
         throw new Error('Stale assessment revision candidate');
     if (value.partialAssessment && !validPartial(value.partialAssessment))
         throw new Error('Corrupt partial prompt assessment');
+    if (value.partialPlan && (!value.assessment ||
+        value.partialPlan.assessmentHash !== value.assessment.contentHash ||
+        value.partialPlan.assessmentRevision !== value.assessment.revision ||
+        !Array.isArray(value.partialPlan.work) || value.partialPlan.work.length > 48 ||
+        !Array.isArray(value.partialPlan.efficiencyAudit) || value.partialPlan.efficiencyAudit.length !== 10 ||
+        !Array.isArray(value.partialPlan.sourceRefs) || value.partialPlan.sourceRefs.length > 32 ||
+        value.partialPlan.sourceRefs.some(ref => !hex(ref.sourceHash) || ref.projectId !== identity.projectId) ||
+        Buffer.byteLength(canonical(value.partialPlan), 'utf8') > 128_000))
+        throw new Error('Corrupt partial prompt plan');
     return value;
 }
 
@@ -171,7 +185,66 @@ export class PromptDraftStore {
                 if (currentPage.sourceHash !== page.sourceHash)
                     throw new Error('ASSESSMENT_SOURCE_DRIFT: Partial assessment source changed');
             }
+            if (current.partialPlan?.sourceRefs.length)
+                await verifyPromptSourceRefs(root, current.partialPlan.sourceRefs.map(ref => ({ ...ref,
+                    schemaVersion: 1, kind: 'file', label: ref.id, estimatedTokens: 0 })), this.grounder);
             return { result: current };
+        });
+    }
+
+    /** Checked, noncanonical progress survives a failed model turn. Accepted records are append only. */
+    async updatePartialPlan(root: string, identity: ChatPromptDraftIdentity, leaseToken: string,
+        expectedRevision: number, partial: NonNullable<StoredPromptDraft['partialPlan']>):
+        Promise<StoredPromptDraft> {
+        if (Buffer.byteLength(canonical(partial), 'utf8') > 128_000 || partial.sourceRefs.length > 32)
+            throw new Error('PLAN_RESOURCE_LIMIT: Staged plan exceeds finite storage bounds');
+        return this.transact(root, identity, leaseToken, async current => {
+            if (!current?.assessment || current.state !== 'active' || current.revision !== expectedRevision ||
+                current.assessment.contentHash !== partial.assessmentHash ||
+                current.assessment.revision !== partial.assessmentRevision)
+                throw new Error('PLAN_STALE: Assessment or draft revision changed');
+            const previous = current.partialPlan;
+            if (previous && (previous.work.length > partial.work.length ||
+                previous.work.some((step, index) => canonical(step) !== canonical(partial.work[index])) ||
+                previous.closeout && canonical(previous.closeout) !== canonical(partial.closeout) ||
+                previous.efficiencyAudit.some((item, index) => item !== null && item !== partial.efficiencyAudit[index])))
+                throw new Error('PLAN_CONFLICTING_REPLAY: Accepted Plan content requires an explicit reviewed correction');
+            if (partial.sourceRefs.length)
+                await verifyPromptSourceRefs(root, partial.sourceRefs.map(ref => ({ ...ref,
+                    schemaVersion: 1, kind: 'file', label: ref.id, estimatedTokens: 0 })), this.grounder);
+            const { integrityHash: _integrityHash, ...body } = current;
+            const snapshot = sealed({ ...body, revision: current.revision + 1, partialPlan: partial });
+            return { snapshot, result: snapshot };
+        });
+    }
+
+    /** Explicit compare-and-swap correction; a rejected replacement leaves the prior step intact. */
+    async correctPartialPlanStep(root: string, identity: ChatPromptDraftIdentity, leaseToken: string,
+        expectedRevision: number, stepIndex: number, expectedHash: string,
+        partial: NonNullable<StoredPromptDraft['partialPlan']>): Promise<StoredPromptDraft> {
+        if (!hex(expectedHash) || Buffer.byteLength(canonical(partial), 'utf8') > 128_000 ||
+            partial.sourceRefs.length > 32)
+            throw new Error('PLAN_RESOURCE_LIMIT: Invalid or oversized Plan correction');
+        return this.transact(root, identity, leaseToken, async current => {
+            const old = current?.partialPlan;
+            if (!current?.assessment || !old || current.plan || current.revision !== expectedRevision ||
+                old.assessmentHash !== partial.assessmentHash ||
+                current.assessment.contentHash !== partial.assessmentHash ||
+                stepIndex < 0 || stepIndex >= old.work.length ||
+                sha256(canonical(old.work[stepIndex])) !== expectedHash ||
+                partial.work.length !== old.work.length ||
+                partial.work.some((step, index) => index !== stepIndex &&
+                    canonical(step) !== canonical(old.work[index])) ||
+                (partial.closeout === undefined ? '' : canonical(partial.closeout)) !==
+                    (old.closeout === undefined ? '' : canonical(old.closeout)) ||
+                canonical(partial.efficiencyAudit) !== canonical(old.efficiencyAudit))
+                throw new Error('PLAN_CONFLICTING_REPLAY: Select the current accepted step hash');
+            if (partial.sourceRefs.length)
+                await verifyPromptSourceRefs(root, partial.sourceRefs.map(ref => ({ ...ref,
+                    schemaVersion: 1, kind: 'file', label: ref.id, estimatedTokens: 0 })), this.grounder);
+            const { integrityHash: _integrityHash, ...body } = current;
+            const snapshot = sealed({ ...body, revision: current.revision + 1, partialPlan: partial });
+            return { snapshot, result: snapshot };
         });
     }
 
@@ -241,7 +314,7 @@ export class PromptDraftStore {
         kind: PromptDraftStage, expectedRevision: number, record: Record<string, unknown>,
         sourceRefs: StoredPromptDraftStage['sourceRefs']): Promise<StoredPromptDraft> {
         if (!['assessment', 'plan'].includes(kind) || !record || Array.isArray(record) ||
-            Buffer.byteLength(canonical(record), 'utf8') > 32_000 ||
+            Buffer.byteLength(canonical(record), 'utf8') > (kind === 'plan' ? 128_000 : 32_000) ||
             !Array.isArray(sourceRefs) || sourceRefs.length > 32 ||
             !sourceRefs.length && !(kind === 'assessment' &&
                 (record as { kind?: unknown; sourceClaims?: unknown[] }).kind === 'wireframe' &&
@@ -264,7 +337,8 @@ export class PromptDraftStore {
             const history = [...current.history, ...(old ? [{ stage: kind, value: old }] : []),
                 ...(kind === 'assessment' && current.plan ? [{ stage: 'plan' as const, value: current.plan }] : [])].slice(-8);
             const { integrityHash: _integrityHash, ...body } = current;
-            const { assessment: _assessment, plan: _plan, partialAssessment: _partialAssessment, ...base } = body;
+            const { assessment: _assessment, plan: _plan, partialAssessment: _partialAssessment,
+                partialPlan: _partialPlan, ...base } = body;
             const snapshot = sealed({ ...base, revision: current.revision + 1,
                 ...(kind === 'assessment' ? { assessment: value } : { assessment: current.assessment!, plan: value }),
                 history });
@@ -309,14 +383,15 @@ export class PromptDraftStore {
                 await verifyPromptSourceRefs(root, pending.value.sourceRefs.map(ref => ({ ...ref,
                     schemaVersion: 1, kind: 'file', label: ref.id, estimatedTokens: 0 })), this.grounder);
             const { integrityHash: _integrityHash, pendingAssessment: _pending,
-                assessment: _assessment, plan: _plan, ...base } = current;
+                assessment: _assessment, plan: _plan, partialPlan: _partialPlan, ...base } = current;
             const history = decision === 'accept' ? [...current.history,
                 { stage: 'assessment' as const, value: current.assessment },
                 ...(current.plan ? [{ stage: 'plan' as const, value: current.plan }] : [])].slice(-8) :
                 current.history;
             const snapshot = sealed({ ...base, revision: current.revision + 1,
                 assessment: decision === 'accept' ? pending.value : current.assessment,
-                ...(decision === 'reject' && current.plan ? { plan: current.plan } : {}), history });
+                ...(decision === 'reject' && current.plan ? { plan: current.plan } : {}),
+                ...(decision === 'reject' && current.partialPlan ? { partialPlan: current.partialPlan } : {}), history });
             return { snapshot, result: snapshot };
         });
     }

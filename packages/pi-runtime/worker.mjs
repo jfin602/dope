@@ -21,6 +21,7 @@ let roadmapToolsMode = false;
 let roadmapGenerationMode = false;
 let proposalToolsMode = false;
 let assessmentToolsMode = false;
+let planToolsMode = false;
 let operationPolicy;
 let proposalModelCalls = 0;
 let proposalToolCalls = 0;
@@ -323,6 +324,26 @@ export const ASSESSMENT_TOOLS = {
       quote: Type.String() }, { additionalProperties: false })) },
   assessment_finish: {}
 };
+const planText = Type.String();
+const planTexts = Type.Array(planText);
+const planStepFields = { id: planText, title: planText, assessmentObjective: planText,
+  boundary: planText, objective: planText, tier: Type.Union([Type.Literal('T1'), Type.Literal('T2')]),
+  dependsOn: planTexts, workingSet: planTexts, requirements: planTexts,
+  preservedBehavior: planTexts, risks: planTexts, deferrals: planTexts,
+  validationTargets: planTexts, buildNeeds: planText, acceptanceCriteria: planTexts,
+  sourceClaims: Type.Array(Type.Object({ claim: planText, path: planText, quote: planText },
+    { additionalProperties: false })), estimatedMinutes: Type.Integer() };
+export const PLAN_TOOLS = {
+  ...Object.fromEntries(Object.entries(CHAT_TOOLS).filter(([name]) => name !== 'run_command')),
+  plan_status: {},
+  plan_stage_step: planStepFields,
+  plan_correct_step: { expectedHash: Type.String(), step: Type.Object(planStepFields,
+    { additionalProperties: false }) },
+  plan_stage_closeout: { title: planText, objective: planText, manualReason: planText,
+    browserRequired: Type.Literal(true), acceptanceCriteria: planTexts, tier: Type.Literal('T3') },
+  plan_stage_efficiency: { index: Type.Integer(), finding: planText },
+  plan_finish: {}
+};
 // Keep this compact: Pi sees the legal discriminator and required fields, while
 // the stage owner remains the authority for identity, source and content checks.
 const roadmapField = {
@@ -388,7 +409,7 @@ const ROADMAP_GENERATION_TOOLS = {
 function chatTools() {
   return Object.entries(roadmapGenerationMode ? ROADMAP_GENERATION_TOOLS :
     roadmapToolsMode ? ROADMAP_TOOLS : proposalToolsMode ? PROPOSAL_TOOLS :
-    assessmentToolsMode ? ASSESSMENT_TOOLS : CHAT_TOOLS).map(([name, properties]) => ({
+    assessmentToolsMode ? ASSESSMENT_TOOLS : planToolsMode ? PLAN_TOOLS : CHAT_TOOLS).map(([name, properties]) => ({
     name, label: name, description: name === 'run_command' ?
       'Run an eligible read-only project investigation command in an isolated Linux sandbox. The project owner may need to approve it. Never claim execution without a tool result.' :
       name === 'list_files' ? 'List one project directory. Start with path "" or "." for the project root. Continue a partial result with nextOffset and expectedResultHash; narrow an omitted directory. Listings do not prove file contents.' :
@@ -410,16 +431,22 @@ function chatTools() {
       name === 'assessment_status' ? 'Read the checked wireframe receipt and next action.' :
       name === 'assessment_stage' ? 'Submit one compact prompt-count and task-division wireframe. Use stable step-1..step-N IDs, prior-step dependencies and one separate manual closeout. Source claims need exact quotes from brokered reads.' :
       name === 'assessment_finish' ? 'Seal the checked wireframe after a successful stage receipt. Dope validates source claims and authority.' :
+      name === 'plan_status' ? 'Read bounded checked Plan progress and one next action.' :
+      name === 'plan_stage_step' ? 'Submit one detailed Assessment-linked step, citing exact quotes from brokered reads. Dope validates before saving.' :
+      name === 'plan_correct_step' ? 'Correct one accepted step using its current hash from plan_status and a fully revalidated step. Never changes count or reviewed boundary.' :
+      name === 'plan_stage_closeout' ? 'Submit the separate final manual T3 closeout.' :
+      name === 'plan_stage_efficiency' ? 'Submit one numbered Prompt Efficiency Gate finding, from 1 to 10.' :
+      name === 'plan_finish' ? 'Seal only a complete validated Plan. Final prose cannot replace this receipt.' :
       'Search eligible project source contents for a symbol or phrase. Protected entries are excluded.',
     parameters: name === 'proposal_stage_document' || name === 'proposal_stage_prompt' ?
       properties : Type.Object(properties, { additionalProperties: false }),
     async execute(_toolCallId, params, signal) {
       if (!chatToolsMode || signal?.aborted) throw new Error('Dope Chat tool unavailable');
-      if (proposalToolsMode || assessmentToolsMode) ++proposalToolCalls;
+      if (proposalToolsMode || assessmentToolsMode || planToolsMode) ++proposalToolCalls;
       if ((operationPolicy?.snapshot.discretionary &&
           proposalToolCalls > operationPolicy.snapshot.discretionary.run.toolCalls) ||
-          !operationPolicy && (proposalToolsMode || assessmentToolsMode) &&
-          proposalToolCalls > (assessmentToolsMode ? 128 : 512)) {
+          !operationPolicy && (proposalToolsMode || assessmentToolsMode || planToolsMode) &&
+          proposalToolCalls > (assessmentToolsMode || planToolsMode ? 128 : 512)) {
         chatLoopStopped = true;
         chatLoopReason = 'Operation tool-call policy limit reached';
         turnFailure = new WorkerOriginError(operationPolicy ? 'policy_limit' : 'resource_limit', 'tool_budget');
@@ -569,6 +596,7 @@ async function dispose() {
   roadmapGenerationMode = false;
   proposalToolsMode = false;
   assessmentToolsMode = false;
+  planToolsMode = false;
   operationPolicy = undefined;
   proposalModelCalls = 0;
   proposalToolCalls = 0;
@@ -643,16 +671,18 @@ export async function dispatch(message) {
         proposalToolsMode = chatToolsMode && message.proposalTools === true && !roadmapToolsMode && !roadmapGenerationMode;
         assessmentToolsMode = chatToolsMode && message.assessmentTools === true &&
           !proposalToolsMode && !roadmapToolsMode && !roadmapGenerationMode;
+        planToolsMode = chatToolsMode && message.planTools === true &&
+          !assessmentToolsMode && !proposalToolsMode && !roadmapToolsMode && !roadmapGenerationMode;
         if (message.operationPolicy !== undefined) {
           if (!chatToolsMode) throw new WorkerOriginError('policy_invalid', 'operation_policy');
-          const operations = assessmentToolsMode ? ['prompt-ass'] : proposalToolsMode ?
+          const operations = assessmentToolsMode ? ['prompt-ass'] : planToolsMode ? ['prompt-plan'] : proposalToolsMode ?
             ['docs-review', 'prompt-plan', 'prompt-write'] : roadmapGenerationMode ? ['phase-roadmap'] :
             roadmapToolsMode ? ['roadmap-edit'] : ['chat', 'investigation', 'prompt-plan'];
           operationPolicy = checkedOperationPolicy(message.operationPolicy, message.model, operations);
         }
         const chatToolNames = Object.keys(roadmapGenerationMode ? ROADMAP_GENERATION_TOOLS :
           roadmapToolsMode ? ROADMAP_TOOLS : proposalToolsMode ? PROPOSAL_TOOLS :
-          assessmentToolsMode ? ASSESSMENT_TOOLS : CHAT_TOOLS);
+          assessmentToolsMode ? ASSESSMENT_TOOLS : planToolsMode ? PLAN_TOOLS : CHAT_TOOLS);
         const result = await createAgentSession({
           cwd: message.cwd, agentDir: isolatedDir, model: message.model, modelRuntime,
           thinkingLevel,
@@ -796,7 +826,7 @@ export async function dispatch(message) {
         if (event.type === 'turn_start') ++proposalModelCalls;
         if (event.type === 'turn_start' && ((operationPolicy?.snapshot.discretionary &&
             proposalModelCalls > operationPolicy.snapshot.discretionary.run.modelCalls) ||
-            !operationPolicy && (proposalToolsMode || assessmentToolsMode) &&
+            !operationPolicy && (proposalToolsMode || assessmentToolsMode || planToolsMode) &&
             proposalModelCalls > (assessmentToolsMode ? 64 : 256))) {
           chatLoopStopped = true;
           chatLoopReason = 'Operation model-call policy limit reached';
@@ -910,7 +940,7 @@ export async function dispatch(message) {
               !operationPolicy && toolCount > 16) {
             const allowed = roadmapGenerationMode ? ROADMAP_GENERATION_TOOLS :
               roadmapToolsMode ? ROADMAP_TOOLS : proposalToolsMode ? PROPOSAL_TOOLS :
-              assessmentToolsMode ? ASSESSMENT_TOOLS : CHAT_TOOLS;
+              assessmentToolsMode ? ASSESSMENT_TOOLS : planToolsMode ? PLAN_TOOLS : CHAT_TOOLS;
             failedToolStart = { ordinal: toolCount,
               toolName: Object.hasOwn(allowed, event.toolName) ? event.toolName : 'unknown' };
             turnFailure = new WorkerOriginError(operationPolicy ? 'policy_limit' : 'resource_limit', 'tool_budget');

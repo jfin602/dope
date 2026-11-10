@@ -149,7 +149,7 @@ test('native prompt stages save an exact review candidate and publish only after
             } else {
                 await request.projectTools!.execute('read_file',
                     { path: 'test/feature.test.ts', offset: 0, maxBytes: 4096 });
-                answers[1] = JSON.stringify({ work: Array.from({ length: 10 }, (_, index) => index + 1).map(number => ({
+                const planned = { work: Array.from({ length: 10 }, (_, index) => index + 1).map(number => ({
                     id: `step-${number}`, title: `Implement feature ${number}`,
                     assessmentObjective: `Implement feature responsibility ${number}`,
                     boundary: `Feature responsibility ${number}`,
@@ -166,7 +166,18 @@ test('native prompt stages save an exact review candidate and publish only after
                     closeout: { title: 'Manual feature closeout', objective: 'Observe feature in browser',
                         manualReason: 'Human observation', browserRequired: true, tier: 'T3',
                         acceptanceCriteria: ['Observe feature behavior'] },
-                    efficiencyAudit: audit });
+                    efficiencyAudit: audit };
+                for (const step of planned.work) {
+                    const staged = JSON.parse(await request.projectTools!.execute('plan_stage_step', step));
+                    assert.equal(staged.accepted, step.id, JSON.stringify(staged));
+                }
+                assert.equal(JSON.parse(await request.projectTools!.execute('plan_stage_closeout',
+                    planned.closeout)).accepted, true);
+                for (const [index, finding] of audit.entries())
+                    assert.equal(JSON.parse(await request.projectTools!.execute('plan_stage_efficiency',
+                        { index: index + 1, finding })).accepted, index + 1);
+                assert.equal(JSON.parse(await request.projectTools!.execute('plan_finish', {})).complete, true);
+                answers[1] = 'Checked Plan saved.';
             }
         }
         if (turn === 2 || turn === 3 || turn === 5) {

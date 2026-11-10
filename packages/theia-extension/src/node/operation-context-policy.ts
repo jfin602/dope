@@ -32,7 +32,7 @@ const presets: Record<TrustedChatOperation, { input: number; output: number; pag
     investigation: { input: 6144, output: 3072, page: 8192, payload: 16384, calls: 12, tools: 48, generation: 24576 },
     'docs-review': { input: 8192, output: 4096, page: 8192, payload: 24576, calls: 24, tools: 96, generation: 49152 },
     'prompt-ass': { input: 8192, output: 4096, page: 8192, payload: 24576, calls: 32, tools: 128, generation: 65536 },
-    'prompt-plan': { input: 8192, output: 6144, page: 8192, payload: 24576, calls: 24, tools: 96, generation: 65536 },
+    'prompt-plan': { input: 8192, output: 6144, page: 8192, payload: 24576, calls: 64, tools: 128, generation: 65536 },
     'prompt-write': { input: 8192, output: 6144, page: 8192, payload: 32768, calls: 48, tools: 192, generation: 131072 },
     'phase-roadmap': { input: 8192, output: 4096, page: 8192, payload: 16384, calls: 32, tools: 128, generation: 65536 },
     'roadmap-edit': { input: 6144, output: 4096, page: 8192, payload: 16384, calls: 16, tools: 64, generation: 32768 }

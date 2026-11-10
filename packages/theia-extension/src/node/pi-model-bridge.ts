@@ -48,7 +48,7 @@ export class PiModelBridge {
 
     async bind(selection: PiLocalSelection, host: Pick<PiRuntimeHost, 'openNoToolSession' | 'openWorkSession' | 'openChatToolsSession'>,
         cwd: string, options: { tools?: boolean; chatTools?: boolean; roadmapTools?: boolean;
-            roadmapGeneration?: boolean; proposalTools?: boolean; assessmentTools?: boolean;
+            roadmapGeneration?: boolean; proposalTools?: boolean; assessmentTools?: boolean; planTools?: boolean;
             operationPolicy?: NonNullable<ConversationRequest['projectTools']>['operationPolicy'];
             reasoningMode?: string; workProcessAvailable?: boolean } = {}): Promise<PiLocalBinding> {
         if (!selection.connectionId?.trim() || !selection.modelId?.trim())
@@ -148,6 +148,9 @@ export class PiModelBridge {
             options.chatTools && options.assessmentTools ?
             await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, false, false, true,
                 options.operationPolicy) :
+            options.chatTools && options.planTools ?
+            await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, false, false, false,
+                options.operationPolicy, true) :
             options.chatTools && options.roadmapTools ?
             await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, true, false, false, false,
                 options.operationPolicy) :
@@ -164,6 +167,9 @@ export class PiModelBridge {
                     'proposal_status', 'proposal_stage_document', 'proposal_stage_prompt', 'proposal_finish'] :
                 options.assessmentTools ? ['list_files', 'read_file', 'search_paths', 'search_text',
                     'assessment_stage', 'assessment_status', 'assessment_finish'] :
+                options.planTools ? ['list_files', 'read_file', 'search_paths', 'search_text',
+                    'plan_status', 'plan_stage_step', 'plan_correct_step', 'plan_stage_closeout',
+                    'plan_stage_efficiency', 'plan_finish'] :
                 options.roadmapTools ? ['roadmap_cancel', 'roadmap_read', 'roadmap_stage'] :
                 ['list_files', 'read_file', 'run_command', 'search_paths', 'search_text'] : [];
         if (opened.version !== '1.4.0' || opened.resources !== 'isolated' ||

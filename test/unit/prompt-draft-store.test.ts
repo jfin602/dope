@@ -175,7 +175,7 @@ test('named stages persist atomically with revisions, broker hashes and dependen
         { scope: 'Source checked', count: 2 }, v.refs);
     assert.equal(assessment.assessment?.contentHash, hash('{"count":2,"scope":"Source checked"}'));
     await assert.rejects(v.store.stage(v.root, v.identity, v.lease, 'plan', 1,
-        { details: 'x'.repeat(33_000) }, v.refs), /oversized/);
+        { details: 'x'.repeat(129_000) }, v.refs), /oversized/);
     assert.equal((await v.store.read(v.root, v.identity, v.lease)).revision, 1);
     assert.equal((await new PromptDraftStore(new ChatRepository(), new ChatProjectGrounder({} as never),
         async () => basis).read(v.root, v.identity, v.lease)).revision, 1);

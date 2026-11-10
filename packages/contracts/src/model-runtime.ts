@@ -88,7 +88,7 @@ export interface ConversationRequest {
     signal?: AbortSignal;
     /** Backend-only authority for eligible local Pi project discovery. Never serialized to a provider. */
     projectTools?: { root: string; roadmapTools?: boolean; roadmapGeneration?: boolean; proposalTools?: boolean;
-        assessmentTools?: boolean;
+        assessmentTools?: boolean; planTools?: boolean;
         operationPolicy?: { commandId: string; modelId: string; snapshot: {
             schemaVersion: 1; mode: 'managed' | 'unmanaged';
             operation: 'chat' | 'investigation' | 'docs-review' | 'prompt-ass' | 'prompt-plan' |

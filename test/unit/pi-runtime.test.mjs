@@ -5,7 +5,8 @@ import { mkdtemp, mkdir, writeFile, access, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { dispatch, beforeNativeCompaction, nativeCompactionOutcome, frameStreamEvent, frameTurnResult,
-  ROADMAP_ACTION_FIELDS, roadmapActionSchema, PROPOSAL_TOOLS, ASSESSMENT_TOOLS } from '../../packages/pi-runtime/worker.mjs';
+  ROADMAP_ACTION_FIELDS, roadmapActionSchema, PROPOSAL_TOOLS, ASSESSMENT_TOOLS,
+  PLAN_TOOLS } from '../../packages/pi-runtime/worker.mjs';
 
 test('incremental assessment advertises top-level object tools without command or write access', () => {
   assert.deepEqual(Object.keys(ASSESSMENT_TOOLS).sort(), ['assessment_finish', 'assessment_stage',
@@ -556,6 +557,21 @@ test('protected assessment session offers only brokered reads and staged finding
     const opened = await dispatch({ type: 'open', mode: 'chat-tools', assessmentTools: true, cwd, model });
     assert.deepEqual(opened.tools.sort(), ['assessment_finish', 'assessment_stage',
       'assessment_status', 'list_files', 'read_file', 'search_paths', 'search_text']);
+  } finally {
+    await dispatch({ type: 'close' });
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('protected Plan session advertises bounded steps, correction and finish without write tools', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-plan-tools-'));
+  try {
+    const opened = await dispatch({ type: 'open', mode: 'chat-tools', planTools: true, cwd, model });
+    assert.deepEqual(opened.tools.sort(), ['list_files', 'plan_correct_step', 'plan_finish',
+      'plan_stage_closeout', 'plan_stage_efficiency', 'plan_stage_step', 'plan_status',
+      'read_file', 'search_paths', 'search_text']);
+    assert.equal(PLAN_TOOLS.plan_stage_step.sourceClaims.type, 'array');
+    assert.equal(PLAN_TOOLS.plan_correct_step.step.type, 'object');
   } finally {
     await dispatch({ type: 'close' });
     await rm(cwd, { recursive: true, force: true });

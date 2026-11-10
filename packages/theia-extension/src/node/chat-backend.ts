@@ -41,11 +41,12 @@ import type { DocumentationReadPage } from './documentation-skill-review';
 import { assertPromptDraftNameAvailable, newPromptDraftIdentity, promptStageCommand, priorPromptDraft,
     verifyPromptDraftIdentity, verifyPromptDraftSource, verifyPromptDraftSourceBasis, verifyPromptSourceRefs,
     promptStageInstruction, finishedPromptText, requestedPaths,
-    renderAssessment, validatedPlan, planReceiptCurrent, isAssessmentWireframe,
+    renderAssessment, planReceiptCurrent, isAssessmentWireframe,
     type AssessmentRecord, type PlanRecord,
     type AssessmentRead } from './prompt-authoring-stage';
 import { PromptDraftStore } from './prompt-draft-store';
 import { IncrementalAssessment } from './incremental-assessment';
+import { IncrementalPlan } from './incremental-plan';
 import { AssessmentReadReceipts } from './assessment-read-receipts';
 import { capturePromptSourceEvidence, validatePromptStackProposal } from './prompt-stack-proposal';
 import { PlanningStackPublication } from './planning-stack-publication';
@@ -2332,25 +2333,81 @@ export class ChatBackend implements ChatService {
         const documentationHashes = new Map<string, string>();
         const protectedProposal = retryIndex < 0 && (docsReview || promptStage?.stage === 'prompt-write');
         const protectedAssessment = promptStage?.stage === 'prompt-ass';
+        const protectedPlan = promptStage?.stage === 'prompt-plan';
         const readExecutionId = randomUUID();
         // Read receipts prove cited bytes and bind any later page to the active execution.
         const assessmentReadReceipts = protectedAssessment ? new AssessmentReadReceipts({
             root, projectHandle: request.projectHandle, chatId: key, turnId: readExecutionId,
             leaseToken: request.leaseToken, ownerId: this.leases.get(key)!.ownerId }) : undefined;
         let proposalController: IncrementalProposalController | undefined;
+        let planController: IncrementalPlan | undefined;
+        let finishedPlan: { record: PlanRecord; saved: import('./prompt-draft-store').StoredPromptDraft } | undefined;
+        let planToolFailure: string | undefined;
         let finishedDocument: ProposalHandoff<import('@dope/chat').ChatDocumentationProposal> | undefined;
         let finishedPrompt: ProposalHandoff<ChatPromptStackProposal> | undefined;
         const noProjectTools = !!publicationIntent || forbidsProjectTools(content);
+        const planOwnerId = this.leases.get(key)?.ownerId;
         // This closure belongs to one authorized Chat execution. A later read may inspect
         // staged operations, but cannot silently rebase its original source preconditions.
         let stagingBasis: { root: string; projectId: string; ownerId: string; chatId: string;
             turnId: string; lease: string; revision: number; sourceHash: string | null;
             linkState: string | null; expiresAt: number } | undefined;
         const projectTools = this.grounder && !noProjectTools ? { root, roadmapTools: nativeRoadmap,
-            proposalTools: protectedProposal, assessmentTools: protectedAssessment,
+            proposalTools: protectedProposal, assessmentTools: protectedAssessment, planTools: protectedPlan,
             operationPolicy: boundOperationPolicy,
             execute: async (name: string, args: unknown, signal?: AbortSignal, toolCallId?: number): Promise<string> => {
                 if (noProjectTools) throw new Error('Project tools prohibited for this Chat turn');
+                if (name.startsWith('plan_')) {
+                    recordActivity('tool', `${name}: running`);
+                    let outcome: 'completed' | 'failed' = 'completed';
+                    try {
+                        if (!protectedPlan || !planController || signal?.aborted || abort.signal.aborted ||
+                            this.active(request.projectHandle) !== root || this.turns.get(key)?.abort !== abort ||
+                            this.leases.get(key)?.token !== request.leaseToken ||
+                            this.leases.get(key)?.ownerId !== planOwnerId)
+                            throw new Error('PLAN_AUTHORITY: Start a new authorized Planning turn');
+                        if (toolEvents.length >= 128) throw new Error('PLAN_RESOURCE_LIMIT: Planning tool budget reached');
+                        if (!args || typeof args !== 'object' || Array.isArray(args))
+                            throw new Error('PLAN_INVALID_STEP: Supply a typed object');
+                        const result = name === 'plan_status' ? Object.keys(args).length === 0 ?
+                            await planController.status() : (() => { throw new Error('PLAN_INVALID_STEP: Use {}'); })() :
+                            name === 'plan_stage_step' ? await planController.stageStep(args, sourceRefs, assessmentReads) :
+                            name === 'plan_correct_step' ? await planController.correctStep(args, sourceRefs, assessmentReads) :
+                            name === 'plan_stage_closeout' ? await planController.stageCloseout(args) :
+                            name === 'plan_stage_efficiency' ? await planController.stageEfficiency(args) :
+                            name === 'plan_finish' ? Object.keys(args).length === 0 ?
+                                (finishedPlan = await planController.finish(),
+                                    sourceRefs.splice(0, sourceRefs.length, ...finishedPlan.saved.plan!.sourceRefs.map(ref =>
+                                        ({ ...ref, schemaVersion: 1 as const, kind: 'file' as const,
+                                            label: ref.id, origin: 'tool' as const, estimatedTokens: 0 }))),
+                                    { complete: true, revision: finishedPlan.saved.plan!.revision,
+                                        contentHash: finishedPlan.saved.plan!.contentHash }) :
+                                (() => { throw new Error('PLAN_INVALID_STEP: Use {}'); })() :
+                            (() => { throw new Error('PLAN_AUTHORITY: Unknown Plan tool'); })();
+                        if (name !== 'plan_status') planToolFailure = undefined;
+                        return JSON.stringify(result);
+                    } catch (error) {
+                        outcome = 'failed';
+                        const message = error instanceof Error ? error.message : 'Plan tool failed';
+                        const code = /^PLAN_[A-Z_]+:/u.exec(message)?.[0].slice(0, -1) ??
+                            (/^ASSESSMENT_(?:UNSUPPORTED_SOURCE|AMBIGUOUS_SOURCE|CITATION):/u.test(message) ?
+                                'PLAN_UNSUPPORTED_SOURCE' :
+                                /\b(?:source changed|source drift|stale|fingerprint|dependency)\b/iu.test(message) ?
+                                    'PLAN_STALE' :
+                                /\b(?:lease|owner|foreign project|unavailable or aborted)\b/iu.test(message) ?
+                                    'PLAN_AUTHORITY' : 'PLAN_UNKNOWN_FAILURE');
+                        planToolFailure = `${code}: ${message.slice(0, 240)}`;
+                        return JSON.stringify({ code, reason: message.slice(0, 300),
+                            recovery: code === 'PLAN_UNSUPPORTED_SOURCE' ?
+                                'Read the cited source with read_file and quote an exact unique substring' :
+                                code === 'PLAN_INCOMPLETE' ? 'Call plan_status for the next missing record' :
+                                'Correct the bounded submission or start a new authorized Planning turn' });
+                    } finally {
+                        toolEvents.push({ name: name as 'plan_status', status: outcome,
+                            truncated: false, stage: 'broker', brokerExecuted: true });
+                        recordActivity('tool', `${name}: ${outcome}`);
+                    }
+                }
                 if (name.startsWith('assessment_')) {
                     const assessmentName = name as 'assessment_status' | 'assessment_stage' | 'assessment_finish';
                     const stageArg = args && typeof args === 'object' && !Array.isArray(args) ?
@@ -3026,6 +3083,15 @@ export class ChatBackend implements ChatService {
                     sourceRefs.push(...recovered.refs);
                 }
             }
+            if (protectedPlan) {
+                if (!priorAssessment?.user.promptDraft || !savedAssessmentRecord ||
+                    !isAssessmentWireframe(savedAssessmentRecord))
+                    throw new Error('PLAN_AUTHORITY: Select a checked Assessment wireframe');
+                planController = new IncrementalPlan(new PromptDraftStore(this.repository, this.grounder!),
+                    this.grounder!, root, priorAssessment.user.promptDraft, request.leaseToken,
+                    savedAssessmentRecord);
+                await planController.status();
+            }
             if (protectedProposal) {
                 const stageBasis = async () => {
                     if (docsReview) {
@@ -3395,23 +3461,12 @@ export class ChatBackend implements ChatService {
                             } else if (promptStage.stage === 'prompt-plan') {
                                 if (!priorAssessment?.user.promptDraft || !savedAssessmentRecord)
                                     throw new Error('PLAN_ASSESSMENT_REQUIRED: Complete a structured named assessment first');
-                                const record = validatedPlan(output, savedAssessmentRecord, sourceRefs,
-                                    promptRequestedCount, assessmentReads);
-                                const store = new PromptDraftStore(this.repository, this.grounder!);
-                                const draft = await store.read(root, priorAssessment.user.promptDraft,
-                                    request.leaseToken);
-                                if (draft.assessment?.contentHash !== stagedAssessmentHash ||
-                                    retryIndex < 0 &&
-                                    draft.assessment?.revision !== request.promptDraftTarget?.stageRevision)
-                                    throw new Error('PLAN_ASSESSMENT_STALE: Reviewed wireframe changed during Planning');
-                                const saved = await store.stage(root, priorAssessment.user.promptDraft, request.leaseToken,
-                                    'plan', draft.revision, record as unknown as Record<string, unknown>,
-                                    sourceRefs.filter(ref => ref.kind === 'file' && ref.sourceHash &&
-                                        ref.origin === 'tool').map(ref => ({ id: ref.id, sourceHash: ref.sourceHash!,
-                                        projectId: ref.projectId!,
-                                        ...(ref.contentHash ? { contentHash: ref.contentHash } : {}),
-                                        ...(ref.start !== undefined ? { start: ref.start } : {}),
-                                        ...(ref.end !== undefined ? { end: ref.end } : {}) })));
+                                if (!finishedPlan)
+                                    throw new Error(planToolFailure ??
+                                        'PLAN_INCOMPLETE: Call plan_status, stage the missing records and finish the checked Plan');
+                                const { record, saved } = finishedPlan;
+                                if (saved.assessment?.contentHash !== stagedAssessmentHash)
+                                    throw new Error('PLAN_STALE: Reviewed wireframe changed during Planning');
                                 output = `# Unpublished prompt plan\n\nSaved structured plan for ` +
                                     `${priorAssessment.user.promptDraft.slug}: ${record.work.length} work tasks, ` +
                                     `one separate manual closeout, ten checked efficiency gates. ` +
@@ -3619,6 +3674,24 @@ export class ChatBackend implements ChatService {
                         error.message : 'Conversation failed';
                 const assessmentCode = promptStage?.stage === 'prompt-ass' && error instanceof Error ?
                     /^ASSESSMENT_[A-Z_]+:/u.exec(error.message)?.[0].slice(0, -1) : undefined;
+                const planCode = protectedPlan && error instanceof Error ?
+                    /^PLAN_[A-Z_]+:/u.exec(error.message)?.[0].slice(0, -1) : undefined;
+                const piPlanBoundary = error instanceof PiConversationFailure ?
+                    error.boundaryCode === 'provider_http' || error.boundaryCode === 'provider_connection' ||
+                    error.boundaryCode === 'model_generation' &&
+                    error.toolFailure?.providerSubcause === 'model_response' ? 'PROVIDER_FAILURE' :
+                    error.boundaryCode === 'model_generation' ? 'UNKNOWN_FAILURE' :
+                    error.boundaryCode === 'model_tool_call_invalid' ? 'PLAN_INVALID_OUTPUT' :
+                    error.boundaryCode === 'broker_tool_denied' ? 'PLAN_AUTHORITY' :
+                    error.boundaryCode === 'resource_limit' || error.boundaryCode === 'policy_limit' ||
+                    error.boundaryCode === 'context_limit' || error.boundaryCode === 'output_limit' ?
+                    'PLAN_RESOURCE_LIMIT' : 'WORKER_FAILURE' : undefined;
+                const planDiagnostic = planCode ? `${planCode}: ${error instanceof Error ?
+                    error.message.slice(planCode.length + 1, planCode.length + 301).trim() :
+                    'Planning validation failed'}` : protectedPlan && error instanceof PiConversationFailure ?
+                    `${piPlanBoundary}: ${error.message}` :
+                    protectedPlan && error instanceof ModelRuntimeFailure ?
+                    `PROVIDER_FAILURE: ${error.message}` : undefined;
                 const diagnostic = assessmentCode && !cancelled ?
                     `Assessment blocked (${assessmentCode}): ${assessmentCode === 'ASSESSMENT_UNSUPPORTED_SOURCE' ?
                         'Citation does not match one unique verified source read. Read the source again and use an exact, unique quote.' :
@@ -3631,7 +3704,7 @@ export class ChatBackend implements ChatService {
                     `${assessmentStatus.remaining.length} requested sources remaining.` : '';
                 const failure = leaseRenewalFailed ?
                     'Chat ownership lease expired or changed during the turn. Reopen this Chat and start a new authorized turn.' :
-                    (diagnostic ?? (cancelled ? 'Conversation cancelled' : baseFailure)) + assessmentProgress;
+                    (diagnostic ?? (cancelled ? 'Conversation cancelled' : planDiagnostic ?? baseFailure)) + assessmentProgress;
                 const failureCode = leaseRenewalFailed ? 'chat_lease' as const :
                     error instanceof PiConversationFailure ? error.boundaryCode : undefined;
                 const toolFailure = !cancelled && !leaseRenewalFailed && error instanceof PiConversationFailure ?

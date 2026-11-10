@@ -243,7 +243,8 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
                 ...(request.projectTools.roadmapTools ? { roadmapTools: true } : {}),
                 ...(request.projectTools.roadmapGeneration ? { roadmapGeneration: true } : {}),
                 ...(request.projectTools.proposalTools ? { proposalTools: true } : {}),
-                ...(request.projectTools.assessmentTools ? { assessmentTools: true } : {}) } : {}),
+                ...(request.projectTools.assessmentTools ? { assessmentTools: true } : {}),
+                ...(request.projectTools.planTools ? { planTools: true } : {}) } : {}),
                 operationPolicy: request.projectTools?.operationPolicy,
                 reasoningMode: request.controls?.['reasoning.effort'] });
         if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');

@@ -54,6 +54,14 @@ const operations = (count: number) => [...plan(count).work.map(step => ({ name: 
         acceptanceCriteria: plan(count).closeout.acceptanceCriteria,
         efficiencyAudit: audit, complete: true } },
     { name: 'proposal_finish', args: { finalMessage: 'Revised stack ready for review.' } }];
+const planOperations = (count: number) => [
+    { name: 'read_file', args: { path: 'src/clamp.js' } },
+    { name: 'read_file', args: { path: 'test/clamp.test.js' } },
+    ...plan(count).work.map(step => ({ name: 'plan_stage_step', args: step })),
+    { name: 'plan_stage_closeout', args: plan(count).closeout },
+    ...audit.map((finding, index) => ({ name: 'plan_stage_efficiency',
+        args: { index: index + 1, finding } })),
+    { name: 'plan_finish', args: {} }];
 
 test('real worker reviews an Assessment redivision and invalidates its old Plan and proposal', async () => {
     const temporary = await mkdtemp(join(tmpdir(), 'dope-p4-r1-'));
@@ -71,13 +79,11 @@ test('real worker reviews an Assessment redivision and invalidates its old Plan 
     const turns = [
         { operations: [{ name: 'assessment_stage', args: outline(3) },
             { name: 'assessment_finish', args: {} }], final: 'Assessment v1 staged.' },
-        { operations: [{ name: 'read_file', args: { path: 'src/clamp.js' } },
-            { name: 'read_file', args: { path: 'test/clamp.test.js' } }], final: JSON.stringify(plan(3)) },
+        { operations: planOperations(3), final: 'Plan v1 saved.' },
         { operations: operations(3), final: 'Proposal v1 staged.' },
         { operations: [{ name: 'assessment_stage', args: outline(4) },
             { name: 'assessment_finish', args: {} }], final: 'Assessment v2 candidate.' },
-        { operations: [{ name: 'read_file', args: { path: 'src/clamp.js' } },
-            { name: 'read_file', args: { path: 'test/clamp.test.js' } }], final: JSON.stringify(plan(4)) },
+        { operations: planOperations(4), final: 'Plan v2 saved.' },
         { operations: operations(4), final: 'Proposal v2 staged.' },
         { operations: [{ name: 'assessment_stage', args: outline(5) },
             { name: 'assessment_finish', args: {} }], final: 'Rejected candidate staged.' }
@@ -111,7 +117,7 @@ test('real worker reviews an Assessment redivision and invalidates its old Plan 
                 maxInputTokens: 32768 } }] }] }),
     async *generate(_selection: unknown, request: { messages: { role: 'system' | 'user' | 'assistant';
         content: string }[]; maxOutputTokens?: number; signal?: AbortSignal; projectTools?: {
-            operationPolicy?: unknown; assessmentTools?: boolean; proposalTools?: boolean;
+            operationPolicy?: unknown; assessmentTools?: boolean; proposalTools?: boolean; planTools?: boolean;
             generationId?: string; execute(name: string, args: unknown, signal?: AbortSignal,
                 id?: number): Promise<string> } }) {
         active = turns[turnIndex++];
@@ -120,7 +126,8 @@ test('real worker reviews an Assessment redivision and invalidates its old Plan 
             await host.start();
             await host.openChatToolsSession({ ...model, baseUrl: endpoint }, root, undefined, 'low',
                 false, false, request.projectTools?.proposalTools ?? false,
-                request.projectTools?.assessmentTools ?? false, request.projectTools?.operationPolicy as never);
+                request.projectTools?.assessmentTools ?? false, request.projectTools?.operationPolicy as never,
+                request.projectTools?.planTools ?? false);
             for await (const event of host.streamTurn(request.messages, request.maxOutputTokens ?? 4096,
                 request.signal, async call => ({ status: 'completed' as const,
                     output: await request.projectTools!.execute(call.name, call.arguments,

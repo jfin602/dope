@@ -13,6 +13,7 @@ import { ChatRepository } from '../../packages/chat/lib/node/index.js';
 import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backend.js';
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { PiRuntimeHost } from '../../packages/theia-extension/lib/node/pi-runtime-host.js';
+import { classifyPiFailure } from '../../packages/theia-extension/lib/node/pi-conversation-runtime.js';
 import { PromptDraftStore } from '../../packages/theia-extension/lib/node/prompt-draft-store.js';
 import { currentPromptDraft } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { validatePromptStackProposal } from '../../packages/theia-extension/lib/node/prompt-stack-proposal.js';
@@ -81,7 +82,19 @@ test('real Pi worker carries checked wireframe through Plan, Prompt Write and gu
         { operations: [{ name: 'assessment_stage', args: wireframe },
             { name: 'assessment_finish', args: {} }], final: 'Compact wireframe sealed.' },
         { operations: [{ name: 'read_file', args: { path: 'src/clamp.js' } },
-            { name: 'read_file', args: { path: 'test/clamp.test.js' } }], final: JSON.stringify(plan) },
+            { name: 'read_file', args: { path: 'test/clamp.test.js' } }],
+            final: '{"work":[{"id":"step-1",}' },
+        { operations: [{ name: 'read_file', args: { path: 'src/clamp.js' } },
+            { name: 'read_file', args: { path: 'test/clamp.test.js' } },
+            { name: 'plan_status', args: {} },
+            { name: 'plan_stage_step', args: plan.work[0] }],
+            final: '', fail: true },
+        { operations: [{ name: 'plan_status', args: {} },
+            { name: 'plan_stage_step', args: plan.work[0] },
+            { name: 'plan_stage_closeout', args: plan.closeout },
+            ...audit.map((finding, index) => ({ name: 'plan_stage_efficiency',
+                args: { index: index + 1, finding } })),
+            { name: 'plan_finish', args: {} }], final: 'Checked Plan is ready.' },
         { operations: [{ name: 'proposal_stage_prompt', args: work },
             { name: 'proposal_stage_prompt', args: closeout },
             { name: 'proposal_finish', args: { finalMessage: 'Prompt stack ready for owner review.' } }],
@@ -97,6 +110,11 @@ test('real Pi worker carries checked wireframe through Plan, Prompt Write and gu
         const operation = active.operations[acknowledged];
         const base = { id: `offline-p4-${turnIndex}`, object: 'chat.completion.chunk',
             created: 1, model: model.id };
+        if (!operation && 'fail' in active && active.fail) {
+            response.writeHead(503, { 'content-type': 'application/json' });
+            response.end('{"error":{"message":"fixture provider unavailable"}}');
+            return;
+        }
         response.writeHead(200, { 'content-type': 'text/event-stream' });
         const send = (delta: object, finish_reason: string | null) => response.write(
             `data: ${JSON.stringify({ ...base, choices: [{ index: 0, delta, finish_reason }] })}\n\n`);
@@ -117,7 +135,7 @@ test('real Pi worker carries checked wireframe through Plan, Prompt Write and gu
                 maxInputTokens: 32768 } }] }] }),
     async *generate(_selection: unknown, request: { messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
         maxOutputTokens?: number; signal?: AbortSignal; projectTools?: { root: string;
-            operationPolicy?: unknown; assessmentTools?: boolean; proposalTools?: boolean;
+            operationPolicy?: unknown; assessmentTools?: boolean; proposalTools?: boolean; planTools?: boolean;
             generationId?: string; execute(name: string, args: unknown, signal?: AbortSignal, id?: number): Promise<string> } }) {
         active = turns[turnIndex++];
         const host = new PiRuntimeHost();
@@ -125,7 +143,8 @@ test('real Pi worker carries checked wireframe through Plan, Prompt Write and gu
             await host.start();
             await host.openChatToolsSession({ ...model, baseUrl: endpoint }, root, undefined, 'low',
                 false, false, request.projectTools?.proposalTools ?? false,
-                request.projectTools?.assessmentTools ?? false, request.projectTools?.operationPolicy as never);
+                request.projectTools?.assessmentTools ?? false, request.projectTools?.operationPolicy as never,
+                request.projectTools?.planTools ?? false);
             for await (const event of host.streamTurn(request.messages, request.maxOutputTokens ?? 4096,
                 request.signal, async call => {
                     const output = await request.projectTools!.execute(call.name, call.arguments,
@@ -138,7 +157,8 @@ test('real Pi worker carries checked wireframe through Plan, Prompt Write and gu
                     finishReason: event.result.finishReason, usage: event.result.usage };
                 else if (event.type === 'delta' || event.type === 'activity' || event.type === 'reset') yield event;
             }
-        } finally { host.dispose(); }
+        } catch (error) { throw classifyPiFailure(error) ?? error; }
+        finally { host.dispose(); }
     } };
     const repository = new ChatRepository(), grounder = new ChatProjectGrounder({} as never);
     const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
@@ -181,6 +201,25 @@ test('real Pi worker carries checked wireframe through Plan, Prompt Write and gu
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel, content: '/prompt-plan', promptDraftTarget: {
                 ...chip('assessment', assessmentMessage.id), stageMessageId: randomUUID() } }), /stale or belongs/);
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token, selectedModel,
+            content: '/prompt-plan', promptDraftTarget: chip('assessment', assessmentMessage.id) }),
+        /PLAN_INCOMPLETE/);
+        const failedPlan = await store.read(root, identity, lease.token);
+        assert.equal(failedPlan.plan, undefined);
+        const failureMessage = (await backend.get(projectHandle, chatId))!.messages.filter(message =>
+            message.role === 'assistant' && message.execution.status === 'failed').at(-1);
+        assert.match(failureMessage?.role === 'assistant' ? failureMessage.execution.failure ?? '' : '',
+            /PLAN_INCOMPLETE/);
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel, content: '/prompt-plan',
+            promptDraftTarget: chip('assessment', assessmentMessage.id) }), /provider|HTTP 503/iu);
+        const interrupted = await store.read(root, identity, lease.token);
+        assert.equal(interrupted.plan, undefined);
+        assert.deepEqual(interrupted.partialPlan?.work.map(step => step.id), ['step-1']);
+        const providerFailure = (await backend.get(projectHandle, chatId))!.messages.filter(message =>
+            message.role === 'assistant' && message.execution.status === 'failed').at(-1);
+        assert.match(providerFailure?.role === 'assistant' ? providerFailure.execution.failure ?? '' : '',
+            /PROVIDER_FAILURE/);
         await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token, selectedModel,
             content: '/prompt-plan', promptDraftTarget: chip('assessment', assessmentMessage.id) });
         const plannedChat = (await backend.get(projectHandle, chatId))!;
@@ -231,7 +270,10 @@ test('real Pi worker carries checked wireframe through Plan, Prompt Write and gu
         assert.equal(proposal.planMessageId, planMessage.id);
         await assert.rejects(stat(join(root, 'docs/tasks', identity.slug)), /ENOENT/);
         assert.deepEqual(calls.map(call => call.name), ['assessment_stage', 'assessment_finish',
-            'read_file', 'read_file', 'proposal_stage_prompt', 'proposal_stage_prompt', 'proposal_finish']);
+            'read_file', 'read_file', 'read_file', 'read_file',
+            'plan_status', 'plan_stage_step', 'plan_status', 'plan_stage_step', 'plan_stage_closeout',
+            ...Array(10).fill('plan_stage_efficiency'), 'plan_finish',
+            'proposal_stage_prompt', 'proposal_stage_prompt', 'proposal_finish']);
         assert.equal(JSON.parse(calls.at(-1)!.output).state, 'ready-for-review');
         await assert.rejects(backend.publishPromptStack(projectHandle, chatId, lease.token,
             proposal.id, '0'.repeat(64)), /Exact saved prompt proposal unavailable/);

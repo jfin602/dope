@@ -116,7 +116,9 @@ export interface ChatExecution {
         'dope_read' | 'dope_list' | 'dope_search_paths' | 'dope_search_text' | 'dope_command' |
         'roadmap_read' | 'roadmap_stage' | 'roadmap_cancel' | 'roadmap_phase' | 'roadmap_finish' |
         'proposal_status' | 'proposal_stage_document' | 'proposal_stage_prompt' | 'proposal_finish' |
-        'assessment_status' | 'assessment_stage' | 'assessment_finish';
+        'assessment_status' | 'assessment_stage' | 'assessment_finish' |
+        'plan_status' | 'plan_stage_step' | 'plan_correct_step' | 'plan_stage_closeout' |
+        'plan_stage_efficiency' | 'plan_finish';
         status: 'completed' | 'failed' | 'denied'; truncated: boolean;
         code?: string; stage?: string; brokerExecuted?: boolean;
         assessmentOutcome?: 'advanced' | 'source-page' | 'idempotent' | 'status' |
@@ -655,7 +657,9 @@ function parseExecution(value: unknown): ChatExecution {
                 'dope_read', 'dope_list', 'dope_search_paths', 'dope_search_text', 'dope_command',
                 'roadmap_read', 'roadmap_stage', 'roadmap_cancel', 'roadmap_phase', 'roadmap_finish',
                 'proposal_status', 'proposal_stage_document', 'proposal_stage_prompt', 'proposal_finish',
-                'assessment_status', 'assessment_stage', 'assessment_finish'] as const,
+                'assessment_status', 'assessment_stage', 'assessment_finish',
+                'plan_status', 'plan_stage_step', 'plan_correct_step', 'plan_stage_closeout',
+                'plan_stage_efficiency', 'plan_finish'] as const,
                 'Chat tool'), status: choice(event.status, ['completed', 'failed', 'denied'] as const, 'Chat tool status'),
                 truncated: event.truncated, ...(assessment ? { assessment } : {}),
                 ...(event.assessmentOutcome === undefined ? {} : { assessmentOutcome: choice(event.assessmentOutcome,

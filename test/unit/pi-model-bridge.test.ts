@@ -184,6 +184,24 @@ test('protected proposal binding accepts the complete Pi tool set regardless of 
         { chatTools: true, proposalTools: true }), /Pi tool boundary changed/);
 });
 
+test('protected Planning binding exposes only bounded Plan and read tools', async () => {
+    const f = fixture();
+    f.state.registry.models[0].capabilities.agentExecution = known(true);
+    const names = ['read_file', 'list_files', 'search_paths', 'search_text', 'plan_status',
+        'plan_stage_step', 'plan_correct_step', 'plan_stage_closeout', 'plan_stage_efficiency', 'plan_finish'];
+    const host = { ...f.host, openChatToolsSession: async (...args: any[]) => {
+        f.calls.push(args);
+        return { version: '1.4.0', tools: names, resources: 'isolated' };
+    } };
+    await f.bridge.bind({ connectionId: 'desk', modelId: 'exact-model' }, host as any, '/tmp',
+        { chatTools: true, planTools: true });
+    assert.equal(f.calls[0][9], true);
+    const incomplete = { ...host, openChatToolsSession: async () => ({ version: '1.4.0',
+        tools: names.filter(name => name !== 'plan_finish'), resources: 'isolated' }) };
+    await assert.rejects(f.bridge.bind({ connectionId: 'desk', modelId: 'exact-model' },
+        incomplete as any, '/tmp', { chatTools: true, planTools: true }), /Pi tool boundary changed/);
+});
+
 test('protected native Roadmap mode has only read, stage and cancel tools', async () => {
     const f = fixture();
     f.state.registry.models[0].capabilities.agentExecution = known(true);
