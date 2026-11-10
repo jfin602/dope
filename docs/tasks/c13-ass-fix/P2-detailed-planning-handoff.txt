@@ -1,0 +1,35 @@
+TASK: Correction 13 / P2 — Expand selected Assessment wireframe into a detailed sequenced Plan
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: 0.13.11.
+- No manifest, package version, dependency or lockfile change.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/planning/p13/named-prompt-authoring-chain-contract.md and docs/tasks/c13-ass-fix/{prompt-assessment,implementation-plan}.md. Reconcile local HEAD/dirty work and P1's actual result. Preserve owner edits and historical NOT GREEN; do not reset/stash/clean, self-commit or begin P3.
+
+GOAL — T1
+Make /prompt-plan consume the checked P1 wireframe by trusted draft identity/revision and transform its ordered tasks into a complete source-grounded sequenced implementation plan. Detailed investigation and validation belong HERE, not in /prompt-ass.
+
+NARROW SOURCE SCOPE
+Inspect packages/theia-extension/src/node/prompt-authoring-stage.ts, prompt-draft-store.ts, chat-backend.ts, existing Plan record/validator and focused tests. Reuse the current saved Chat/draft Plan owner, source broker, typed Plan chip and concise plan renderer; do not add a second agent/store or a large freeform Markdown packet.
+
+REQUIRED BEHAVIOR
+- Bind Plan to the reviewed Assessment revision and stable step IDs, exact work count, order and task boundaries. Never infer count from untrusted previous prose or silently merge, add or drop work. If deeper inspection demands redivision, expose a reviewed wireframe revision path and keep the previous valid Plan until replacement.
+- Use actual brokered source/test reads where relevant. Include per-step detailed goal/responsibility, working set, preserved behavior, requirements, dependencies, acceptance criteria, focused tests, necessary build/typecheck, risks and explicit deferrals. Claims about files/modules/CI need source support.
+- Own T1 focused implementation, T2 integration when warranted, and one separate T3 independent manual browser closeout. Do not require a gratuitous T2 work step for a truly single-boundary task.
+- Own all ten relevant Prompt Efficiency Gates from docs/workflow.md, including applicable UI/ADR 0016 and usability/ADR 0037, with truthful not-applicable handling. Keep <=8 minute ordinary implementation targets and avoid boilerplate all-build/all-test.
+- Handle at least one-work-task and multi-task wireframes, and a substantial ten-task plan in a bounded source/test-backed form. Preserve the approved task IDs/count through saved Plan record, projection and Prompt Write handoff.
+- Source/lease/project drift, old or forged chip, invalid task ID and conflicting revision fail closed; Plan output is noncanonical and does not publish or Run.
+
+FOCUSED CHECKS
+Extend prompt-authoring-stage, prompt-draft-store and chat-backend Plan tests. Verify 1, 3 and 10 work-item Plans, exact wireframe ID/order, cross-boundary dependencies, source-backed working sets/tests, missing source, UI applicability, ten efficiency checks, material count-change review and stale Plan invalidation. Test saved checked handoff, not merely a JSON parser. Rebuild affected packages only when compiled tests require it; run focused tests and git diff --check.
+
+NON-GOALS
+No Assessment exhaustive-read revival, no new prompt publisher, no arbitrary Plan task splitting, no full browser campaign; P3 owns file generation and P4 owns integration.
+
+EXIT
+Report exact source/test evidence, PASS/PARTIAL/BLOCKED and any P3 dependency. T1 <=8 minute target / 10 soft / 15 hard without weakening safety. STOP; runner owns Git checkpoints. No source publication, Work, Gate or version effect.

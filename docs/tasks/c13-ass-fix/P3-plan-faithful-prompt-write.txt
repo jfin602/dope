@@ -1,0 +1,34 @@
+TASK: Correction 13 / P3 — Format completed Plan into runnable Prompt Stack files
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: 0.13.11.
+- No manifest, lockfile, dependency or version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADRs 0055 and 0056, docs/planning/p13/{named-prompt-authoring-chain-contract,incremental-proposal-generation-contract}.md and docs/tasks/c13-ass-fix/{prompt-assessment,implementation-plan}.md. Reconcile actual HEAD/dirty work and P1/P2 results. Preserve owner source and historical evidence; no reset/stash/clean/self-commit.
+
+GOAL — T1
+Make /prompt-write take the checked selected P2 Plan and format, finalize and stage the actual runnable P1–Pn prompt files and one terminal manual closeout. It must NOT independently replan the approved work or create canonical files before owner approval.
+
+NARROW SOURCE SCOPE
+Inspect packages/theia-extension/src/node/prompt-authoring-stage.ts, chat-backend.ts, prompt-draft-store.ts, incremental-proposal-controller.ts, incremental-prompt-stack.ts, prompt-stack-proposal.ts, planning-stack-publication.ts and packages/agent-core/src/phase-stack-composer.ts. Reuse the present protected proposal tools, deterministic composer and existing distinct prompt-stack publisher; no second writer or shadow draft owner.
+
+REQUIRED BEHAVIOR
+- Derive target docs/tasks/<slug>/ solely from the original owner-selected slug and checked Plan identity. Reject forged/stale Plan chips, alternate folder arguments, collisions, changed sources or foreign owner/lease/project.
+- Preserve exact approved work count, stable step IDs, order, objectives, dependency edges, requested files/tests, acceptance criteria and T1/T2 labels from the Plan. Material disagreements return for reviewed Planning/Assessment revision; no silent addition/merging.
+- Compose exact contiguous P1–Pn runner metadata, correct model recommendation and Browser required yes/no; exactly one final separate manual T3 closeout. Render assessment-wireframe and full-plan Markdown from checked records for supporting output as applicable.
+- Use bounded incremental per-prompt stages/sections and one guarded proposal_finish, with Dope-owned bytes/digest and a reviewable native Prompt Stack card/Open All. Keep prior candidate if a revision fails.
+- Owner Accept, not staging, publishes exact verified bytes through the existing publisher. Reject/Revise must not write canonical files or authorize Work. No automatic Run, grants or Roadmap qualification.
+
+FOCUSED CHECKS
+Use incremental-proposal-controller, incremental-prompt-stack, proposal-model-tools, planning-stack-publication, prompt-authoring-stage and composer tests where affected. Verify a small 1-work-prompt Plan and a ten-work-prompt Plan, contiguous runner grammar, distinct terminal manual closeout, full supporting rendered docs, correct folder, stale and collision refusal, cancel/partial finish, exact proposal digest and no files before Accept. Exercise guarded publication in disposable tests only if directly affected. Build minimal changed package output before compiled tests; run focused tests and git diff --check.
+
+NON-GOALS
+No new generic Docs writer, no new model/tool runtime or task-planning stage, no broad UI redesign. P4 owns complete cross-stage integration, P5 independent browser proof.
+
+EXIT
+Report precise files, focused results and remaining gaps. T1 <=8 minute target / 10 soft / 15 hard, preserve authority even if scoped partial. STOP; no self-commit, next task, Work Run, Gate/Phase award or version change.

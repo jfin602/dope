@@ -1,0 +1,35 @@
+TASK: Correction 13 / P4 — End-to-end deterministic Assessment, Plan and Prompt Write integration
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: 0.13.11.
+- Correction integration only; no manifest/dependency/lockfile/version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/planning/p13/named-prompt-authoring-chain-contract.md and docs/tasks/c13-ass-fix/{prompt-assessment,implementation-plan}.md. Verify P1–P3 actual completed source and targeted results, not merely their checkpoint labels. Reconcile HEAD, dirty work, compiled lib freshness and tests. Preserve all historical P12/R1–R9 results and owner edits; no reset/stash/clean, no self-commit or manual browser run.
+
+GOAL — T2
+Prove the new three-stage responsibility split across the actual bundled Pi worker, Chat protected broker, trusted draft repository, Plan validator, existing incremental Prompt Stack composer and guarded publisher. Do not mock away the components being qualified. This is the single combined headless integration gate; do not restore the old exhaustive five-file Assessment as a prerequisite.
+
+POSITIVE INTEGRATION
+Use a deterministic OpenAI-compatible provider and a fresh disposable repository:
+1. Fresh /prompt-ass with owner-selected slug produces a brief wireframe with a sensible work count, stable ordered task IDs, coarse dependencies and manual closeout outline, without required exhaustive file reads, staged citations or tiers.
+2. A checked bound /prompt-plan request consumes that exact revision, performs actual relevant brokered source/test reads and emits detailed implementation steps, required T1/T2/T3 and ten applicable efficiency checks. IDs, count and boundaries match the wireframe.
+3. A checked bound /prompt-write request composes source-accurate runnable prompt files and supporting assessment/plan from that Plan, not a new division, then seals one reviewable proposal.
+4. Verify exact files/digest in native proposal owner; no canonical files before approval. Exercise explicit guarded Accept in a disposable fixture to check exact published bytes and Work discoverability without Work Run/grant or Roadmap change.
+5. Separately qualify a ten-work-prompt scale case + one terminal manual closeout using bounded staging, not another large live Assessment.
+
+NEGATIVE INTEGRATION
+Reject malformed count/ID/order/cycle, Plan or Write count drift, unsupported source claims, missing required Plan investigation, stale source revisions, foreign project/Chat/owner/lease, forged/old chip, accepted-folder collision, cancellation, repeated/stale stages, partial proposal finish and unapproved publish. Assessment revision stales Plan and Prompts; Plan revision stales Prompts while previous checked candidates remain historical and nonpublishable when stale. Test that quote-only slash mentions are inert, card/chip clicks prefill rather than auto-execute, and a saved draft survives reload in a blocked/ready state accurately.
+
+VALIDATION
+Inspect actual relevant test suite names: protected-assessment-worker, prompt-draft-store, prompt-authoring-stage, chat-backend, pi-runtime, incremental-proposal-controller, incremental-prompt-stack, planning-stack-publication, chat-presentation/native editor. Reuse/extend directly affected suites; build changed @dope packages in dependency order before compiled-lib tests, run ONE consolidated affected matrix and git diff --check. Do not rerun repetitive broad check/test or Electron packaging without a specific changed boundary.
+
+EXIT / REPORT
+Write docs/tasks/c13-ass-fix/qualification/p4-headless-integration.md with exact source HEAD/dirty basis, builds, tests, source coverage, task count/IDs, proposal/publisher receipts, positive/negative outcomes and remaining live gaps. Classify PASS/PARTIAL/NOT GREEN/BLOCKED separately; no fake Green. If any earlier implementation stage is materially incomplete, identify exact blocker rather than patching everything here or repeating an endless correction loop.
+
+STOP
+P4 is headless T2 only. Do not start P5 automatically, make unsupported live model claims, self-commit, run Work, award Roadmap status or advance product version.

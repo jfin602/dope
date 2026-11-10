@@ -1,0 +1,33 @@
+TASK: Correction 13 / P5 — Manual connected-browser real-model three-stage authoring qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: 0.13.11.
+- Manual T3 closeout only; no package/dependency/lockfile/version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/planning/p13/named-prompt-authoring-chain-contract.md, docs/tasks/c13-ass-fix/{prompt-assessment,implementation-plan}.md and P1–P4 recorded evidence. Reconcile actual HEAD, any owner dirty work, current frontend/backend/worker outputs and connected Codex browser. Do not reset/stash/clean or self-commit. If P4 has material NOT GREEN/BLOCKED authority/contract gaps, do not proceed with misleading live success.
+
+MODEL / RESOURCE LOCK
+Use the owner-selected loaded real local model (normally existing LM Studio GPT-OSS 20B MXFP4), preserve exact selection, 16,384 context and parallelism 1 when available, Managed context, Auto reasoning and current saved generation/command policies. For GPT-OSS confirm outgoing requested temperature=1, top_p=1 if diagnostic metadata is available; effective engine sampling is separate. If model is unloaded, stop BLOCKED and ask owner to establish readiness; do not auto-load, increase context, switch models or modify global LM Studio. Inspect safe RAM/disk resources before inference.
+
+ONE REAL HUMAN JOURNEY — T3
+Start one clean disposable small TypeScript/JavaScript project with a short meaningful feature or correction and real relevant code/test/doc files. Verify tracked-clean source and no prior .dope draft or canonical target. Build current Dope browser/backend, record SHA/provenance and open the connected Codex in-app browser.
+
+1. Submit ONE trusted /prompt-ass <fresh-slug> <task details>. Observe a compact work-count/task-division wireframe and separate manual closeout outline, rather than 20+ citation/tiers tool operations. Verify the reviewed Assessment card and that its content/revision genuinely support the chosen count.
+2. Follow the actual card's /prompt-plan composer prefill + typed chip. Let the model inspect relevant actual source/tests, then produce a full sequenced implementation Plan with IDs/count preserved (or explicit reviewed revision), acceptance, T1/T2/T3, build/test precision and ten applicable efficiency checks. Observe truthful feedback/recovery.
+3. Follow the checked /prompt-write handoff. Verify complete ordered executable P1–Pn and one terminal manual closeout in native read-only proposal tabs, working Open All, exact target, runner metadata, source/version digest and one review card. Do not infer file generation from prose.
+4. Exercise review/Revise/Reject without unintended writes where feasible; publish only if the owner explicitly chooses Accept for the disposable candidate, then verify exact bytes and Work discoverability without any automatic Work Run or Roadmap award.
+5. Verify Save/reload retains checked stages or honestly marks blocked/stale, and an intentionally wrong/foreign selection cannot silently authorize a stage. Observe keyboard/narrow/theme states only as relevant to changed UI.
+
+ERROR POLICY
+Ordinary recoverable model/tool errors are reported, not automatically fatal; do not manually synthesize missing work or submit hidden duplicate commands. On a material provider, parser, source or authority error, save exact evidence and stop rather than changing model/context/limits or starting a repair series. Do not repeat the original artificial five-file exhaustive Assessment benchmark or insist on ten prompts in this one live case; P4 already owns large-stack capacity.
+
+REPORT / VERDICT
+Write docs/tasks/c13-ass-fix/qualification/p5-manual-live-authoring.md with exact product+served hashes, selected/actual model, original fixture bytes, Chat/draft/proposal identifiers, wireframe count and tasks, Plan detailed carryover, final prompt contents/order/grammar, owner review/approval actions, provider errors or UNKNOWN usage, duration, no pre-Accept writes/Work/Gate and all observed evidence gaps. Scoped PASS requires working native Assessment->Plan->Write and reviewable valid proposal on current source; actual guarded publication PASS requires separate owner Accept and exact bytes, otherwise evidence gap. Do not retroactively make historical P12/R8/R10 GREEN.
+
+STOP
+MANUAL FINAL CLOSEOUT ONLY: normal runner stops before P5; do not invoke --closeout shortcut. No automatic extra run, model tuning, source fix campaign, product version advance, Work grant/Run or Roadmap Gate/Phase Green. Human owner can decide future progression from truthful report.

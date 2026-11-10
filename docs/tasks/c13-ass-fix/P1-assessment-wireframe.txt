@@ -1,0 +1,35 @@
+TASK: Correction 13 / P1 — Replace exhaustive Assessment with a prompt-count wireframe
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: 0.13.11.
+- Correction only; no manifest, lockfile, dependency or package version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0056, docs/planning/p13/named-prompt-authoring-chain-contract.md and docs/tasks/c13-ass-fix/{prompt-assessment,implementation-plan}.md. Inspect current HEAD, dirty owner work, R9 source and historical P12/R8 failures. Preserve local edits and executed evidence; never reset, stash, clean or self-commit. Runner owns Git checkpoints.
+
+GOAL — T1
+Make /prompt-ass <name> <task details> determine only how many work prompts are needed and how to divide them. Replace the current exhaustive observations/preservation/dependencies/risks/tiers and mandatory full-file-coverage protocol with one compact, reviewed, source-honest Assessment wireframe.
+
+NARROW SOURCE SCOPE
+Inspect packages/theia-extension/src/node/prompt-authoring-stage.ts, incremental-assessment.ts, prompt-draft-store.ts, chat-backend.ts, packages/pi-runtime/worker.mjs and directly affected tests. Reuse the current trusted Chat/draft record, owner-selected slug, lease/project/source protection and brokered reads; no new database, writer or UI panel.
+
+REQUIRED BEHAVIOR
+- Represent work-prompt count, ordered stable step-1..step-N IDs, short titles/objectives and single primary boundaries, high-level dependencies to earlier steps, important constraints/deferrals and one distinct final manual closeout outline.
+- Honor an explicit owner count; otherwise propose a justified bounded count. A one-work-prompt task is valid; do not fabricate T2 work for it.
+- Prefer one bounded protected typed wireframe submission (or equivalently compact trusted stage), not a series of exact-quote findings. Dope validates and persists structure; model narration alone cannot seal.
+- Permit only relevant brokered source reads; any factual source claim must be grounded. Do not demand five-file exhaustive coverage or full T1/T2/T3, acceptance/test plans or the ten efficiency gates in Assessment.
+- Keep current verified task identity, source/owner/lease, card and checked Plan handoff. No canonical prompt files and no auto Work.
+- Retire the old exhaustive protocol from the new command route; historical incomplete drafts remain truthful, not silently converted or accepted.
+
+FOCUSED CHECKS
+Use prompt-authoring-stage, prompt-draft-store, protected-assessment-worker and chat-backend tests where touched. Validate one and several work tasks, fixed owner count, stable IDs, ordered dependencies, malformed/oversized candidate, source claims, stale/foreign owner or project, no canonical file, and one usable wireframe handoff. Build only changed packages required by compiled test imports; run focused tests and git diff --check.
+
+BOUNDARY
+P2 develops the full Plan; P3 produces final prompt files; P4 owns cross-stage integration; P5 owns real browser qualification. Avoid a compatibility shim that silently reroutes new Assessment through old exhaustive validators. If cross-stage work remains, record it precisely as P2 dependency, not a false end-to-end PASS.
+
+EXIT
+Report actual changes, commands/results and PASS/PARTIAL/BLOCKED. Ordinary T1 targets <=8 minutes implementation and focused validation (10-minute soft, 15-minute hard); do not weaken safety to meet time. STOP after this prompt; no self-commit, next task, canonical publication, Work Run, Gate/Phase award or version change.
