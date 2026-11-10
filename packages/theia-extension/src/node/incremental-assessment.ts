@@ -2,7 +2,7 @@ import type { ChatAssistantMessage, ChatPromptDraftIdentity } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
 import type { ChatProjectGrounder } from './chat-project-grounder';
 import { PromptDraftStore, type StoredPromptDraft } from './prompt-draft-store';
-import { validatedAssessmentWireframe, requestedWorkPromptCount, isAssessmentWireframe,
+import { validatedAssessmentWireframe, normalizeAssessmentSubmission, requestedWorkPromptCount, isAssessmentWireframe,
     type AssessmentRead, type AssessmentRecord, type AssessmentWireframe } from './prompt-authoring-stage';
 
 type Partial = NonNullable<StoredPromptDraft['partialAssessment']>;
@@ -136,7 +136,8 @@ export class IncrementalAssessment {
         evidence: readonly AssessmentRead[]): Promise<{ accepted: true; idempotent: boolean;
             category: string; findings: number; nextAction: string }> {
         if (this.revisionMode) {
-            const wireframe = validatedAssessmentWireframe(raw, refs, evidence,
+            const wireframe = validatedAssessmentWireframe(normalizeAssessmentSubmission(raw,
+                requestedWorkPromptCount(this.requestedText)), refs, evidence,
                 requestedWorkPromptCount(this.requestedText));
             const idempotent = JSON.stringify(this.revisionCandidate) === JSON.stringify(wireframe);
             if (this.revisionCandidate && !idempotent)
@@ -149,7 +150,8 @@ export class IncrementalAssessment {
         if (draft.assessment) throw new Error('ASSESSMENT_STAGE_SEALED: Assessment is already complete');
         if (partial.scope || partial.tiers || Object.values(partial.findings).some(items => items.length))
             throw new Error('ASSESSMENT_LEGACY_DRAFT: Historical partial assessment needs a fresh named draft');
-        const wireframe = validatedAssessmentWireframe(raw, refs, evidence,
+        const wireframe = validatedAssessmentWireframe(normalizeAssessmentSubmission(raw,
+            requestedWorkPromptCount(this.requestedText)), refs, evidence,
             requestedWorkPromptCount(this.requestedText));
         if (!partial.pages.length && wireframe.sourceClaims.length)
             throw new Error('ASSESSMENT_READ_REQUIRED: Read claimed source with read_file');

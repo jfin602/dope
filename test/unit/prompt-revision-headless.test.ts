@@ -34,6 +34,11 @@ const outline = (count: number) => ({ kind: 'wireframe', objective: 'Improve sca
     constraints: ['Preserve finite scalar results'], deferrals: ['Defer batch API'],
     closeout: { title: 'Manual clamp closeout', objective: 'Observe clamp in browser',
         manualReason: 'Human observation is separate' }, sourceClaims: [] });
+const outlineInput = (count: number) => {
+    const { kind: _kind, count: _count, work, ...rest } = outline(count);
+    return { ...rest, work: work.map(({ id: _id, dependsOn, ...step }) => ({
+        ...step, ...(dependsOn.length ? { dependsOn: dependsOn.map(value => Number(value.slice(5))) } : {}) })) };
+};
 const plan = (count: number) => ({ work: outline(count).work.map(step => ({ ...step,
     assessmentObjective: step.objective, objective: `Implement finite ${step.id}`,
     tier: 'T1', workingSet: ['src/clamp.js'], requirements: [`Implement ${step.id}`],
@@ -77,15 +82,15 @@ test('real worker reviews an Assessment redivision and invalidates its old Plan 
     await execute('git', ['-C', root, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
         'commit', '-qm', 'Fixture']);
     const turns = [
-        { operations: [{ name: 'assessment_stage', args: outline(3) },
+        { operations: [{ name: 'assessment_stage', args: outlineInput(3) },
             { name: 'assessment_finish', args: {} }], final: 'Assessment v1 staged.' },
         { operations: planOperations(3), final: 'Plan v1 saved.' },
         { operations: operations(3), final: 'Proposal v1 staged.' },
-        { operations: [{ name: 'assessment_stage', args: outline(4) },
+        { operations: [{ name: 'assessment_stage', args: outlineInput(4) },
             { name: 'assessment_finish', args: {} }], final: 'Assessment v2 candidate.' },
         { operations: planOperations(4), final: 'Plan v2 saved.' },
         { operations: operations(4), final: 'Proposal v2 staged.' },
-        { operations: [{ name: 'assessment_stage', args: outline(5) },
+        { operations: [{ name: 'assessment_stage', args: outlineInput(5) },
             { name: 'assessment_finish', args: {} }], final: 'Rejected candidate staged.' }
     ];
     let active = turns[0], turnIndex = 0;

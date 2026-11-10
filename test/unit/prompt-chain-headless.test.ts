@@ -25,10 +25,10 @@ const model = { id: 'openai/gpt-oss-20b', name: 'Deterministic GPT-OSS fixture',
     compat: { supportsReasoningEffort: true }, samplingParams: { temperature: 1, top_p: 1 },
     input: ['text'], contextWindow: 32768, maxTokens: 8192,
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } };
-const wireframe = { kind: 'wireframe', objective: 'Implement finite scalar clamp validation', count: 1,
+const wireframe = { objective: 'Implement finite scalar clamp validation',
     rationale: 'One bounded clamp implementation step covers the requested behavior',
-    work: [{ id: 'step-1', title: 'Validate scalar clamp', objective: 'Implement scalar validation',
-        boundary: 'Scalar clamp implementation', dependsOn: [] }],
+    work: [{ title: 'Validate scalar clamp', objective: 'Implement scalar validation',
+        boundary: 'Scalar clamp implementation' }],
     constraints: ['Preserve finite scalar results'], deferrals: ['Defer unrelated batch API'],
     closeout: { title: 'Manual clamp closeout', objective: 'Observe scalar clamp in browser',
         manualReason: 'Human interaction requires an independent check' }, sourceClaims: [] };

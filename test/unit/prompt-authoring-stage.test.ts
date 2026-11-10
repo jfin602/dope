@@ -22,7 +22,7 @@ import { assertPromptDraftNameAvailable, finishedPromptStack, finishedPromptText
     priorPromptDraft, promptStageCommand, promptStageInstruction, verifyPromptDraftIdentity, verifyPromptDraftSourceBasis,
     verifyPromptDraftSource, validatedAssessment, renderAssessment, validatedPlan, renderPlan,
     requestedWorkPromptCount, planReceiptCurrent, validateAssessmentTiers,
-    validatedAssessmentWireframe } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
+    validatedAssessmentWireframe, normalizeAssessmentSubmission } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
 
 test('shared tier contract identifies the missing responsibility before acceptance', () => {
     const valid = { T1: 'Focused source and unit validation',
@@ -549,6 +549,63 @@ test('wireframe checks one and several work steps, owner count, order and source
         refs, evidence), /WIREFRAME_SOURCE/);
     assert.equal(validatedAssessmentWireframe({ ...claimed,
         objective: 'Change src/clamp.js' }, refs, evidence).count, 1);
+});
+
+test('minimal Assessment input derives canonical count, IDs and explicit dependencies', () => {
+    const base = { objective: 'Clarify clamp behavior', rationale: 'One coherent task',
+        work: [{ title: 'Define clamp contract', objective: 'Specify input behavior',
+            boundary: 'Public behavior' }],
+        closeout: { title: 'Manual review', objective: 'Check the behavior',
+            manualReason: 'Human judgment is needed' } };
+    const one = normalizeAssessmentSubmission(base, 1);
+    assert.equal(one.count, 1);
+    assert.deepEqual(one.work.map(step => [step.id, step.dependsOn]), [['step-1', []]]);
+    const independent = normalizeAssessmentSubmission({ ...base, work: [base.work[0],
+        { title: 'Implement clamp', objective: 'Apply the behavior', boundary: 'Clamp source' },
+        { title: 'Integrate clamp', objective: 'Connect the behavior', boundary: 'Integration' }] });
+    assert.deepEqual(independent.work.map(step => step.dependsOn), [[], [], []]);
+    const three = normalizeAssessmentSubmission({ ...base, work: [base.work[0],
+        { title: 'Implement clamp', objective: 'Apply the behavior', boundary: 'Clamp source' },
+        { title: 'Integrate clamp', objective: 'Connect the behavior', boundary: 'Integration',
+            dependsOn: [1] }] });
+    assert.equal(three.count, 3);
+    assert.deepEqual(three.work.map(step => step.dependsOn), [[], [], ['step-1']]);
+    const bad = (value: unknown, code: string, property: string) =>
+        assert.throws(() => normalizeAssessmentSubmission(value), error =>
+            error instanceof Error && error.message.startsWith(code + ':') &&
+            error.message.includes(property) && error.message.split('. ').length > 1);
+    bad({ ...base, work: [] }, 'ASSESSMENT_WORK_COUNT', 'work');
+    bad({ ...base, count: 1 }, 'ASSESSMENT_FIELD_UNSUPPORTED', 'count');
+    bad({ ...base, work: [{ ...base.work[0], id: 'step-1' }] },
+        'ASSESSMENT_FIELD_UNSUPPORTED', 'work[0].id');
+    bad({ ...base, work: [{ ...base.work[0], title: '' }] },
+        'ASSESSMENT_WORK_ITEM_TITLE_REQUIRED', 'work[0].title');
+    bad({ ...base, work: [{ ...base.work[0], objective: '\u0001' }] },
+        'ASSESSMENT_WORK_ITEM_OBJECTIVE_REQUIRED', 'work[0].objective');
+    bad({ ...base, work: [{ ...base.work[0], boundary: ' ' }] },
+        'ASSESSMENT_WORK_ITEM_BOUNDARY_REQUIRED', 'work[0].boundary');
+    bad({ ...base, work: [{ ...base.work[0], boundary: 'x'.repeat(301) }] },
+        'ASSESSMENT_WORK_ITEM_BOUNDARY_REQUIRED', 'work[0].boundary');
+    bad({ ...base, work: [{ ...base.work[0], dependsOn: 'step-1' }] },
+        'ASSESSMENT_DEPENDENCY_REFERENCE_INVALID', 'work[0].dependsOn');
+    for (const dependency of [[0], ['step-1'], [2], [9]])
+        bad({ ...base, work: [{ ...base.work[0], dependsOn: dependency }] },
+            'ASSESSMENT_DEPENDENCY_REFERENCE_INVALID', 'work[0].dependsOn[0]');
+    bad({ ...base, work: [base.work[0], { title: 'Integrate clamp',
+        objective: 'Connect the behavior', boundary: 'Integration', dependsOn: [1, 1] }] },
+    'ASSESSMENT_DEPENDENCY_DUPLICATE', 'work[1].dependsOn[1]');
+    bad({ ...base, work: [base.work[0], { ...base.work[0] }] },
+        'ASSESSMENT_WORK_ITEM_DUPLICATE', 'work[1]');
+    bad({ ...base, work: [base.work[0], { title: 'Second task', objective: 'Second objective',
+        boundary: 'Second area', dependsOn: [3] }, { title: 'Third task',
+        objective: 'Third objective', boundary: 'Third area' }] },
+    'ASSESSMENT_DEPENDENCY_REFERENCE_INVALID', 'work[1].dependsOn[0]');
+    bad({ ...base, work: Array.from({ length: 49 }, (_, i) => ({
+        title: `Task ${i}`, objective: `Do task ${i}`, boundary: `Area ${i}` })) },
+    'ASSESSMENT_WORK_COUNT', 'work');
+    assert.throws(() => normalizeAssessmentSubmission(base, 2), /ASSESSMENT_OWNER_COUNT_MISMATCH/);
+    assert.throws(() => normalizeAssessmentSubmission({ ...base,
+        rationale: 'x'.repeat(17_000) }), /ASSESSMENT_PAYLOAD_LIMIT/);
 });
 
 test('P8-R4 empty dependencies cannot pass without verified coverage and a reason', () => {

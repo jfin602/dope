@@ -98,10 +98,10 @@ test('real worker seals one bounded Assessment wireframe without exhaustive read
     await run('git', ['-C', root, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
         'commit', '-qm', 'Fixture']);
     const calls: { name: string; output: string }[] = [];
-    const wireframe = { kind: 'wireframe', objective: 'Improve clamp behavior', count: 1,
+    const wireframe = { objective: 'Improve clamp behavior',
         rationale: 'One bounded implementation step covers the requested change',
-        work: [{ id: 'step-1', title: 'Improve clamp', objective: 'Change clamp behavior',
-            boundary: 'Clamp implementation', dependsOn: [] }],
+        work: [{ title: 'Improve clamp', objective: 'Change clamp behavior',
+            boundary: 'Clamp implementation' }],
         constraints: ['Keep scalar behavior'], deferrals: ['Detailed validation belongs in Plan'],
         closeout: { title: 'Manual closeout', objective: 'Observe clamp behavior',
             manualReason: 'Human check is distinct' },
@@ -110,7 +110,11 @@ test('real worker seals one bounded Assessment wireframe without exhaustive read
     const operations = [
         { name: 'assessment_status', args: {} },
         { name: 'read_file', args: { path: 'src/clamp.js' } },
-        { name: 'assessment_stage', args: { ...wireframe, count: 2 } },
+        { name: 'assessment_stage', args: { ...wireframe,
+            work: [{ ...wireframe.work[0], title: ' ' }] } },
+        { name: 'assessment_stage', args: { ...wireframe,
+            work: [{ ...wireframe.work[0], boundary: ' ' }] } },
+        { name: 'assessment_finish', args: {} },
         { name: 'assessment_stage', args: { ...wireframe,
             sourceClaims: [{ ...wireframe.sourceClaims[0], quote: 'invented source' }] } },
         { name: 'assessment_stage', args: wireframe },
@@ -201,10 +205,22 @@ test('real worker seals one bounded Assessment wireframe without exhaustive read
         assert.deepEqual(sealed.work.map(item => item.id), ['step-1']);
         assert.equal(sealed.sourceClaims.length, 1);
         assert.equal(checked.assessment!.sourceRefs.length, 1);
-        assert.equal(JSON.parse(calls[2].output).code, 'ASSESSMENT_WIREFRAME_COUNT');
-        assert.equal(JSON.parse(calls[3].output).code, 'ASSESSMENT_UNSUPPORTED_SOURCE');
-        assert.equal(JSON.parse(calls[4].output).accepted, true);
-        assert.equal(JSON.parse(calls[5].output).complete, true);
+        assert.equal(JSON.parse(calls[2].output).code, 'ASSESSMENT_WORK_ITEM_TITLE_REQUIRED');
+        assert.equal(JSON.parse(calls[2].output).field, 'work[0].title');
+        assert.match(JSON.parse(calls[2].output).reason, /nonempty string/);
+        assert.equal(JSON.parse(calls[2].output).finishReady, false);
+        assert.equal(JSON.parse(calls[3].output).code, 'ASSESSMENT_WORK_ITEM_BOUNDARY_REQUIRED');
+        assert.equal(JSON.parse(calls[3].output).field, 'work[0].boundary');
+        assert.equal(JSON.parse(calls[3].output).finishReady, false);
+        assert.equal(JSON.parse(calls[4].output).code, 'ASSESSMENT_WIREFRAME_INCOMPLETE');
+        assert.equal(JSON.parse(calls[5].output).code, 'ASSESSMENT_UNSUPPORTED_SOURCE');
+        assert.equal(JSON.parse(calls[6].output).accepted, true);
+        assert.equal(JSON.parse(calls[7].output).complete, true);
+        const rejected = assistant?.execution.toolEvents?.filter(event => event.name === 'assessment_stage' &&
+            event.status === 'failed') ?? [];
+        assert.equal(rejected[0]?.assessment?.field, 'content');
+        assert.equal(rejected[1]?.assessment?.field, 'content');
+        assert.ok(rejected.every(event => event.assessment?.previousFindingsPreserved));
         assert.ok(assistant?.execution.toolEvents?.some(event => event.assessmentOutcome === 'advanced'));
     } finally {
         backend.dispose(); server.close();

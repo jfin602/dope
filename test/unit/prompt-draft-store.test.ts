@@ -57,21 +57,21 @@ test('wireframe Assessment persists one relevant read, stable count and checked 
         sourceHash: page.sourceHash, start: page.offset, end: page.endOffset }] as never;
     const evidence = [{ path: 'README.md', start: page.offset, end: page.endOffset,
         sourceHash: page.sourceHash, text: page.text }];
-    const base = { kind: 'wireframe', objective: 'Improve the documented feature', count: 2,
+    const base = { objective: 'Improve the documented feature',
         rationale: 'The source change and integration check have distinct boundaries',
-        work: [{ id: 'step-1', title: 'Implement behavior', objective: 'Change the feature',
-            boundary: 'Source behavior', dependsOn: [] },
-            { id: 'step-2', title: 'Integrate behavior', objective: 'Check the feature path',
-                boundary: 'Integration', dependsOn: ['step-1'] }],
+        work: [{ title: 'Implement behavior', objective: 'Change the feature',
+            boundary: 'Source behavior' },
+            { title: 'Integrate behavior', objective: 'Check the feature path',
+                boundary: 'Integration', dependsOn: [1] }],
         constraints: ['Preserve source identity'], deferrals: ['Detailed checks belong in Plan'],
         closeout: { title: 'Manual closeout', objective: 'Observe the feature',
             manualReason: 'Human review is separate' },
         sourceClaims: [{ claim: 'README has source one', path: 'README.md', quote: 'source one' }] };
-    await assert.rejects(controller.stage({ ...base, count: 1 }, refs, evidence), /COUNT/);
+    await assert.rejects(controller.stage({ ...base, work: [base.work[0]] }, refs, evidence), /OWNER_COUNT_MISMATCH/);
     await assert.rejects(controller.stage({ ...base, sourceClaims: [{ ...base.sourceClaims[0],
         quote: 'invented' }] }, refs, evidence), /UNSUPPORTED_SOURCE/);
     await assert.rejects(controller.stage({ ...base, work: [base.work[1], base.work[0]] }, refs,
-        evidence), /STEP/);
+        evidence), /DEPENDENCY_REFERENCE_INVALID/);
     assert.equal((await controller.stage(base, refs, evidence)).idempotent, false);
     assert.equal((await controller.stage(base, refs, evidence)).idempotent, true);
     await assert.rejects(controller.stage({ ...base, rationale: 'Different division' }, refs,
@@ -90,10 +90,10 @@ test('source-neutral wireframe seals without a token read while source basis sta
     const controller = new IncrementalAssessment(v.repo, v.grounder, v.root, v.identity,
         v.lease, '/prompt-ass safe-task Use one work prompt to clarify a process', v.store);
     await controller.begin();
-    const wireframe = { kind: 'wireframe', objective: 'Clarify the process', count: 1,
+    const wireframe = { objective: 'Clarify the process',
         rationale: 'One bounded writing task is sufficient',
-        work: [{ id: 'step-1', title: 'Clarify process', objective: 'Write concise guidance',
-            boundary: 'Process wording', dependsOn: [] }], constraints: [], deferrals: [],
+        work: [{ title: 'Clarify process', objective: 'Write concise guidance',
+            boundary: 'Process wording' }], constraints: [], deferrals: [],
         closeout: { title: 'Manual closeout', objective: 'Review the guidance',
             manualReason: 'Human review is distinct' }, sourceClaims: [] };
     assert.equal((await controller.stage(wireframe, [], [])).accepted, true);

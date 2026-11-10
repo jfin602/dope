@@ -2412,12 +2412,12 @@ export class ChatBackend implements ChatService {
                     const assessmentName = name as 'assessment_status' | 'assessment_stage' | 'assessment_finish';
                     const stageArg = args && typeof args === 'object' && !Array.isArray(args) ?
                         args as Record<string, unknown> : undefined;
-                    const category = stageArg?.kind === 'wireframe' ? 'wireframe' : 'unrecognized';
-                    const shape = stageArg?.kind === 'wireframe' ? 'wireframe' : 'invalid';
+                    const category = assessmentName === 'assessment_stage' ? 'wireframe' : 'unrecognized';
+                    const shape = stageArg && Array.isArray(stageArg.work) ? 'wireframe' : 'invalid';
                     recordActivity('tool', `${assessmentName}: running`);
                     let status: 'completed' | 'failed' | 'denied' = 'denied';
                     let stageCode = 'ASSESSMENT_INTERNAL';
-                    let stageField: 'none' | 'shape' | 'category' | 'citation' | 'source' |
+                    let stageField: 'none' | 'shape' | 'content' | 'dependency' | 'category' | 'citation' | 'source' |
                         'authority' | 'resource' | 'internal' = 'internal';
                     let assessmentOutcome: 'advanced' | 'idempotent' | 'status' | 'recoverable' |
                         'hard-authority' | 'repeated-non-progress' | 'resource-ceiling' = 'status';
@@ -2471,6 +2471,15 @@ export class ChatBackend implements ChatService {
                         const recoverable = new Set(['ASSESSMENT_WIREFRAME_SHAPE', 'ASSESSMENT_WIREFRAME_COUNT',
                             'ASSESSMENT_WIREFRAME_STEP', 'ASSESSMENT_WIREFRAME_CLOSEOUT',
                             'ASSESSMENT_WIREFRAME_SOURCE', 'ASSESSMENT_WIREFRAME_INCOMPLETE',
+                            'ASSESSMENT_PAYLOAD_LIMIT', 'ASSESSMENT_FIELD_UNSUPPORTED',
+                            'ASSESSMENT_OBJECTIVE_REQUIRED', 'ASSESSMENT_RATIONALE_REQUIRED',
+                            'ASSESSMENT_WORK_COUNT', 'ASSESSMENT_OWNER_COUNT_MISMATCH',
+                            'ASSESSMENT_WORK_ITEM_SHAPE', 'ASSESSMENT_WORK_ITEM_TITLE_REQUIRED',
+                            'ASSESSMENT_WORK_ITEM_OBJECTIVE_REQUIRED',
+                            'ASSESSMENT_WORK_ITEM_BOUNDARY_REQUIRED',
+                            'ASSESSMENT_WORK_ITEM_DUPLICATE', 'ASSESSMENT_DEPENDENCY_REFERENCE_INVALID',
+                            'ASSESSMENT_DEPENDENCY_DUPLICATE', 'ASSESSMENT_LIST_INVALID',
+                            'ASSESSMENT_CLOSEOUT_REQUIRED',
                             'ASSESSMENT_READ_REQUIRED', 'ASSESSMENT_CITATION', 'ASSESSMENT_UNSUPPORTED_SOURCE',
                             'ASSESSMENT_AMBIGUOUS_SOURCE', 'ASSESSMENT_STAGE_SHAPE', 'ASSESSMENT_STAGE_CATEGORY',
                             'ASSESSMENT_SCOPE', 'ASSESSMENT_TIERS', 'ASSESSMENT_CATEGORY_INCOMPLETE',
@@ -2489,20 +2498,24 @@ export class ChatBackend implements ChatService {
                         }
                         stageCode = code;
                         stageField = /AUTHORITY|STALE|SEALED/u.test(code) ? 'authority' :
-                            /SOURCE|COVERAGE|READ/u.test(code) ? 'source' :
-                                /LIMIT/u.test(code) ? 'resource' :
-                                    /CITATION|UNSUPPORTED|AMBIGUOUS/u.test(code) ? 'citation' :
-                                        /CATEGORY|SCOPE|TIERS|EMPTY/u.test(code) ? 'category' :
-                                            /SHAPE|JSON/u.test(code) ? 'shape' : 'internal';
+                            /PAYLOAD_LIMIT|RESOURCE_CEILING|NON_PROGRESS_LIMIT/u.test(code) ? 'resource' :
+                                /FIELD_UNSUPPORTED|SHAPE|JSON/u.test(code) ? 'shape' :
+                                    /CITATION|UNSUPPORTED_SOURCE|AMBIGUOUS/u.test(code) ? 'citation' :
+                                        /SOURCE|COVERAGE|READ/u.test(code) ? 'source' :
+                                            /DEPENDENCY/u.test(code) ? 'dependency' :
+                                                /WORK_ITEM|WORK_COUNT|COUNT_MISMATCH|OBJECTIVE_REQUIRED|RATIONALE_REQUIRED|CLOSEOUT_REQUIRED|LIST_INVALID|WIREFRAME_STEP|WIREFRAME_COUNT|WIREFRAME_CLOSEOUT/u.test(code) ? 'content' :
+                                                    /CATEGORY|SCOPE|TIERS|EMPTY/u.test(code) ? 'category' : 'internal';
                         if (assessmentName === 'assessment_stage' && assessmentController &&
                             assessmentOutcome === 'recoverable')
                             assessmentFindingCount = (await assessmentController.status().catch(() => undefined))
                                 ?.findings ?? assessmentFindingCount;
                         const ready = assessmentOutcome === 'recoverable' && assessmentController ?
                             await assessmentController.status().catch(() => undefined) : undefined;
-                        return JSON.stringify({ code, field: name === 'assessment_stage' ? 'wireframe or source claim' :
-                            name, reason, expectedShape: name === 'assessment_stage' ?
-                            '{kind:"wireframe",objective,count,rationale,work,constraints,deferrals,closeout,sourceClaims}' : '{}',
+                        const property = /^(?:work\[\d+\](?:\.[A-Za-z]+(?:\[\d+\])?)?|(?:closeout|sourceClaims|constraints|deferrals)(?:\.[A-Za-z]+|\[\d+\])?|objective|rationale|work|assessment_stage)(?=\s)/u.exec(reason)?.[0] ??
+                            /^([A-Za-z][A-Za-z0-9_]{0,40}) is unsupported/u.exec(reason)?.[1];
+                        return JSON.stringify({ code, field: name === 'assessment_stage' ?
+                            property ?? 'wireframe' : name, reason, expectedShape: name === 'assessment_stage' ?
+                            '{objective,rationale,work:[{title,objective,boundary,dependsOn?:number[]}],closeout:{title,objective,manualReason},constraints?,deferrals?,sourceClaims?}' : '{}',
                             recovery: code === 'ASSESSMENT_SOURCE_COVERAGE' ? 'Use assessment_status, then read_file' :
                                 code === 'ASSESSMENT_CATEGORY_INCOMPLETE' ? ready?.nextAction ??
                                     'Use assessment_status and complete the listed missing categories' :
@@ -2517,7 +2530,8 @@ export class ChatBackend implements ChatService {
                                         code === 'ASSESSMENT_STAGE_SHAPE' ?
                                             'Supply the required top-level fields for this category; then check assessment_status' :
                                 code === 'ASSESSMENT_CONFLICTING_REPLAY' ? reason :
-                                'Check assessment_status and retry with corrected arguments',
+                                /^(?:ASSESSMENT_FIELD_UNSUPPORTED|ASSESSMENT_OBJECTIVE_REQUIRED|ASSESSMENT_RATIONALE_REQUIRED|ASSESSMENT_WORK_|ASSESSMENT_OWNER_COUNT_MISMATCH|ASSESSMENT_DEPENDENCY_|ASSESSMENT_LIST_INVALID|ASSESSMENT_CLOSEOUT_REQUIRED|ASSESSMENT_PAYLOAD_LIMIT)/u.test(code) ?
+                                    reason : 'Check assessment_status and retry with corrected arguments',
                             ...(ready ? { finishReady: ready.finishReady, blockedBy: ready.blockedBy,
                                 nextAction: ready.nextAction } : {}),
                             previousFindingsPreserved: true });

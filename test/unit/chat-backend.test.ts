@@ -130,13 +130,13 @@ test('native prompt stages save an exact review candidate and publish only after
                 { path: 'src/feature.js', offset: 0, maxBytes: 4096 });
             if (turn === 0) {
                 const receipt = JSON.parse(await request.projectTools!.execute('assessment_stage', {
-                    kind: 'wireframe', objective: 'Implement the feature', count: 10,
+                    objective: 'Implement the feature',
                     rationale: 'Ten distinct requested implementation responsibilities',
-                    work: Array.from({ length: 10 }, (_, index) => ({ id: `step-${index + 1}`,
+                    work: Array.from({ length: 10 }, (_, index) => ({
                         title: `Implement feature ${index + 1}`,
                         objective: `Implement feature responsibility ${index + 1}`,
                         boundary: `Feature responsibility ${index + 1}`,
-                        dependsOn: index ? [`step-${index}`] : [] })),
+                        ...(index ? { dependsOn: [index] } : {}) })),
                     constraints: ['Preserve existing API'], deferrals: [],
                     closeout: { title: 'Manual feature closeout',
                         objective: 'Observe feature in browser', manualReason: 'Human review' },

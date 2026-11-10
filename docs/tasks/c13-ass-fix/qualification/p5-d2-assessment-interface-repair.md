@@ -1,0 +1,45 @@
+# P5-D2 — Assessment tool-contract and recovery correction
+
+**Date:** 2026-11-10. **Verdict:** SCOPED PASS for deterministic Assessment interface and recovery; live GPT-OSS behavior remains unqualified. Product version remains `0.13.11`. No live inference, connected browser, Work, Roadmap award, publication, version change, or self-commit was performed for this correction.
+
+## Entry and source
+
+Entry HEAD: `d1a0311fa00b4df839572fb47c8de276b1133641`. The tracked and untracked worktree was clean at entry (`git status --short` returned no entries). Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0056, the named-chain contract, the c13-ass-fix plan, and the original P5-Q1 report. P5-D1 was a conversation-level read-only forensic result, not assumed to be a repository file. Its finding remains: the exact historical failing GPT-OSS arguments are unknown. P5-Q1 remains NOT GREEN.
+
+Changed product source: `packages/theia-extension/src/node/prompt-authoring-stage.ts`, `incremental-assessment.ts`, `chat-backend.ts`, `chat-skills.ts`, `packages/pi-runtime/worker.mjs`, and the safe Chat execution classification in `packages/chat/src/index.ts`. Focused fixtures changed in `test/unit/prompt-authoring-stage.test.ts`, `prompt-draft-store.test.ts`, `protected-assessment-worker.test.ts`, `prompt-chain-headless.test.ts`, `prompt-revision-headless.test.ts`, `chat-backend.test.ts`, and `pi-runtime.test.mjs`.
+
+## Contract and invariants
+
+Before D2, `assessment_stage` required the model to supply `kind`, `count`, `step-N` IDs, dependency ID strings, and empty optional arrays. The worker schema advertised those fields even though the server applied additional semantic rules. The built-in skill also requested preservation, risks, T1/T2/T3 and Markdown output, contradicting the current compact Assessment role.
+
+The sole model-facing `assessment_stage` input now requires `objective`, `rationale`, a nonempty ordered `work` array of `{title, objective, boundary, dependsOn?}`, and `closeout` with title, objective and manual reason. `constraints`, `deferrals` and `{claim,path,quote}` `sourceClaims` are optional. Dependency references are **one-based work-item numbers**; item 3 can refer to item 1 with `[1]`. The declared TypeBox schema bounds fields, arrays and dependency integers and disallows extra properties. The protected stage instruction, built-in skill (new version 3), and worker description use this same shape. The protected instruction gives a one-task example and a multi-task dependency example; it directs a field-specific retry after rejection and treats only the accepted stage/finish receipts as completion.
+
+`normalizeAssessmentSubmission()` is the single new incoming-payload boundary. It derives `count = work.length`, assigns `step-1..step-N`, and maps only explicitly asserted earlier-number dependencies to canonical IDs. Omitted dependencies become empty arrays. It rejects empty or more than 48 tasks, owner-count mismatch, unsupported keys, blank/control/oversized text, placeholder objectives, deterministically duplicated responsibilities, malformed/duplicate/self/future/nonexistent dependencies, invalid lists and closeout. Earlier-only references make cycles impossible. No dependency is inferred from prose or task order. The existing `validatedAssessmentWireframe()` then checks the normalized canonical record and verifies any factual claim against exact brokered read bytes. New submissions cannot bypass this path; final sealing revalidates the saved canonical candidate against current source reads.
+
+The saved `AssessmentWireframe` shape is unchanged: kind, objective, derived count, rationale, ordered work with canonical IDs/string dependencies, constraints, deferrals, manual closeout and verified source findings with Dope-owned ranges/hashes. Old accepted records are read directly without normalization or migration. Historical incomplete category drafts remain blocked with an explicit fresh-draft action. The existing draft store still owns identity, source basis, revision, checked Plan binding and reviewed Assessment replacement. Invalid stage attempts do not write a candidate; a changed accepted stage is denied as a conflicting replay. Owner/project/lease, source freshness, tool/event ceilings, cancellation, guarded revision Accept and downstream invalidation are preserved.
+
+## Feedback and classification
+
+The broker now returns a bounded code, property, expected shape, short rule and correction. Representative transported failures:
+
+| Code | Field | Correction |
+| --- | --- | --- |
+| `ASSESSMENT_WORK_ITEM_TITLE_REQUIRED` | `work[0].title` | Supply a nonempty bounded title. |
+| `ASSESSMENT_WORK_ITEM_BOUNDARY_REQUIRED` | `work[0].boundary` | Describe a coherent primary boundary. |
+| `ASSESSMENT_DEPENDENCY_REFERENCE_INVALID` | `work[1].dependsOn[0]` | Refer to an existing earlier one-based work item. |
+| `ASSESSMENT_OWNER_COUNT_MISMATCH` | `work` | Match the trusted owner-requested count or request reviewed change. |
+
+The saved Chat diagnostic retains ordinal, safe code/category and finding count, but no raw tool arguments, source body, quote or model reasoning. Ordinary work-item failures now classify as `content`, dependency failures as `dependency`, malformed shape as `shape`, source/citation, drift, authority and resource failures separately; they no longer fall through to `internal`. The safe Chat schema accepts these two new categories. Failure streak and resource ceilings were not increased.
+
+## Verification
+
+- Built `@dope/chat` and `@dope/theia-extension` in that order. The first focused pass found two store test fixtures still using the retired model input; those fixtures were corrected without changing canonical saved-record tests.
+- Final-source commands: `corepack yarn workspace @dope/theia-extension build` **PASS**; `node --test test/unit/prompt-authoring-stage.test.ts test/unit/prompt-draft-store.test.ts test/unit/protected-assessment-worker.test.ts test/unit/prompt-chain-headless.test.ts test/unit/prompt-revision-headless.test.ts test/unit/chat-backend.test.ts test/unit/chat-skills.test.ts test/unit/pi-runtime.test.mjs` **108/108 PASS**; `git diff --check` **PASS**. The earlier `@dope/chat` build also passed. No full `npm test`, `npm run check`, Electron package or live-model run was attempted.
+- One intervening identical focused run was **107/108** because an ordinary Chat formatting-guidance test hit `ENOENT` on its disposable `.dope/chats/.mutation.lock` during fixture cleanup. That single test passed immediately in isolation, and the identical full focused command then passed **108/108** on unchanged source. This is a transient test-fixture observation, not evidence of a new Assessment failure or a repair to ordinary Chat.
+- The final focused source/build and test results are recorded below. Validator tests cover one task, three independent tasks, explicit ordered dependency, owner count, empty/excess work, missing/blank/control/oversized fields, extra fields, duplicate work, bad dependency types/ordinals/self/future/duplicate references, oversized payload, and source validation. Existing canonical tests cover verified and fabricated quotations and path/source grounding. Store tests cover no-write failures, accepted-record deserialization, historical incomplete drafts, foreign identity/lease, source drift and reviewed revision invalidation.
+- A deterministic OpenAI-compatible provider drove the **actual bundled Pi worker**, protected Chat broker, Assessment controller and draft store. The sequence was source read → whitespace title rejection → whitespace boundary rejection → premature `assessment_finish` denial → fabricated quotation rejection → corrected minimal stage acceptance → finish. The two property-specific failures were observed in returned worker tool outputs with `finishReady:false`; saved tool events classified them as `content`. The draft sealed exactly once at revision 1 with one verified claim and stable `step-1`, and the checked `/prompt-plan` probe became available. These scripted turns do not reproduce the unknown historical argument bytes or prove live GPT-OSS will choose this recovery path.
+- The existing real-worker chain test carried the new minimal Assessment into checked Plan, Prompt Write and guarded Accept with exact published bytes; a separate real-worker revision test covered multi-task dependencies, count redivision, old Plan preservation and invalidation after owner Accept. No Plan, Prompt Write, publisher, Work or Roadmap contract was changed by D2.
+
+## Limits and next gate
+
+The historical P5-Q1 arguments remain unavailable. This deterministic PASS is not a real-model PASS. One fresh exact-build GPT-OSS qualification may be started only by a separate owner decision, with Assessment followed by Planning and Prompt Write if their gates pass. Planning and Prompt Write still require their own review for analogous model-facing mechanical-transcription risks; D2 did not implement changes there. The pre-existing ordinary Chat activity failure described in P5-Q1 was not treated as a D2 regression or repaired here.

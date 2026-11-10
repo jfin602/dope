@@ -148,7 +148,7 @@ export function promptStageInstruction(command: { stage: PromptStage; folder?: s
         prior.plan && `Selected plan ${prior.plan.id}:\n${planRecord ? JSON.stringify(planRecord) :
             prior.plan.content.slice(0, 12_000)}`].filter(Boolean).join('\n\n');
     const common = 'Use the saved Chat discussion and only brokered project reads. Do not write canonical files, publish prompts, grant or run Work, or award Roadmap status. For each claim distinguish listed/searched paths from files actually read. Read source and tests with read_file when making factual claims; report omissions. Keep the final response under 12,000 characters.';
-    if (command.stage === 'prompt-ass') return `${common}\nThe owner selected immutable task name ${JSON.stringify(command.folder)}. Decide only the work-prompt count and task division. Honor an explicit owner count; otherwise justify a bounded count. One work prompt is valid. Read only relevant source with read_file; a factual source claim needs a short exact quote from a successful read. A wireframe with no factual source claim needs no token read. Submit one assessment_stage call with {kind:"wireframe",objective,count,rationale,work:[{id:"step-1",title,objective,boundary,dependsOn:[]}],constraints:[],deferrals:[],closeout:{title,objective,manualReason},sourceClaims:[]}. Add grounded {claim,path,quote} sourceClaims only when making source claims. Then call assessment_finish. Do not produce detailed implementation, T1/T2/T3 or efficiency gates here. The tool receipt, not prose, seals the draft.`;
+    if (command.stage === 'prompt-ass') return `${common}\nThe owner selected immutable task name ${JSON.stringify(command.folder)}. Decide only the work-prompt count and task division. Honor an explicit owner count; otherwise justify a bounded count. One work prompt is valid. Read only relevant source with read_file; factual source claims need short exact quotes from successful reads. Submit one assessment_stage call with {objective:"Clarify the requested behavior",rationale:"One bounded task covers the change",work:[{title:"Clarify behavior",objective:"Define the behavior",boundary:"Behavioral contract"}],closeout:{title:"Manual closeout",objective:"Check the result",manualReason:"Independent human review"}}. For two tasks, use work:[{title:"Define behavior",objective:"Specify behavior",boundary:"Contract"},{title:"Implement behavior",objective:"Apply the contract",boundary:"Source",dependsOn:[1]}]; omit dependsOn for independent tasks. Add constraints, deferrals and grounded {claim,path,quote} sourceClaims only when needed. Dope derives count and step IDs. If rejected, correct the named field and retry while the turn remains authorized. Then call assessment_finish after an accepted stage receipt. Do not produce detailed implementation, T1/T2/T3 or efficiency gates here. Final prose is a brief summary; the tool receipt seals the draft.`;
     if (command.stage === 'prompt-plan') return `${common}\n${inherited}\nExpand the selected checked Assessment without changing its count, IDs, titles, boundaries or dependencies. Read actual source and tests. Use plan_status, then stage each approved work step in order with plan_stage_step. To revise an accepted step, use plan_correct_step with the current accepted step hash from plan_status and a fully corrected step; never silently replace it. Each bounded step has {id,title,assessmentObjective,boundary,objective,tier,dependsOn,workingSet,requirements,preservedBehavior,risks,deferrals,validationTargets,buildNeeds,acceptanceCriteria,sourceClaims,estimatedMinutes}. Copy reviewed fields exactly. Cite source with {claim,path,quote} from brokered read_file; read each working file and test in this turn. T1 ordinary work targets <=8 minutes; use T2 for integration. Stage one separate {title,objective,manualReason,browserRequired:true,acceptanceCriteria,tier:"T3"} with plan_stage_closeout. Stage ten concise findings one at a time with plan_stage_efficiency({index,finding}) in docs/workflow.md order: responsibility, 8/10/15-minute runtime, tests, builds, evidence, deduplication, model economy, runnable grammar, UI design/ADR 0016, usability/ADR 0037. State genuinely inapplicable non-UI gates. Call plan_finish only after status says eligible. Dope owns the checked Plan and source identities. Final prose is a brief summary, never a Plan JSON packet or completion receipt.`;
     const planTests = prior.plan?.execution?.sourceRefs?.filter(ref => ref.kind === 'file' &&
         (/(?:^|\/)test(?:s)?\//u.test(ref.id) || /\.test\.[^.]+$/u.test(ref.id))).map(ref => ref.id) ?? [];
@@ -195,6 +195,111 @@ export type AssessmentRecord = LegacyAssessmentRecord | AssessmentWireframe;
 export function isAssessmentWireframe(value: AssessmentRecord): value is AssessmentWireframe {
     return 'kind' in value && value.kind === 'wireframe';
 }
+/** Only new model submissions use this interface; saved canonical records are never migrated. */
+export function normalizeAssessmentSubmission(raw: unknown, ownerCount?: number):
+    Omit<AssessmentWireframe, 'sourceClaims'> & { sourceClaims: AssessmentCitation[] } {
+    const fail = (code: string, path: string, rule: string, correction: string): never => {
+        throw new Error(`${code}: ${path} ${rule}. ${correction}`);
+    };
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw))
+        fail('ASSESSMENT_WIREFRAME_SHAPE', 'assessment_stage', 'must be an object', 'Submit the documented fields.');
+    if (Buffer.byteLength(JSON.stringify(raw), 'utf8') > 16_000)
+        fail('ASSESSMENT_PAYLOAD_LIMIT', 'assessment_stage', 'exceeds 16,000 bytes', 'Shorten the wireframe.');
+    const value = raw as Record<string, unknown>;
+    const allowed = ['objective', 'rationale', 'work', 'constraints', 'deferrals', 'closeout', 'sourceClaims'];
+    const safeKey = (key: string): string => /^[A-Za-z][A-Za-z0-9_]{0,40}$/u.test(key) ? key : 'extraField';
+    for (const key of Object.keys(value)) if (!allowed.includes(key))
+        fail('ASSESSMENT_FIELD_UNSUPPORTED', safeKey(key), 'is unsupported', 'Remove this field; Dope owns count and IDs.');
+    const bounded = (v: unknown, limit: number): v is string => typeof v === 'string' &&
+        !!v.trim() && v.length <= limit && !/[\u0000-\u001f\u007f]/u.test(v);
+    const required = (v: unknown, path: string, limit: number, code: string): string => {
+        if (!bounded(v, limit)) fail(code, path, `must be a nonempty string of at most ${limit} characters without control characters`,
+            `Correct ${path} and resubmit.`);
+        return v as string;
+    };
+    const objective = required(value.objective, 'objective', 1000, 'ASSESSMENT_OBJECTIVE_REQUIRED');
+    const rationale = required(value.rationale, 'rationale', 500, 'ASSESSMENT_RATIONALE_REQUIRED');
+    if (!Array.isArray(value.work) || value.work.length === 0 || value.work.length > 48)
+        fail('ASSESSMENT_WORK_COUNT', 'work', 'must contain 1–48 ordered tasks', 'Submit a bounded nonempty work array.');
+    const items = value.work as unknown[];
+    if (ownerCount !== undefined && items.length !== ownerCount)
+        fail('ASSESSMENT_OWNER_COUNT_MISMATCH', 'work', `must contain the owner-requested ${ownerCount} tasks; received ${items.length}`,
+            'Match the owner count or request a reviewed change.');
+    const signatures = new Set<string>();
+    const boundaries = new Set<string>();
+    const work = items.map((item: unknown, index: number) => {
+        const path = `work[${index}]`;
+        if (!item || typeof item !== 'object' || Array.isArray(item))
+            fail('ASSESSMENT_WORK_ITEM_SHAPE', path, 'must be an object', 'Supply title, objective and boundary.');
+        const step = item as Record<string, unknown>;
+        for (const key of Object.keys(step)) if (!['title', 'objective', 'boundary', 'dependsOn'].includes(key))
+            fail('ASSESSMENT_FIELD_UNSUPPORTED', `${path}.${safeKey(key)}`, 'is unsupported', 'Remove this field.');
+        const title = required(step.title, `${path}.title`, 120, 'ASSESSMENT_WORK_ITEM_TITLE_REQUIRED');
+        const stepObjective = required(step.objective, `${path}.objective`, 500,
+            'ASSESSMENT_WORK_ITEM_OBJECTIVE_REQUIRED');
+        const boundary = required(step.boundary, `${path}.boundary`, 300,
+            'ASSESSMENT_WORK_ITEM_BOUNDARY_REQUIRED');
+        if (/^(?:tbd|todo|n\/a|none|task(?: \d+)?|work item(?: \d+)?|do work|implement it)$/iu.test(stepObjective.trim()))
+            fail('ASSESSMENT_WORK_ITEM_OBJECTIVE_REQUIRED', `${path}.objective`,
+                'must describe a meaningful task outcome', 'State what this task will accomplish.');
+        const signature = `${title.trim().toLowerCase()}\n${stepObjective.trim().toLowerCase()}`;
+        const boundarySignature = `${stepObjective.trim().toLowerCase()}\n${boundary.trim().toLowerCase()}`;
+        if (signatures.has(signature) || boundaries.has(boundarySignature))
+            fail('ASSESSMENT_WORK_ITEM_DUPLICATE', path, 'duplicates an earlier objective or responsibility boundary',
+                'Give each task a distinct responsibility.');
+        signatures.add(signature);
+        boundaries.add(boundarySignature);
+        const dependencies = step.dependsOn === undefined ? [] : step.dependsOn;
+        if (!Array.isArray(dependencies) || dependencies.length > 12)
+            fail('ASSESSMENT_DEPENDENCY_REFERENCE_INVALID', `${path}.dependsOn`,
+                'must be an array of at most 12 earlier one-based work-item numbers',
+                'Use [1] for the first task, or omit dependsOn.');
+        const references = dependencies as unknown[];
+        const seen = new Set<number>();
+        const dependsOn = references.map((reference: unknown, position: number) => {
+            const property = `${path}.dependsOn[${position}]`;
+            if (!Number.isSafeInteger(reference) || (reference as number) < 1 ||
+                (reference as number) > items.length)
+                fail('ASSESSMENT_DEPENDENCY_REFERENCE_INVALID', property,
+                    'must be an existing one-based work-item number', 'Use an earlier task number.');
+            if ((reference as number) >= index + 1)
+                fail('ASSESSMENT_DEPENDENCY_REFERENCE_INVALID', property,
+                    'must reference an earlier work item, never itself or a future task',
+                    'Use an earlier task number or omit dependsOn.');
+            if (seen.has(reference as number))
+                fail('ASSESSMENT_DEPENDENCY_DUPLICATE', property, 'repeats a dependency',
+                    'List each earlier task only once.');
+            seen.add(reference as number);
+            return `step-${reference}`;
+        });
+        return { id: `step-${index + 1}`, title, objective: stepObjective, boundary, dependsOn };
+    });
+    const strings = (rawItems: unknown, path: string): string[] => {
+        if (rawItems === undefined) return [];
+        if (!Array.isArray(rawItems) || rawItems.length > 12)
+            fail('ASSESSMENT_LIST_INVALID', path, 'must be an array of at most 12 bounded strings',
+                'Omit this field or supply short entries.');
+        return (rawItems as unknown[]).map((item, index) =>
+            required(item, `${path}[${index}]`, 300, 'ASSESSMENT_LIST_INVALID'));
+    };
+    const constraints = strings(value.constraints, 'constraints');
+    const deferrals = strings(value.deferrals, 'deferrals');
+    if (!value.closeout || typeof value.closeout !== 'object' || Array.isArray(value.closeout))
+        fail('ASSESSMENT_CLOSEOUT_REQUIRED', 'closeout', 'must be an object',
+            'Supply title, objective and manualReason.');
+    const closeout = value.closeout as Record<string, unknown>;
+    for (const key of Object.keys(closeout)) if (!['title', 'objective', 'manualReason'].includes(key))
+        fail('ASSESSMENT_FIELD_UNSUPPORTED', `closeout.${safeKey(key)}`, 'is unsupported', 'Remove this field.');
+    const manual = { title: required(closeout.title, 'closeout.title', 300, 'ASSESSMENT_CLOSEOUT_REQUIRED'),
+        objective: required(closeout.objective, 'closeout.objective', 300, 'ASSESSMENT_CLOSEOUT_REQUIRED'),
+        manualReason: required(closeout.manualReason, 'closeout.manualReason', 300, 'ASSESSMENT_CLOSEOUT_REQUIRED') };
+    if (value.sourceClaims !== undefined && (!Array.isArray(value.sourceClaims) || value.sourceClaims.length > 8))
+        fail('ASSESSMENT_WIREFRAME_SOURCE', 'sourceClaims', 'must be an array of at most eight claims',
+            'Omit it or supply bounded claims.');
+    return { kind: 'wireframe', objective, count: work.length, rationale, work,
+        constraints, deferrals, closeout: manual,
+        sourceClaims: (value.sourceClaims ?? []) as AssessmentCitation[] };
+}
 /** One bounded submission; claims are checked only against successful brokered reads. */
 export function validatedAssessmentWireframe(raw: unknown,
     refs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']>,
@@ -236,8 +341,14 @@ export function validatedAssessmentWireframe(raw: unknown,
         throw new Error('ASSESSMENT_WIREFRAME_CLOSEOUT: Include constraints, deferrals and one manual closeout');
     if (!Array.isArray(value.sourceClaims) || value.sourceClaims.length > 8)
         throw new Error('ASSESSMENT_WIREFRAME_SOURCE: Supply at most eight grounded source claims');
-    const sourceClaims = value.sourceClaims.map(item =>
-        validatedAssessmentFinding(item, 'observations', refs, evidence));
+    const sourceClaims = value.sourceClaims.map((item, index) => {
+        try { return validatedAssessmentFinding(item, 'observations', refs, evidence); }
+        catch (error) {
+            if (!(error instanceof Error) || !error.message.startsWith('ASSESSMENT_')) throw error;
+            const [code, detail] = error.message.split(/:\s*/u, 2);
+            throw new Error(`${code}: sourceClaims[${index}] ${detail}`);
+        }
+    });
     const claimedPaths = new Set(sourceClaims.map(item => item.path));
     const narrative = [value.objective, value.rationale, ...work.flatMap(step =>
         [step.title, step.objective, step.boundary]), ...value.constraints, ...value.deferrals,

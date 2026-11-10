@@ -312,16 +312,26 @@ export const ASSESSMENT_TOOLS = {
   ...Object.fromEntries(Object.entries(CHAT_TOOLS).filter(([name]) => name !== 'run_command')),
   read_file: ASSESSMENT_READ_FILE,
   assessment_status: {},
-  assessment_stage: { kind: Type.Literal('wireframe'), objective: Type.String(),
-    count: Type.Number(), rationale: Type.String(),
-    work: Type.Array(Type.Object({ id: Type.String(), title: Type.String(),
-      objective: Type.String(), boundary: Type.String(),
-      dependsOn: Type.Array(Type.String()) }, { additionalProperties: false })),
-    constraints: Type.Array(Type.String()), deferrals: Type.Array(Type.String()),
-    closeout: Type.Object({ title: Type.String(), objective: Type.String(),
-      manualReason: Type.String() }, { additionalProperties: false }),
-    sourceClaims: Type.Array(Type.Object({ claim: Type.String(), path: Type.String(),
-      quote: Type.String() }, { additionalProperties: false })) },
+  assessment_stage: { objective: Type.String({ minLength: 1, maxLength: 1000 }),
+    rationale: Type.String({ minLength: 1, maxLength: 500 }),
+    work: Type.Array(Type.Object({ title: Type.String({ minLength: 1, maxLength: 120 }),
+      objective: Type.String({ minLength: 1, maxLength: 500 }),
+      boundary: Type.String({ minLength: 1, maxLength: 300 }),
+      dependsOn: Type.Optional(Type.Array(Type.Integer({ minimum: 1, maximum: 48 }),
+        { maxItems: 12 })) }, { additionalProperties: false }), { minItems: 1, maxItems: 48 }),
+    constraints: Type.Optional(Type.Array(Type.String({ minLength: 1, maxLength: 300 }),
+      { maxItems: 12 })),
+    deferrals: Type.Optional(Type.Array(Type.String({ minLength: 1, maxLength: 300 }),
+      { maxItems: 12 })),
+    closeout: Type.Object({ title: Type.String({ minLength: 1, maxLength: 300 }),
+      objective: Type.String({ minLength: 1, maxLength: 300 }),
+      manualReason: Type.String({ minLength: 1, maxLength: 300 }) },
+      { additionalProperties: false }),
+    sourceClaims: Type.Optional(Type.Array(Type.Object({
+      claim: Type.String({ minLength: 1, maxLength: 500 }),
+      path: Type.String({ minLength: 1, maxLength: 512 }),
+      quote: Type.String({ minLength: 1, maxLength: 200 }) },
+      { additionalProperties: false }), { maxItems: 8 })) },
   assessment_finish: {}
 };
 const planText = Type.String();
@@ -429,7 +439,7 @@ function chatTools() {
         'Stage one typed work step (kind work), detailed section (kind section), or separate terminal manual closeout (kind closeout). Give each work step a stable target ID; sections use that same target. Dope owns stage order and composition. Set complete:true on the last call for each target. Finish after all requested work steps and one closeout. This tool cannot publish files.' :
       name === 'proposal_finish' ? 'Request validation and sealing of the staged candidate. The finalMessage is untrusted display prose, not an approval.' :
       name === 'assessment_status' ? 'Read the checked wireframe receipt and next action.' :
-      name === 'assessment_stage' ? 'Submit one compact prompt-count and task-division wireframe. Use stable step-1..step-N IDs, prior-step dependencies and one separate manual closeout. Source claims need exact quotes from brokered reads.' :
+      name === 'assessment_stage' ? 'Submit one compact prompt-count and task-division wireframe. Work is an ordered array of 1–48 tasks; Dope derives count and step IDs. Omit dependsOn for independent tasks; otherwise use earlier one-based work-item numbers, such as [1] on item 2. Include a separate manual closeout. Factual source claims need exact quotes from brokered reads. Dope rejects empty, duplicate, unsupported or incoherent fields.' :
       name === 'assessment_finish' ? 'Seal the checked wireframe after a successful stage receipt. Dope validates source claims and authority.' :
       name === 'plan_status' ? 'Read bounded checked Plan progress and one next action.' :
       name === 'plan_stage_step' ? 'Submit one detailed Assessment-linked step, citing exact quotes from brokered reads. Dope validates before saving.' :

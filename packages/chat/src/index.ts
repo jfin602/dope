@@ -125,8 +125,8 @@ export interface ChatExecution {
             'recoverable' | 'hard-authority' | 'repeated-non-progress' | 'resource-ceiling';
         assessment?: { ordinal: number; category: 'wireframe' | 'scope' | 'tiers' | 'observations' | 'preservation' |
             'dependencies' | 'risks' | 'unrecognized'; shape: 'finding' | 'empty' | 'scope' |
-            'tiers' | 'wireframe' | 'invalid'; code: string; field: 'none' | 'shape' | 'category' |
-            'citation' | 'source' | 'authority' | 'resource' | 'internal';
+            'tiers' | 'wireframe' | 'invalid'; code: string; field: 'none' | 'shape' | 'content' |
+            'dependency' | 'category' | 'citation' | 'source' | 'authority' | 'resource' | 'internal';
             previousFindingsPreserved: boolean; acceptedFindings: number };
         offset?: number; pageSize?: number; sourceHashSupplied?: boolean; endOffset?: number;
         commandMode?: 'ask' | 'allow'; approval?: 'granted' | 'denied' | 'expired';
@@ -648,7 +648,7 @@ function parseExecution(value: unknown): ChatExecution {
                     category: choice(detail.category, ['wireframe', 'scope', 'tiers', 'observations', 'preservation',
                         'dependencies', 'risks', 'unrecognized'] as const, 'Assessment category'),
                     shape: choice(detail.shape, ['wireframe', 'finding', 'empty', 'scope', 'tiers', 'invalid'] as const, 'Assessment shape'),
-                    code: detail.code, field: choice(detail.field, ['none', 'shape', 'category', 'citation',
+                    code: detail.code, field: choice(detail.field, ['none', 'shape', 'content', 'dependency', 'category', 'citation',
                         'source', 'authority', 'resource', 'internal'] as const, 'Assessment field'),
                     previousFindingsPreserved: detail.previousFindingsPreserved,
                     acceptedFindings: detail.acceptedFindings as number };
