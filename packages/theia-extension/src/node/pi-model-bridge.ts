@@ -133,6 +133,8 @@ export class PiModelBridge {
         const modelSpec = { id: selection.modelId, name: model.label,
             provider: 'dope-local', api: 'openai-completions', baseUrl: endpoint,
             reasoning: !!reasoning, input: ['text'],
+            ...(selection.modelId === 'openai/gpt-oss-20b' ?
+                { samplingParams: { temperature: 1.0, top_p: 1.0 } } : {}),
             compat: { maxTokensField: 'max_tokens', ...(reasoning ? reasoning.format === 'qwen-chat-template' ?
                 { thinkingFormat: 'qwen-chat-template' } : { supportsReasoningEffort: true } : {}) },
             cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },

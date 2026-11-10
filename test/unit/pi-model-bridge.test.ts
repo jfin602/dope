@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
+import { once } from 'node:events';
+import { createServer } from 'node:http';
 import test from 'node:test';
 import { PiModelBridge } from '../../packages/theia-extension/lib/node/pi-model-bridge.js';
+import { PiRuntimeHost } from '../../packages/theia-extension/lib/node/pi-runtime-host.js';
 
 const known = (value: boolean | number) => ({ source: 'adapter-known' as const, value });
 function fixture() {
@@ -47,6 +50,64 @@ test('Pi bridge binds only the exact refreshed AI Center Local model and measure
     assert.equal(calls[0][0].baseUrl, 'http://127.0.0.1:1234/v1');
     assert.equal(calls[0][0].contextWindow, 32768);
     assert.equal(calls[0][0].maxTokens, binding.maxOutputTokens);
+});
+
+test('only the exact local GPT-OSS 20B binding requests explicit Pi sampling', async () => {
+    const f = fixture();
+    f.state.registry.models[0].providerModelKey = 'openai/gpt-oss-20b';
+    f.state.loadedLocalModels[0].providerModelKey = 'openai/gpt-oss-20b';
+    await f.bridge.bind({ connectionId: 'desk', modelId: 'openai/gpt-oss-20b' },
+        f.host as any, '/tmp');
+    assert.deepEqual(f.calls[0][0].samplingParams, { temperature: 1, top_p: 1 });
+    f.state.registry.models[0].providerModelKey = 'qwen3.5-9b';
+    f.state.loadedLocalModels[0].providerModelKey = 'qwen3.5-9b';
+    await f.bridge.bind({ connectionId: 'desk', modelId: 'qwen3.5-9b' },
+        f.host as any, '/tmp');
+    assert.equal(f.calls[1][0].samplingParams, undefined);
+    assert.equal(f.calls[1][0].compat.maxTokensField, 'max_tokens');
+});
+
+test('the exact GPT-OSS bridge binding serializes sampling through the real Pi worker', async () => {
+    const requests: Record<string, unknown>[] = [];
+    const server = createServer(async (request, response) => {
+        let body = '';
+        for await (const chunk of request) body += chunk;
+        requests.push(JSON.parse(body));
+        const base = { id: 'sample', object: 'chat.completion.chunk', created: 1,
+            model: 'openai/gpt-oss-20b' };
+        response.writeHead(200, { 'content-type': 'text/event-stream' });
+        response.end([
+            { index: 0, delta: { role: 'assistant', content: 'ok' }, finish_reason: null },
+            { index: 0, delta: {}, finish_reason: 'stop' }
+        ].map(choice => `data: ${JSON.stringify({ ...base, choices: [choice] })}\n\n`).join('') +
+            'data: [DONE]\n\n');
+    });
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const f = fixture();
+    f.state.registry.connections[0].config.endpoint =
+        `http://127.0.0.1:${(server.address() as { port: number }).port}/v1`;
+    f.state.registry.models[0].providerModelKey = 'openai/gpt-oss-20b';
+    f.state.loadedLocalModels[0].providerModelKey = 'openai/gpt-oss-20b';
+    f.state.registry.models[0].capabilities.localReasoning = { source: 'provider-reported',
+        value: { values: ['low'], default: 'low', format: 'openai-reasoning-effort' } };
+    const host = new PiRuntimeHost();
+    try {
+        await host.start();
+        await f.bridge.bind({ connectionId: 'desk', modelId: 'openai/gpt-oss-20b' }, host, '/tmp');
+        let completed = false;
+        for await (const event of host.streamTurn([{ role: 'user', content: 'Say ok.' }], 512))
+            if (event.type === 'complete') completed = true;
+        assert.equal(completed, true);
+        assert.equal(requests.length, 1);
+        assert.equal(requests[0].model, 'openai/gpt-oss-20b');
+        assert.equal(requests[0].temperature, 1);
+        assert.equal(requests[0].top_p, 1);
+        assert.equal(requests[0].reasoning_effort, 'low');
+    } finally {
+        host.dispose();
+        server.close();
+    }
 });
 
 test('Pi bridge uses the loaded 16K context and declared provider ceiling without a 4K/8K cap', async () => {

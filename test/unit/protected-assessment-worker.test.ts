@@ -46,8 +46,9 @@ const receipts = (value: unknown): { path?: string; sourceHash?: string; nextOff
     return [item as { path?: string; sourceHash?: string; nextOffset?: number | null },
         ...Object.values(item).flatMap(receipts)];
 };
-const model = { id: 'offline-assessment', name: 'Offline Assessment', api: 'openai-completions',
+const model = { id: 'openai/gpt-oss-20b', name: 'GPT-OSS 20B', api: 'openai-completions',
     provider: 'dope-local', reasoning: true, compat: { supportsReasoningEffort: true },
+    samplingParams: { temperature: 1, top_p: 1 },
     input: ['text'], contextWindow: 32768,
     maxTokens: 8192, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } };
 
@@ -64,6 +65,8 @@ test('Assessment read receipts bind source, sequence, execution, owner and expir
     assert.equal(resolve(), undefined, 'no initial verified read');
     ledger.record({ path: required.path, sourceHash: hash, nextOffset: 4096 }, 1000);
     assert.equal(resolve(), hash);
+    assert.deepEqual(ledger.next(required.path, required, owner, 1000),
+        { offset: 4096, sourceHash: hash });
     assert.equal(resolve(required.path, 5000), undefined);
     assert.equal(resolve('docs/other.md'), undefined);
     assert.equal(ledger.resolve(required.path, 4096, undefined, owner, 1000), undefined);
@@ -77,6 +80,7 @@ test('Assessment read receipts bind source, sequence, execution, owner and expir
         'cancelled or switched executions cannot use a receipt');
     ledger.record({ path: required.path, sourceHash: hash, nextOffset: null }, 1000);
     assert.equal(resolve(), undefined, 'a completed page cannot be replayed');
+    assert.equal(ledger.next(required.path, required, owner, 1000), undefined);
     assert.equal(new AssessmentReadReceipts(owner).resolve(required.path, 4096, required, owner, 1000),
         undefined, 'a new execution starts without a receipt');
 });
@@ -124,18 +128,28 @@ test('real Pi worker and Chat broker seal five-file protected Assessment with la
     let guideHash = '';
     let extendedRequest: { messages: Record<string, unknown>[]; tools: { function: { name: string } }[];
         reasoning_effort?: string } | undefined;
+    const capturedRequests: { model: string; temperature?: number; top_p?: number;
+        reasoning_effort?: string; tools?: { function: { name: string } }[] }[] = [];
     const plan: { name: string; args: () => Record<string, unknown> }[] = [
         { name: 'assessment_status', args: () => ({}) },
+        { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', continue: true }) },
         { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', offset: 4096 }) },
-        ...paths.slice(0, 4).map(path => ({ name: 'read_file', args: () => ({ path, offset: 0, maxBytes: 4096 }) })),
+        ...paths.slice(0, 4).map(path => ({ name: 'read_file', args: () =>
+            path === 'docs/late-guide.md' ? { path } : { path, offset: 0, maxBytes: 4096 } })),
         { name: 'read_file', args: () => ({ path: 'docs/other-guide.md', offset: 4096 }) },
         { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', offset: 4096,
             expectedSourceHash: '0'.repeat(64) }) },
         { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', offset: 5000,
             expectedSourceHash: guideHash }) },
+        { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', offset: 4098 }) },
+        { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', continue: true,
+            offset: 4096 }) },
+        { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', continue: true,
+            expectedSourceHash: guideHash }) },
+        { name: 'read_file', args: () => ({ path: 'docs/other-guide.md', continue: true }) },
+        { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', continue: true }) },
+        { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', continue: true }) },
         { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', offset: 4096 }) },
-        { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', offset: 4096,
-            maxBytes: 2048 }) },
         { name: 'read_file', args: () => ({ path: 'RELEASE_NOTES.md', offset: 0 }) },
         { name: 'assessment_status', args: () => ({}) },
         { name: 'assessment_finish', args: () => ({}) },
@@ -165,12 +179,20 @@ test('real Pi worker and Chat broker seal five-file protected Assessment with la
         let body = '';
         for await (const chunk of request) body += chunk;
         const incoming = JSON.parse(body) as { messages: Record<string, unknown>[];
-            tools: { function: { name: string } }[]; reasoning_effort?: string };
+            tools: { function: { name: string } }[]; reasoning_effort?: string;
+            model: string; temperature?: number; top_p?: number };
         assert.ok(incoming.messages.length);
+        capturedRequests.push(incoming);
+        assert.equal(incoming.model, model.id);
+        assert.equal(incoming.temperature, 1);
+        assert.equal(incoming.top_p, 1);
+        assert.equal(incoming.reasoning_effort, 'low');
+        if (next < plan.length)
+            assert.ok(incoming.tools.some(tool => tool.function.name === 'assessment_finish'));
         if (next === 14) extendedRequest = incoming;
         const operation = plan[next++];
         if (operation?.name === 'read_file' && operation.args().path === 'docs/late-guide.md' &&
-            operation.args().offset === 4096 && !guideHash && next > 2) {
+            operation.args().offset === 4096 && !guideHash && next > 3) {
             const verified = receipts(incoming.messages).find(receipt =>
                 receipt.path === 'docs/late-guide.md' && receipt.nextOffset === 4096 &&
                 typeof receipt.sourceHash === 'string');
@@ -271,7 +293,7 @@ test('real Pi worker and Chat broker seal five-file protected Assessment with la
             { ...draft.identity, id: randomUUID() }, lease.token));
         assert.deepEqual(calls.map(call => call.name), plan.map(call => call.name));
         assert.equal(extendedRequest?.reasoning_effort, 'low');
-        assert.equal(extendedRequest?.messages.length, 30);
+        assert.ok((extendedRequest?.messages.length ?? 0) >= 30);
         assert.equal(extendedRequest?.tools.length, 7);
         assert.ok(Buffer.byteLength(JSON.stringify(extendedRequest)) > 12_000,
             'the long-history request includes source-like page content');
@@ -284,18 +306,27 @@ test('real Pi worker and Chat broker seal five-file protected Assessment with la
             assert.equal((assistantCall.tool_calls as { id: string }[])[0].id, toolReply.tool_call_id);
             assert.equal(typeof (assistantCall.reasoning ?? assistantCall.reasoning_content), 'string');
         }
-        assert.equal(calls.filter(call => call.name === 'read_file').length, 11);
+        assert.equal(calls.filter(call => call.name === 'read_file').length, 17);
+        assert.match(calls.find(call => call.args.continue === true &&
+            calls.indexOf(call) < 3)!.output, /^SOURCE_IDENTITY_REQUIRED:/u);
         const guideCalls = calls.filter(call => call.name === 'read_file' &&
             call.args.path === 'docs/late-guide.md' && call.args.offset === 4096 &&
             call.args.expectedSourceHash === undefined);
         assert.match(guideCalls[0].output, /^SOURCE_IDENTITY_REQUIRED:/u);
         assert.match(calls.find(call => call.args.path === 'docs/other-guide.md')!.output,
             /^SOURCE_IDENTITY_REQUIRED:/u);
-        assert.match(guideCalls[2].output, /^SOURCE_IDENTITY_REQUIRED:/u);
+        assert.match(calls.find(call => call.args.offset === 4098)!.output,
+            /^INVALID_OFFSET: Expected nextOffset 4096; received 4098\./u);
         assert.match(calls.find(call => call.args.expectedSourceHash === '0'.repeat(64))!.output,
             /^STALE_SOURCE:/u);
         assert.match(calls.find(call => call.args.offset === 5000)!.output,
-            /^INVALID_OFFSET: Use the verified nextOffset 4096/u);
+            /^INVALID_OFFSET: Expected nextOffset 4096; received 5000\./u);
+        assert.equal(calls.filter(call => call.name === 'read_file' && call.args.continue === true &&
+            call.output.startsWith('INVALID_ARGUMENTS:')).length, 2);
+        assert.match(calls.find(call => call.args.path === 'docs/other-guide.md' &&
+            call.args.continue === true)!.output, /^SOURCE_IDENTITY_REQUIRED:/u);
+        assert.match(calls.findLast(call => call.name === 'read_file' &&
+            call.args.continue === true)!.output, /^INVALID_OFFSET:/u);
         assert.match(calls.find(call => call.name === 'assessment_finish')!.output,
             /ASSESSMENT_CATEGORY_INCOMPLETE/u);
         assert.equal(JSON.parse(calls.filter(call => call.name === 'assessment_status')[1].output).sources,
@@ -304,15 +335,17 @@ test('real Pi worker and Chat broker seal five-file protected Assessment with la
         assert.equal(JSON.parse(calls.filter(call => call.name === 'assessment_stage')[1].output).code,
             'ASSESSMENT_UNSUPPORTED_SOURCE');
         const firstGuide = JSON.parse(calls.find(call => call.name === 'read_file' &&
-            call.args.path === 'docs/late-guide.md' && call.args.offset === 0)!.output);
+            call.args.path === 'docs/late-guide.md' && call.args.continue === undefined &&
+            call.args.offset === undefined)!.output);
         const lateGuide = JSON.parse(calls.find(call => call.name === 'read_file' &&
-            call.args.path === 'docs/late-guide.md' && call.args.offset === 4096 &&
+            call.args.path === 'docs/late-guide.md' && call.args.continue === true &&
             call.args.expectedSourceHash === undefined && call.output.startsWith('{'))!.output);
         assert.equal(firstGuide.nextOffset, 4096);
         assert.equal(lateGuide.offset, 4096);
         assert.equal(lateGuide.nextOffset, null);
         assert.equal(firstGuide.text + lateGuide.text, guide);
-        assert.equal(guideCalls[1].args.expectedSourceHash, undefined);
+        assert.equal(lateGuide.offset, firstGuide.nextOffset);
+        assert.ok(capturedRequests.length > 10);
         const finished = JSON.parse(calls.at(-1)!.output);
         assert.equal(finished.complete, true);
         assert.equal(assistant?.execution.toolEvents?.filter(event => event.name === 'assessment_stage' &&

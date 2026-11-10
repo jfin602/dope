@@ -12,6 +12,52 @@ test('incremental assessment advertises top-level object tools without command o
     'assessment_status', 'list_files', 'read_file', 'search_paths', 'search_text']);
   assert.equal(ASSESSMENT_TOOLS.assessment_stage.category.anyOf.length, 6);
   assert.equal(ASSESSMENT_TOOLS.assessment_stage.claim.type, 'string');
+  assert.equal(ASSESSMENT_TOOLS.read_file.continue.type, 'boolean');
+  assert.equal(PROPOSAL_TOOLS.read_file.continue, undefined);
+});
+
+test('a different local model keeps its prior serialized sampling defaults', async () => {
+  const { accept } = await import('../../packages/pi-runtime/worker.mjs?other-model-sampling');
+  const originalFetch = globalThis.fetch;
+  const originalWrite = process.stdout.write.bind(process.stdout);
+  const requests = [];
+  const frames = [];
+  globalThis.fetch = async (_url, options) => {
+    requests.push(JSON.parse(String(options.body)));
+    const base = { id: 'qwen-response', object: 'chat.completion.chunk', created: 1,
+      model: 'qwen3.5-9b' };
+    const body = [
+      { index: 0, delta: { role: 'assistant', content: 'ok' }, finish_reason: null },
+      { index: 0, delta: {}, finish_reason: 'stop' }
+    ].map(choice => `data: ${JSON.stringify({ ...base, choices: [choice] })}\n\n`).join('') +
+      'data: [DONE]\n\n';
+    return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } });
+  };
+  process.stdout.write = chunk => {
+    try { frames.push(JSON.parse(String(chunk))); return true; }
+    catch { return originalWrite(chunk); }
+  };
+  try {
+    const model = { id: 'qwen3.5-9b', name: 'Qwen', provider: 'dope-local',
+      api: 'openai-completions', baseUrl: 'http://127.0.0.1:9/v1', reasoning: false,
+      input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+      contextWindow: 8192, maxTokens: 512 };
+    await accept(JSON.stringify({ id: 0, type: 'open', cwd: '/tmp',
+      model: { ...model, samplingParams: { temperature: 1, top_p: 1 } } }));
+    assert.equal(frames.find(frame => frame.id === 0)?.errorCode, 'session_init');
+    await accept(JSON.stringify({ id: 1, type: 'open', cwd: '/tmp', model }));
+    await accept(JSON.stringify({ id: 2, type: 'turn',
+      messages: [{ role: 'user', content: 'Say ok.' }], maxOutputTokens: 512 }));
+    await accept(JSON.stringify({ id: 3, type: 'close' }));
+    assert.equal(frames.find(frame => frame.id === 2 && frame.ok !== undefined)?.ok, true);
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].model, 'qwen3.5-9b');
+    assert.equal(requests[0].temperature, undefined);
+    assert.equal(requests[0].top_p, undefined);
+  } finally {
+    process.stdout.write = originalWrite;
+    globalThis.fetch = originalFetch;
+  }
 });
 import { PiRuntimeHost, PiWorkerFailure, resolvePiWorkerPath } from '../../packages/theia-extension/lib/node/pi-runtime-host.js';
 import { PiConversationLease } from '../../packages/theia-extension/lib/node/pi-conversation-runtime.js';

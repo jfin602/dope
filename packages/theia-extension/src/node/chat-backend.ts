@@ -2665,12 +2665,13 @@ export class ChatBackend implements ChatService {
                 // read must not fall back to a clipped prefix with no continuation.
                 const rangeRead = name === 'read_file';
                 if (typeof record[field] !== 'string' || keys.some(key => !(rangeRead ?
-                    ['path', 'offset', 'maxBytes', 'expectedSourceHash'] :
+                    ['path', 'offset', 'maxBytes', 'expectedSourceHash',
+                        ...(protectedAssessment ? ['continue'] : [])] :
                     [field, 'offset', 'maxBytes', 'expectedResultHash']).includes(key))) {
                     if (name === 'read_file') {
                         toolEvents.push({ name, status: 'failed', truncated: false, code: 'INVALID_ARGUMENTS',
                             stage: 'argument-validation', brokerExecuted: false });
-                        return 'INVALID_ARGUMENTS: Use a relative path and optional offset, maxBytes and expectedSourceHash.';
+                        return 'INVALID_ARGUMENTS: Use a relative path and supported page arguments.';
                     }
                     throw new Error('Project discovery arguments denied');
                 }
@@ -2684,36 +2685,60 @@ export class ChatBackend implements ChatService {
                     sourceHashSupplied: record.expectedSourceHash !== undefined };
                 try {
                     if (rangeRead) {
-                        const expectedPage = protectedAssessment && Number.isSafeInteger(record.offset) &&
-                            (record.offset as number) > 0 ?
-                            (await assessmentController!.status()).required.find(item =>
-                                item.path === record.path) : undefined;
-                        const brokerHash = protectedAssessment && (record.offset as number ?? 0) > 0 &&
-                            record.expectedSourceHash === undefined ?
-                            assessmentReadReceipts!.resolve(record.path as string, record.offset as number,
-                                expectedPage, { root, projectHandle: request.projectHandle,
-                                    chatId: key, turnId: readExecutionId, leaseToken: request.leaseToken,
-                                    ownerId: this.leases.get(key)?.ownerId ?? '' }, Date.now(),
-                                this.turns.get(key)?.abort === abort &&
-                                this.leases.get(key)?.token === request.leaseToken && !abort.signal.aborted &&
-                                !signal?.aborted && this.active(request.projectHandle) === root) : undefined;
-                        const invalid = !Number.isSafeInteger(record.offset ?? 0) || (record.offset as number ?? 0) < 0 ?
+                        // Reject malformed or mixed continuation modes before looking up any
+                        // protected coverage or receipt identity.
+                        const argumentInvalid = !Number.isSafeInteger(record.offset ?? 0) ||
+                            (record.offset as number ?? 0) < 0 ?
                             ['INVALID_OFFSET', 'Use a nonnegative UTF-8 byte offset.'] :
-                            !Number.isSafeInteger(record.maxBytes ?? 4096) || (record.maxBytes as number ?? 4096) < 1 ||
+                            !Number.isSafeInteger(record.maxBytes ?? 4096) ||
+                            (record.maxBytes as number ?? 4096) < 1 ||
                             (record.maxBytes as number ?? 4096) > 4096 ?
                             ['INVALID_PAGE_SIZE', 'Use a page size from 1 to 4096 bytes.'] :
+                            record.continue !== undefined && (record.continue !== true ||
+                            record.offset !== undefined || record.expectedSourceHash !== undefined) ?
+                            ['INVALID_ARGUMENTS', 'Use continue:true with path and optional maxBytes only.'] :
                             record.expectedSourceHash !== undefined &&
                             (typeof record.expectedSourceHash !== 'string' ||
                             !/^[a-f0-9]{64}$/u.test(record.expectedSourceHash)) ?
                             ['INVALID_SOURCE_IDENTITY', 'Use the sourceHash returned by the first page.'] :
+                            undefined;
+                        if (argumentInvalid) {
+                            toolEvents.push({ name: toolName, status: 'failed', truncated: false,
+                                code: argumentInvalid[0] as 'INVALID_OFFSET', stage: 'argument-validation',
+                                brokerExecuted: false, ...rangeMeta });
+                            return `${argumentInvalid[0]}: ${argumentInvalid[1]}`;
+                        }
+                        const expectedPage = protectedAssessment ?
+                            (await assessmentController!.status()).required.find(item =>
+                                item.path === record.path) : undefined;
+                        const activeRead = this.turns.get(key)?.abort === abort &&
+                            this.leases.get(key)?.token === request.leaseToken && !abort.signal.aborted &&
+                            !signal?.aborted && this.active(request.projectHandle) === root;
+                        const trustedNext = protectedAssessment &&
+                            (record.continue === true || (record.offset as number ?? 0) > 0 &&
+                                record.expectedSourceHash === undefined) ?
+                            assessmentReadReceipts!.next(record.path as string,
+                                expectedPage, { root, projectHandle: request.projectHandle,
+                                    chatId: key, turnId: readExecutionId, leaseToken: request.leaseToken,
+                                    ownerId: this.leases.get(key)?.ownerId ?? '' }, Date.now(), activeRead) : undefined;
+                        const offset = record.continue === true ? trustedNext?.offset :
+                            (record.offset as number | undefined) ?? 0;
+                        const brokerHash = trustedNext?.sourceHash;
+                        const invalid = protectedAssessment && record.continue === true && expectedPage?.coveredBytes &&
+                            expectedPage.nextOffset === null ?
+                            ['INVALID_OFFSET', 'This Assessment file is already fully read.'] :
+                            protectedAssessment && record.continue === true && !trustedNext ?
+                            ['SOURCE_IDENTITY_REQUIRED', 'Read the first page in this active Assessment execution.'] :
+                            protectedAssessment && (record.offset as number ?? 0) > 0 &&
+                            expectedPage?.coveredBytes && record.offset !== expectedPage.nextOffset ?
+                            ['INVALID_OFFSET', `Expected nextOffset ${expectedPage.nextOffset}; received ${record.offset}.`] :
                             (record.offset as number ?? 0) > 0 && !record.expectedSourceHash && !brokerHash &&
                             !(docsReview && documentationHashes.has(record.path as string)) ?
-                            ['SOURCE_IDENTITY_REQUIRED', 'Start at offset 0 in this execution, then use the verified nextOffset.'] :
-                            expectedPage && !expectedPage.coveredBytes ?
+                            ['SOURCE_IDENTITY_REQUIRED', 'Start at offset 0 in this execution, then continue from the verified page.'] :
+                            expectedPage && (record.offset as number ?? 0) > 0 && !expectedPage.coveredBytes ?
                             ['INVALID_OFFSET', 'Read offset 0 successfully before continuing this Assessment file.'] :
-                            expectedPage && record.offset !== expectedPage.nextOffset ?
-                            ['INVALID_OFFSET', `Use the verified nextOffset ${expectedPage.nextOffset} for this Assessment file.`] :
-                            expectedPage && (record.expectedSourceHash ?? brokerHash) !== expectedPage.expectedSourceHash ?
+                            expectedPage && (record.continue === true || (record.offset as number ?? 0) > 0) &&
+                            (record.expectedSourceHash ?? brokerHash) !== expectedPage.expectedSourceHash ?
                             ['STALE_SOURCE', 'Use the exact sourceHash from the last verified read; current file identity is rechecked.'] :
                             undefined;
                         if (invalid) {
@@ -2723,7 +2748,7 @@ export class ChatBackend implements ChatService {
                             return `${invalid[0]}: ${invalid[1]}`;
                         }
                         const page = await this.grounder!.readFileRange(root, record.path as string,
-                            record.offset === undefined ? 0 : record.offset as number,
+                            offset!,
                             record.maxBytes === undefined ? 4096 : record.maxBytes as number,
                             (record.expectedSourceHash as string | undefined) ?? brokerHash ??
                                 (docsReview ? documentationHashes.get(record.path as string) : undefined));
@@ -2752,7 +2777,8 @@ export class ChatBackend implements ChatService {
                         if (protectedAssessment) await assessmentController!.readPage(page);
                         if (protectedAssessment) assessmentReadReceipts!.record(page);
                         toolEvents.push({ name: toolName, status: 'completed', truncated: page.truncated,
-                            stage: 'broker', brokerExecuted: true, ...rangeMeta, endOffset: page.endOffset });
+                            stage: 'broker', brokerExecuted: true, ...rangeMeta,
+                            offset: page.offset, endOffset: page.endOffset });
                         return payload;
                     }
                     const result = name === 'read_file' ? await this.grounder!.readFile(root, record.path as string) :

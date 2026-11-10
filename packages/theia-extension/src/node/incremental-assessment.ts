@@ -105,7 +105,9 @@ export class IncrementalAssessment {
             findings: categories.reduce((sum, category) => sum + partial.findings[category].length, 0),
             categories: categoryState, remaining: coverage.remaining,
             nextAction: coverage.remaining.length ?
-                `read_file ${coverage.remaining[0]} using offset ${coverage.progress[coverage.remaining[0]].nextOffset}` :
+                coverage.progress[coverage.remaining[0]].nextOffset === 0 ?
+                    `read_file ${coverage.remaining[0]} using its path` :
+                    `read_file ${coverage.remaining[0]} with continue:true` :
                 !partial.pages.length ? 'read_file relevant source with offset 0' :
                 !partial.scope ? 'stage scope' : incomplete ? `stage ${incomplete} or a justified empty reason` :
                     !partial.tiers ? 'stage T1/T2/T3' : 'assessment_finish' };

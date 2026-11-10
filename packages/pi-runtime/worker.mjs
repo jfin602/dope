@@ -277,6 +277,9 @@ const CHAT_TOOLS = {
     maxBytes: Type.Optional(Type.Integer()), expectedResultHash: Type.Optional(Type.String()) },
   run_command: { command: Type.String() }
 };
+// Only protected Assessment exposes broker-owned page continuation. Other Chat
+// readers retain their explicit offset and source-hash contract.
+const ASSESSMENT_READ_FILE = { ...CHAT_TOOLS.read_file, continue: Type.Optional(Type.Boolean()) };
 // OpenAI-compatible local servers require a top-level object for function parameters.
 // The broker checks the exact operation-specific shape before any stage is persisted.
 export const proposalDocumentSchema = Type.Object({
@@ -306,6 +309,7 @@ export const PROPOSAL_TOOLS = {
 };
 export const ASSESSMENT_TOOLS = {
   ...Object.fromEntries(Object.entries(CHAT_TOOLS).filter(([name]) => name !== 'run_command')),
+  read_file: ASSESSMENT_READ_FILE,
   assessment_status: {},
   assessment_stage: { category: Type.Union(['scope', 'observations', 'preservation',
     'dependencies', 'risks', 'tiers'].map(Type.Literal)), claim: Type.Optional(Type.String()),
@@ -384,7 +388,7 @@ function chatTools() {
       'Run an eligible read-only project investigation command in an isolated Linux sandbox. The project owner may need to approve it. Never claim execution without a tool result.' :
       name === 'list_files' ? 'List one project directory. Start with path "" or "." for the project root. Continue a partial result with nextOffset and expectedResultHash; narrow an omitted directory. Read actual file pages for source coverage.' :
       name === 'read_file' ? (assessmentToolsMode ?
-        'Read an Assessment source by project-relative path. Start at offset 0. If nextOffset is a number, continue in this same execution with the SAME path and offset:nextOffset; Dope verifies the original source identity from its read receipt. Do not copy sourceHash into a routine continuation. Stop when nextOffset is null. Listings and searches do not count as source coverage.' :
+        'Read an Assessment source by project-relative path. Start with path only. If nextOffset is a number, call read_file with the SAME path and continue:true. Dope supplies the verified next offset and source identity. Stop when nextOffset is null. Explicit offsets and hashes remain strictly validated. Listings and searches do not count as source coverage.' :
         'Read a project-relative path. The first page returns path, sourceHash, offset, endOffset and nextOffset. If nextOffset is a number, call read_file again with the SAME path, offset:nextOffset and expectedSourceHash:the EXACT returned sourceHash. Never omit or invent that hash on a later page; stop when nextOffset is null. Listings and searches do not count as source coverage.') :
       name === 'search_paths' ? 'Search eligible project paths by name. Continue a partial result with nextOffset and expectedResultHash; narrow an omitted search. Search results do not prove file contents.' :
       name === 'roadmap_read' ? 'Read current typed Roadmap entities and establish this turn\'s trusted staging basis. Omit ids to discover entities; Phase entries include gateIds so you can read their Gates by ID. Results contain up to 20 entries; when nextOffset is not null, pass it as offset in another roadmap_read until all relevant entities are found. Read before staging; Dope retains source and revision preconditions.' :
@@ -522,8 +526,14 @@ const emptyResources = Object.freeze({
 function assertLocalModel(model) {
   if (!model || typeof model !== 'object' || typeof model.baseUrl !== 'string' ||
       Object.keys(model).some(key => !['id', 'name', 'provider', 'api', 'baseUrl', 'reasoning',
-        'input', 'cost', 'contextWindow', 'maxTokens', 'compat'].includes(key)) ||
+        'input', 'cost', 'contextWindow', 'maxTokens', 'compat', 'samplingParams'].includes(key)) ||
       model.provider !== 'dope-local' || model.api !== 'openai-completions' ||
+      (model.samplingParams !== undefined &&
+        (model.id !== 'openai/gpt-oss-20b' ||
+          !model.samplingParams || typeof model.samplingParams !== 'object' ||
+          Array.isArray(model.samplingParams) ||
+          Object.keys(model.samplingParams).sort().join(',') !== 'temperature,top_p' ||
+          model.samplingParams.temperature !== 1 || model.samplingParams.top_p !== 1)) ||
       typeof model.id !== 'string' || !model.id.trim() ||
       typeof model.name !== 'string' || !model.name.trim() ||
       (model.compat?.maxTokensField !== undefined && model.compat.maxTokensField !== 'max_tokens') ||
@@ -615,6 +625,7 @@ export async function dispatch(message) {
           apiKey: message.credential ?? 'local', models: [{
             id: message.model.id, name: message.model.name, reasoning: message.model.reasoning,
             ...(message.model.compat ? { compat: message.model.compat } : {}), input: ['text'],
+            ...(message.model.samplingParams ? { samplingParams: message.model.samplingParams } : {}),
             cost: message.model.cost, contextWindow: message.model.contextWindow,
             maxTokens: message.model.maxTokens
           }]
