@@ -1,5 +1,7 @@
 # c13-context-recovery — context policy and protected Pi failure recovery
 
+> **2026-11-09/10 FORWARD RESPONSIBILITY SUPERSESSION:** The original P12 and R1–R9 five-file technical Assessment campaign remains historical evidence of the former exhaustive Assessment protocol, not a permanent requirement for `/prompt-ass`. The approved [workflow](../../workflow.md) makes Assessment a prompt-count/task wireframe, Planning the full sequenced technical design and Prompt Write the final executable files. Future qualification must prove each stage by its actual responsibility. Preserve prior NOT GREEN/PARTIAL/PASS evidence; Managed/Unmanaged and provider failure diagnosis remain separate runtime concerns. No code/Run/Green/version change from this note.
+
 **Status: ASSESSED / PLANNED / PROMPTS AUTHORED ONLY (2026-11-09).** Source basis `c32eb290`, product version `0.13.11` **unchanged**. This correction has not been run or technically qualified by authoring. [Assessment](prompt-assessment.md) · [Implementation plan](implementation-plan.md).
 
 ## Purpose

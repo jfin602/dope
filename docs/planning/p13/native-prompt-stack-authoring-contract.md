@@ -6,6 +6,8 @@
 
 > **2026-11-07 DOCUMENTS WORKSPACE REVIEW AMENDMENT / DESIGN ONLY:** [ADR 0053](../../decisions/0053-documents-workspace-and-proposal-review.md) / [UI contract](../../ui/documents-workspace-contract.md) let a pending `/prompt-write` proposal open in the same optional central Documents viewer used by Docs Explorer and Docs proposal review. Its tree displays generated P*.txt files in correct relative structure/order; rendered/source previews and copying are read-only with respect to publication. Card and viewport Accept / Reject / Revise Proposal call the **existing prompt-stack proposal owner and guarded publisher**, never the Docs application writer. Do not publish by preview or start Work, issue grants, promote candidates or qualify Gates on approval. Existing R3A/R3B/R3/R2/R4 routing, owner approval, stale-basis defenses and `0.13.11` recorded status are unchanged. No source implementation or qualification is asserted.
 
+> **2026-11-09/10 FORWARD THREE-STAGE RESPONSIBILITY CONTRACT:** Assessment decides prompt count/task division in a reviewed wireframe; Planning owns detailed source-grounded sequential implementation and T1/T2/T3/efficiency; Prompt Write composes final executable files for guarded approval. Preserve historical qualifications, identity and `0.13.11`. See [named chain](named-prompt-authoring-chain-contract.md) and [workflow](../../workflow.md).
+
 # Phase 13 — Native Prompt Stack Authoring
 
 **Owner decision:** 2026-11-07. **State:** documentation and recovery prompt authoring only; not product implementation or qualification. **Current product version:** 0.13.11. Applies to the unrun Phase 13 recovery after committed R1.
@@ -20,9 +22,9 @@ Software Map, legacy Planning Map, System/Subsystem synthesis and physical trans
 
 Reuse Dope's existing protected built-in Skills registry, saved Chat, selected local model, brokered reads and prompt-stack grammar/composer. Do not create another agent, runner, Chat window or filesystem authority.
 
-- `/prompt-ass` assesses the saved conversation, applicable current project documents/source, requirements, dependencies, risks, authorization and T1/T2/T3 evidence. Creates a durable inspectable assessment draft; writes no canonical project files.
-- `/prompt-plan` consumes the selected assessment and bounded source inspections; creates a dependency-ordered plan identifying actual affected code/test boundaries, smallest necessary build/test commands, manual checkpoints and deferrals.
-- `/prompt-write <folder>` consumes the reviewed plan and produces a *draft* validated executable stack: assessment/plan, contiguous P1–Pn prompts, exactly one final closeout, correct source/authority assumptions and model/manual flags. Apply `docs/workflow.md` Prompt Efficiency, UI Design Compliance and Human Usability gates. Drafting does not publish or execute.
+- `/prompt-ass <name> <task details>` proposes a compact work-prompt count and ordered wireframe of stable task IDs/titles/objectives, high-level dependencies and a separate manual closeout outline. Consult source only as needed for an informed split; no exhaustive technical Assessment or detailed validation tiers. Draft is noncanonical.
+- `/prompt-plan` expands the reviewed wireframe into full source-grounded sequenced implementation steps, preserved behavior, code/test boundaries, dependencies, acceptance, minimal builds/tests, T1/T2/T3 and applicable efficiency gates. Material task count/boundary changes require reviewed wireframe revision.
+- `/prompt-write` uses the selected completed Plan to produce a draft runnable stack: contiguous P1–Pn, exactly one final manual closeout, correct source/authority, runner/model/browser flags and applicable UI/usability requirements. Historical `/prompt-write <folder>` syntax remains historical. Owner Accept through the existing guarded publisher alone creates final files; no automatic Run.
 
 Commands must resolve only on explicit, trusted, send-time slash invocation. Quoted text, code blocks, paths and model prose must not trigger commands. Slash selection inserts editable text and never auto-submits. Preserve prior Chat context, retry/cancel, project switching, Ask/Allow and 16k-context bounded reads. Distinguish files listed/searched from files actually inspected.
 

@@ -45,6 +45,8 @@ A finish-time target audit must check every requested create/update, required cr
 
 ## Prompt-stack stage mechanics
 
+The selected reviewed `/prompt-ass` supplies only the work-prompt **count/task-division wireframe**; the selected completed `/prompt-plan` supplies the full source-grounded sequence, acceptance, T1/T2/T3 and efficiency requirements. This controller supports **Prompt Write** assembly and review, not exhaustive Assessment authoring or a second model-invented Plan. Preserve task IDs/count/boundaries unless the owner explicitly reviews an upstream revision.
+
 For `/prompt-write`, retain the saved selected `/prompt-ass` and `/prompt-plan` basis, including observed source/test identities. Emit small per-step structures: stable plan-step ID, bounded scope, implementation goal, dependencies, working files/tests, tier/model/browser/manual flags, acceptance, minimal validation and optional specific content sections. The model may construct detailed sections incrementally; Dope can render common boilerplate and required grammar through the **existing deterministic composer/importer** without requiring a single JSON outline for the entire stack.
 
 Support dependency-compatible ordering and bounded **ten-or-more-prompt** stacks, including substantial prompt bodies, without a four-work-item architectural cap. Bound each prompt, total session bytes, stage count, context and call budget explicitly; exceeding a bound produces a recoverable, truthful limitation, not truncation or partial authorization. Keep requirements from `docs/workflow.md`: prompt efficiency audit of the complete stack, small T1 responsibilities, explicit T2/T3, appropriate build/test precision and correct model/manual flags.

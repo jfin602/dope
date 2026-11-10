@@ -1,3 +1,5 @@
+> **2026-11-09/10 FORWARD RESPONSIBILITY ALIGNMENT / DOCS ONLY:** `/prompt-ass` decides prompt count and task division as a compact reviewed wireframe, `/prompt-plan` expands it into detailed sequenced technical work with source investigation/T1–T3/efficiency, and `/prompt-write` composes final executable files for guarded Accept. The P3/P4/P6 descriptions below are updated prospectively; executed prompts and historical evidence are not revised. See [named chain](../../planning/p13/named-prompt-authoring-chain-contract.md). No product Run/Green/version effect.
+
 > **2026-11-09 FORWARD CORRECTION PLAN / DOCUMENTATION ONLY:** The owner-requested [Assessment failure and Managed / Unmanaged context plan](context-policy-correction-plan.md) incorporates the [pushed 32K/64K supplement](qualification/p8-r11-supplemental-32k-64k-benchmark-2026-11-09.md). Diagnose the actual worker failure and conflicting tool budgets before treating capacity or the settings toggle as the repair. Preserve the separate tool-16 and early tool-6 signatures, unknown usage/causes, original reports and executed prompts. The toggle replaces numeric fields and uses one operation-aware runtime policy. **No implementation, Run, new qualification, version change or Phase 13 progression is claimed.** Original stack planning below is historical.
 
 # c13-pfix — Owner-named Prompt Stack Draft
@@ -13,10 +15,10 @@
 | --- | --- | --- | --- |
 | P1 | T1 | No | Mandatory named command, draft ID and state contract |
 | P2 | T1 | No | Durable protected draft records and safe task-directory isolation |
-| P3 | T1 | No | Structured source-backed assessment staging |
-| P4 | T1 | No | Structured plan staging and efficiency/coverage validation |
+| P3 | T1 | No | Compact Assessment wireframe: proposed prompt count, ordered task boundaries and high-level dependencies |
+| P4 | T1 | No | Detailed source-grounded sequenced Plan, preservation, acceptance, T1/T2/T3 and efficiency |
 | P5 | T1 | No | Single card, typed chips and composer handoff UI |
-| P6 | T1 | No | Incremental prompt-write and existing guarded publisher integration |
+| P6 | T1 | No | Plan-faithful executable Prompt Write and existing guarded publisher integration |
 | P7 | T2 | No | Cross-skill authority, revision, crash/restart and safety qualification |
 | P8 | T3 | YES, manual only | Real selected GPT-OSS 20B connected Codex browser qualification |
 

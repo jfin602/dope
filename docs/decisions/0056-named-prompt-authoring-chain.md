@@ -16,6 +16,10 @@ Use versioned, Dope-owned *noncanonical* intermediate records under a project-sc
 
 A subsequent edit to Assessment invalidates dependent Plan and Prompts; a Plan edit invalidates Prompts. Preserve last valid candidates until a replacement seals. The original source/version/lease and explicit approval checks still apply. No draft is itself canonical publication or Work authority.
 
+## Forward responsibility clarification (2026-11-09/10)
+
+The owner reaffirmed the distinct functions: **Assessment** decides prompt count and logical task division in a small reviewed wireframe; **Planning** performs detailed source-grounded implementation design, dependencies, acceptance, T1/T2/T3 and ten applicable Prompt Efficiency Gates; **Prompt Write** formats and validates final runnable prompt files through the existing guarded proposal/publisher. Do not require exhaustive source-citation/technical-implementation staging just to complete Assessment. Factual source claims remain verified, and material count/task changes require explicit reviewed revision. The named draft/chip, owner/lease/source, no-Run/Green and publication boundaries are unchanged. Historical evidence remains intact; no product/version change.
+
 ## Non-goals and guarantees
 No automatic model-selected task name, duplicate Docs workspace, new publisher, shadow Work stack discovery, mutable accepted Work prompt snapshots, implicit Run/grant, Gate GREEN, unbounded inference, or replacement of Docs `/docs-review`. No silent upgrade of old three-message drafts without a verified migration/reconciliation policy.
 

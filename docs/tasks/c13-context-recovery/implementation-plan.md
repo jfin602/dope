@@ -1,5 +1,7 @@
 # /prompt-plan — c13-context-recovery
 
+> **2026-11-09/10 FORWARD RESPONSIBILITY SUPERSESSION / HISTORICAL EVIDENCE PRESERVED:** The five-file `assessment_finish` acceptance condition below qualified the earlier exhaustive Assessment protocol; it is not a forward requirement for determining prompt count/task division. The owner-defined chain is Assessment **wireframe** → Planning **full source-grounded sequenced implementation plan with T1/T2/T3 and efficiency** → Prompt Write **final reviewed runnable files**. Assess those stages independently, keep the context policy investigation separate and do not rewrite historical failures or executed P*.txt.
+
 **Date:** 2026-11-09. **Task source:** [assessment](prompt-assessment.md), [owner forward correction](../c13-pfix/context-policy-correction-plan.md) and R9–R11 historical evidence. **Entry:** repo `c32eb290`, unchanged package version `0.13.11`. **Status:** source-grounded authoring plan, not product implementation or a qualification claim.
 
 ## Architecture and data flow
