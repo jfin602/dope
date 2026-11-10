@@ -311,12 +311,16 @@ export const ASSESSMENT_TOOLS = {
   ...Object.fromEntries(Object.entries(CHAT_TOOLS).filter(([name]) => name !== 'run_command')),
   read_file: ASSESSMENT_READ_FILE,
   assessment_status: {},
-  assessment_stage: { category: Type.Union(['scope', 'observations', 'preservation',
-    'dependencies', 'risks', 'tiers'].map(Type.Literal)), claim: Type.Optional(Type.String()),
-    path: Type.Optional(Type.String()), quote: Type.Optional(Type.String()), reason: Type.Optional(Type.String()),
-    text: Type.Optional(Type.String()), T1: Type.Optional(Type.String()),
-    T2: Type.Optional(Type.String()), T3: Type.Optional(Type.String()),
-    correctRevision: Type.Optional(Type.Number()) },
+  assessment_stage: { kind: Type.Literal('wireframe'), objective: Type.String(),
+    count: Type.Number(), rationale: Type.String(),
+    work: Type.Array(Type.Object({ id: Type.String(), title: Type.String(),
+      objective: Type.String(), boundary: Type.String(),
+      dependsOn: Type.Array(Type.String()) }, { additionalProperties: false })),
+    constraints: Type.Array(Type.String()), deferrals: Type.Array(Type.String()),
+    closeout: Type.Object({ title: Type.String(), objective: Type.String(),
+      manualReason: Type.String() }, { additionalProperties: false }),
+    sourceClaims: Type.Array(Type.Object({ claim: Type.String(), path: Type.String(),
+      quote: Type.String() }, { additionalProperties: false })) },
   assessment_finish: {}
 };
 // Keep this compact: Pi sees the legal discriminator and required fields, while
@@ -387,9 +391,9 @@ function chatTools() {
     assessmentToolsMode ? ASSESSMENT_TOOLS : CHAT_TOOLS).map(([name, properties]) => ({
     name, label: name, description: name === 'run_command' ?
       'Run an eligible read-only project investigation command in an isolated Linux sandbox. The project owner may need to approve it. Never claim execution without a tool result.' :
-      name === 'list_files' ? 'List one project directory. Start with path "" or "." for the project root. Continue a partial result with nextOffset and expectedResultHash; narrow an omitted directory. Read actual file pages for source coverage.' :
+      name === 'list_files' ? 'List one project directory. Start with path "" or "." for the project root. Continue a partial result with nextOffset and expectedResultHash; narrow an omitted directory. Listings do not prove file contents.' :
       name === 'read_file' ? (assessmentToolsMode ?
-        'Read an Assessment source by project-relative path. Start with path only. If nextOffset is a number, call read_file with the SAME path and continue:true. Dope supplies the verified next offset and source identity. Stop when nextOffset is null. Explicit offsets and hashes remain strictly validated. Listings and searches do not count as source coverage.' :
+        'Read a relevant Assessment source by project-relative path when needed. Start with path only. To inspect a later page, call read_file with the same path and continue:true. Dope supplies the verified next offset and source identity. Claims may cite only successfully read bytes; listings and searches do not prove content.' :
         'Read a project-relative path. The first page returns path, sourceHash, offset, endOffset and nextOffset. If nextOffset is a number, call read_file again with the SAME path, offset:nextOffset and expectedSourceHash:the EXACT returned sourceHash. Never omit or invent that hash on a later page; stop when nextOffset is null. Listings and searches do not count as source coverage.') :
       name === 'search_paths' ? 'Search eligible project paths by name. Continue a partial result with nextOffset and expectedResultHash; narrow an omitted search. Search results do not prove file contents.' :
       name === 'roadmap_read' ? 'Read current typed Roadmap entities and establish this turn\'s trusted staging basis. Omit ids to discover entities; Phase entries include gateIds so you can read their Gates by ID. Results contain up to 20 entries; when nextOffset is not null, pass it as offset in another roadmap_read until all relevant entities are found. Read before staging; Dope retains source and revision preconditions.' :
@@ -403,9 +407,9 @@ function chatTools() {
       name === 'proposal_stage_prompt' ?
         'Stage one typed work step (kind work), detailed section (kind section), or separate terminal manual closeout (kind closeout). Give each work step a stable target ID; sections use that same target. Dope owns stage order and composition. Set complete:true on the last call for each target. Finish after all requested work steps and one closeout. This tool cannot publish files.' :
       name === 'proposal_finish' ? 'Request validation and sealing of the staged candidate. The finalMessage is untrusted display prose, not an approval.' :
-      name === 'assessment_status' ? 'Read required source coverage, accepted finding counts and the next action.' :
-      name === 'assessment_stage' ? 'For a finding send EXACTLY {category,claim,path,quote}: path is the project-relative read_file path and quote is a short, unique, verbatim substring of that file\'s successfully read text (real newlines, not backslash-n). Do not send offsets, hashes, source ranges or extra keys. Use {category:"scope",text} or {category:"tiers",T1,T2,T3}; after all files are fully read, empty dependencies/risks may use {category,reason}. A rejected finding does not erase accepted ones; correct its evidence before retrying.' :
-      name === 'assessment_finish' ? 'Seal only after all requested file bytes and all categories are complete. Dope independently validates source citations, tiers and authority.' :
+      name === 'assessment_status' ? 'Read the checked wireframe receipt and next action.' :
+      name === 'assessment_stage' ? 'Submit one compact prompt-count and task-division wireframe. Use stable step-1..step-N IDs, prior-step dependencies and one separate manual closeout. Source claims need exact quotes from brokered reads.' :
+      name === 'assessment_finish' ? 'Seal the checked wireframe after a successful stage receipt. Dope validates source claims and authority.' :
       'Search eligible project source contents for a symbol or phrase. Protected entries are excluded.',
     parameters: name === 'proposal_stage_document' || name === 'proposal_stage_prompt' ?
       properties : Type.Object(properties, { additionalProperties: false }),

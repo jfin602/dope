@@ -121,9 +121,9 @@ export interface ChatExecution {
         code?: string; stage?: string; brokerExecuted?: boolean;
         assessmentOutcome?: 'advanced' | 'source-page' | 'idempotent' | 'status' |
             'recoverable' | 'hard-authority' | 'repeated-non-progress' | 'resource-ceiling';
-        assessment?: { ordinal: number; category: 'scope' | 'tiers' | 'observations' | 'preservation' |
+        assessment?: { ordinal: number; category: 'wireframe' | 'scope' | 'tiers' | 'observations' | 'preservation' |
             'dependencies' | 'risks' | 'unrecognized'; shape: 'finding' | 'empty' | 'scope' |
-            'tiers' | 'invalid'; code: string; field: 'none' | 'shape' | 'category' |
+            'tiers' | 'wireframe' | 'invalid'; code: string; field: 'none' | 'shape' | 'category' |
             'citation' | 'source' | 'authority' | 'resource' | 'internal';
             previousFindingsPreserved: boolean; acceptedFindings: number };
         offset?: number; pageSize?: number; sourceHashSupplied?: boolean; endOffset?: number;
@@ -640,9 +640,9 @@ function parseExecution(value: unknown): ChatExecution {
                     typeof detail.previousFindingsPreserved !== 'boolean')
                     throw new Error('Invalid Assessment diagnostic');
                 assessment = { ordinal: detail.ordinal as number,
-                    category: choice(detail.category, ['scope', 'tiers', 'observations', 'preservation',
+                    category: choice(detail.category, ['wireframe', 'scope', 'tiers', 'observations', 'preservation',
                         'dependencies', 'risks', 'unrecognized'] as const, 'Assessment category'),
-                    shape: choice(detail.shape, ['finding', 'empty', 'scope', 'tiers', 'invalid'] as const, 'Assessment shape'),
+                    shape: choice(detail.shape, ['wireframe', 'finding', 'empty', 'scope', 'tiers', 'invalid'] as const, 'Assessment shape'),
                     code: detail.code, field: choice(detail.field, ['none', 'shape', 'category', 'citation',
                         'source', 'authority', 'resource', 'internal'] as const, 'Assessment field'),
                     previousFindingsPreserved: detail.previousFindingsPreserved,

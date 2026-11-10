@@ -85,7 +85,7 @@ test('Assessment read receipts bind source, sequence, execution, owner and expir
         undefined, 'a new execution starts without a receipt');
 });
 
-test('real worker Assessment survives nine recoverable mistakes across verified progress', async () => {
+test('real worker seals one bounded Assessment wireframe without exhaustive reads', async () => {
     const temporary = await mkdtemp(join(tmpdir(), 'dope-assessment-r8-replay-'));
     const root = join(temporary, 'project');
     await mkdir(root);
@@ -98,37 +98,22 @@ test('real worker Assessment survives nine recoverable mistakes across verified 
     await run('git', ['-C', root, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
         'commit', '-qm', 'Fixture']);
     const calls: { name: string; output: string }[] = [];
-    const invalid = (category: string, quote: string) => ({ name: 'assessment_stage',
-        args: { category, claim: `Claim ${quote}`, path: 'src/clamp.js', quote } });
-    let operations = [
+    const wireframe = { kind: 'wireframe', objective: 'Improve clamp behavior', count: 1,
+        rationale: 'One bounded implementation step covers the requested change',
+        work: [{ id: 'step-1', title: 'Improve clamp', objective: 'Change clamp behavior',
+            boundary: 'Clamp implementation', dependsOn: [] }],
+        constraints: ['Keep scalar behavior'], deferrals: ['Detailed validation belongs in Plan'],
+        closeout: { title: 'Manual closeout', objective: 'Observe clamp behavior',
+            manualReason: 'Human check is distinct' },
+        sourceClaims: [{ claim: 'Clamp uses Math.min', path: 'src/clamp.js',
+            quote: 'return Math.min(Math.max(value, min), max);' }] };
+    const operations = [
         { name: 'assessment_status', args: {} },
-        ...paths.map(path => ({ name: 'read_file', args: { path } })),
-        { name: 'read_file', args: { path: 'docs/late-guide.md', continue: true } },
-        { name: 'assessment_finish', args: {} },
-        invalid('observations', 'invented one'), invalid('observations', 'invented two'),
-        invalid('observations', 'invented three'),
-        { name: 'assessment_stage', args: { category: 'observations',
-            claim: 'Clamp source bounds finite values', path: 'src/clamp.js',
-            quote: 'return Math.min(Math.max(value, min), max);' } },
-        invalid('preservation', 'invented four'), invalid('preservation', 'invented five'),
-        { name: 'assessment_stage', args: { category: 'preservation',
-            claim: 'Finite behavior remains stable', path: 'RELEASE_NOTES.md',
-            quote: 'Existing finite scalar clamp behavior is stable.' } },
-        { name: 'assessment_stage', args: { category: 'dependencies',
-            claim: 'Fixture uses node:test', path: 'test/clamp.test.js',
-            quote: "import test from 'node:test';" } },
-        { name: 'assessment_stage', args: { category: 'risks',
-            claim: 'Late guide requires nonfinite policy', path: 'docs/late-guide.md',
-            quote: 'Define a clear policy for reversed bounds and NaN or Infinity.' } },
-        { name: 'assessment_stage', args: { category: 'scope', text: 'Assess the five-file clamp correction' } },
-        { name: 'assessment_stage', args: { category: 'scope', text: 'Conflicting scope replay' } },
-        { name: 'assessment_stage', args: { category: 'tiers', T1: 'Unit tests',
-            T2: 'Integration checks', T3: 'Release notes' } },
-        { name: 'assessment_stage', args: { category: 'tiers', T1: 'Focused source and unit validation',
-            T2: 'Cross-boundary integration validation',
-            T3: 'Independent manual browser qualification' } },
-        invalid('observations', 'invented six'),
-        { name: 'assessment_status', args: {} },
+        { name: 'read_file', args: { path: 'src/clamp.js' } },
+        { name: 'assessment_stage', args: { ...wireframe, count: 2 } },
+        { name: 'assessment_stage', args: { ...wireframe,
+            sourceClaims: [{ ...wireframe.sourceClaims[0], quote: 'invented source' }] } },
+        { name: 'assessment_stage', args: wireframe },
         { name: 'assessment_finish', args: {} }
     ];
     let next = 0, allowPlanProbe = false, planProbe = false;
@@ -209,76 +194,18 @@ test('real worker Assessment survives nine recoverable mistakes across verified 
         const checked = await new PromptDraftStore(repository, grounder).read(root, draft.identity!, lease.token);
         assert.equal(checked.assessment?.revision, 1);
         assert.equal(checked.history.length, 0);
-        const sealed = checked.assessment!.record as { scope: string; observations: unknown[];
-            preservation: unknown[]; dependencies: unknown[]; risks: unknown[] };
-        assert.equal(sealed.scope, 'Assess the five-file clamp correction');
-        assert.deepEqual([sealed.observations.length, sealed.preservation.length,
-            sealed.dependencies.length, sealed.risks.length], [1, 1, 1, 1]);
-        assert.equal(calls.filter(call => call.name.startsWith('assessment_') &&
-            JSON.parse(call.output).code).length, 9);
-        const premature = JSON.parse(calls.find(call => call.name === 'assessment_finish')!.output);
-        assert.equal(premature.code, 'ASSESSMENT_CATEGORY_INCOMPLETE');
-        assert.ok(premature.blockedBy.includes('observations'));
-        assert.equal(JSON.parse(calls.find(call => call.name === 'assessment_stage' &&
-            JSON.parse(call.output).code === 'ASSESSMENT_TIERS')!.output).code, 'ASSESSMENT_TIERS');
-        assert.equal(JSON.parse(calls.findLast(call => call.name === 'assessment_status')!.output).finishReady, true);
-        assert.equal(JSON.parse(calls.findLast(call => call.name === 'assessment_finish')!.output).complete, true);
-        assert.equal(assistant?.execution.toolEvents?.filter(event =>
-            event.assessmentOutcome === 'recoverable').length, 9);
+        const sealed = checked.assessment!.record as { kind: string; count: number;
+            work: { id: string }[]; sourceClaims: unknown[] };
+        assert.equal(sealed.kind, 'wireframe');
+        assert.equal(sealed.count, 1);
+        assert.deepEqual(sealed.work.map(item => item.id), ['step-1']);
+        assert.equal(sealed.sourceClaims.length, 1);
+        assert.equal(checked.assessment!.sourceRefs.length, 1);
+        assert.equal(JSON.parse(calls[2].output).code, 'ASSESSMENT_WIREFRAME_COUNT');
+        assert.equal(JSON.parse(calls[3].output).code, 'ASSESSMENT_UNSUPPORTED_SOURCE');
+        assert.equal(JSON.parse(calls[4].output).accepted, true);
+        assert.equal(JSON.parse(calls[5].output).complete, true);
         assert.ok(assistant?.execution.toolEvents?.some(event => event.assessmentOutcome === 'advanced'));
-        const owner = saved.messages.find(message => message.role === 'user' && message.promptDraft);
-        assert.ok(owner?.role === 'user');
-        allowPlanProbe = true;
-        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: model.id },
-            content: '/prompt-plan clamp-api-correction Outline checked work',
-            promptDraftTarget: { draftId: draft.identity!.id, ownerUserMessageId: owner.id,
-                stageMessageId: assistant!.id, stage: 'assessment', stageRevision: 1,
-                projectId: draft.identity!.projectId, sourceFingerprint: draft.identity!.sourceFingerprint,
-                leaseDigest: draft.identity!.leaseDigest } }),
-        error => { assert.match(String(error), /PLAN_/u); return true; });
-        assert.equal(planProbe, true);
-        assert.equal((await new PromptDraftStore(repository, grounder).read(root,
-            draft.identity!, lease.token)).plan, undefined);
-
-        // A separate execution cannot replenish its budget with status polling or an identical stage.
-        calls.length = 0; next = 0; allowPlanProbe = false;
-        const malformed = invalid('observations', 'same invented quote');
-        const poll = { name: 'assessment_status', args: {} };
-        operations = [
-            { name: 'assessment_stage', args: { category: 'scope', text: 'Assess fixture' } },
-            ...Array.from({ length: 4 }, () => [malformed, poll]).flat(),
-            { name: 'assessment_stage', args: { category: 'scope', text: 'Assess fixture' } },
-            ...Array.from({ length: 5 }, () => [malformed, poll]).flat(),
-            { name: 'assessment_status', args: {} }
-        ];
-        const secondChat = randomUUID();
-        await backend.mutate({ projectHandle, expectedRevision: (await repository.read(root)).revision,
-            operation: { type: 'create-chat', id: secondChat, folderPath: '', title: 'No progress' } });
-        const secondLease = await backend.claim({ projectHandle, chatId: secondChat, ownerId: 'fixture-owner' });
-        assert.equal(secondLease.acquired, true);
-        let secondFailure = '';
-        await assert.rejects(backend.runTurn({ projectHandle, chatId: secondChat,
-            leaseToken: secondLease.token, selectedModel: { connectionId: 'local', modelId: model.id },
-            content: `/prompt-ass no-progress Check ${paths.join(' ')}` }), error => {
-            secondFailure = String(error); return true;
-        });
-        assert.ok(calls.length >= operations.length, `${secondFailure}: ${JSON.stringify(calls)}`);
-        assert.equal(JSON.parse(calls.filter(call => call.name === 'assessment_stage')[1].output).code,
-            'ASSESSMENT_UNSUPPORTED_SOURCE');
-        assert.equal(JSON.parse(calls.filter(call => call.name === 'assessment_stage')[5].output).accepted, true);
-        assert.equal(JSON.parse(calls.filter(call => call.name === 'assessment_stage')[5].output).idempotent, true);
-        assert.ok(calls.some(call => JSON.parse(call.output).code === 'ASSESSMENT_NON_PROGRESS_LIMIT'));
-        assert.equal(JSON.parse(calls.at(-1)!.output).code, 'ASSESSMENT_TOOL_AUTHORITY');
-        const stopped = (await backend.get(projectHandle, secondChat))!;
-        const stoppedAssistant = stopped.messages.find(message => message.role === 'assistant');
-        assert.equal(stoppedAssistant?.execution.status, 'failed');
-        assert.equal(stoppedAssistant?.execution.toolEvents?.filter(event =>
-            event.assessmentOutcome === 'recoverable').length, 8);
-        assert.ok(stoppedAssistant?.execution.toolEvents?.some(event =>
-            event.assessmentOutcome === 'repeated-non-progress'));
-        assert.equal((await new PromptDraftStore(repository, grounder).read(root,
-            currentPromptDraft(stopped)!.identity!, secondLease.token)).assessment, undefined);
     } finally {
         backend.dispose(); server.close();
         await rm(temporary, { recursive: true, force: true, maxRetries: 10, retryDelay: 25 });
@@ -304,277 +231,4 @@ test('broker-resolved Assessment identity is rechecked against changed file byte
         await assert.rejects(grounder.readFileRange(root, path, first.nextOffset!, 4096,
             sourceHash), /Stale file continuation/u);
     } finally { await rm(root, { recursive: true, force: true }); }
-});
-
-test('real Pi worker and Chat broker seal five-file protected Assessment with late-page citation', async () => {
-    const temporary = await mkdtemp(join(tmpdir(), 'dope-assessment-worker-'));
-    const root = join(temporary, 'project');
-    await mkdir(root);
-    for (const [path, content] of Object.entries(fixture)) {
-        assert.equal(createHash('sha256').update(content).digest('hex'), fixtureHashes[path], path);
-        await mkdir(join(root, path.split('/').slice(0, -1).join('/')), { recursive: true });
-        await writeFile(join(root, path), content);
-    }
-    assert.equal(Buffer.byteLength(guide), 6584);
-    await run('git', ['init', '-q', root]);
-    await run('git', ['-C', root, 'add', ...paths]);
-    await run('git', ['-C', root, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
-        'commit', '-qm', 'Fixture']);
-
-    const calls: { name: string; args: Record<string, unknown>; output: string }[] = [];
-    let next = 0;
-    let allowPlanProbe = false;
-    let planProbe = false;
-    let guideHash = '';
-    let extendedRequest: { messages: Record<string, unknown>[]; tools: { function: { name: string } }[];
-        reasoning_effort?: string } | undefined;
-    const capturedRequests: { model: string; temperature?: number; top_p?: number;
-        reasoning_effort?: string; tools?: { function: { name: string } }[] }[] = [];
-    const plan: { name: string; args: () => Record<string, unknown> }[] = [
-        { name: 'assessment_status', args: () => ({}) },
-        { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', continue: true }) },
-        { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', offset: 4096 }) },
-        ...paths.slice(0, 4).map(path => ({ name: 'read_file', args: () =>
-            path === 'docs/late-guide.md' ? { path } : { path, offset: 0, maxBytes: 4096 } })),
-        { name: 'read_file', args: () => ({ path: 'docs/other-guide.md', offset: 4096 }) },
-        { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', offset: 4096,
-            expectedSourceHash: '0'.repeat(64) }) },
-        { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', offset: 5000,
-            expectedSourceHash: guideHash }) },
-        { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', offset: 4098 }) },
-        { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', continue: true,
-            offset: 4096 }) },
-        { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', continue: true,
-            expectedSourceHash: guideHash }) },
-        { name: 'read_file', args: () => ({ path: 'docs/other-guide.md', continue: true }) },
-        { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', continue: true }) },
-        { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', continue: true }) },
-        { name: 'read_file', args: () => ({ path: 'docs/late-guide.md', offset: 4096 }) },
-        { name: 'read_file', args: () => ({ path: 'RELEASE_NOTES.md', offset: 0 }) },
-        { name: 'assessment_status', args: () => ({}) },
-        { name: 'assessment_finish', args: () => ({}) },
-        { name: 'assessment_stage', args: () => ({ category: 'observations',
-            claim: 'Scalar clamp uses Math.min and Math.max', path: 'src/clamp.js',
-            quote: 'return Math.min(Math.max(value, min), max);' }) },
-        { name: 'assessment_stage', args: () => ({ category: 'preservation',
-            claim: 'Finite scalar behavior remains stable', path: 'RELEASE_NOTES.md',
-            quote: 'Invented source quote' }) },
-        { name: 'assessment_status', args: () => ({}) },
-        { name: 'assessment_stage', args: () => ({ category: 'preservation',
-            claim: 'Finite scalar behavior remains stable', path: 'RELEASE_NOTES.md',
-            quote: 'Existing finite scalar clamp behavior is stable.' }) },
-        { name: 'assessment_stage', args: () => ({ category: 'dependencies',
-            claim: 'The fixture test uses node:test', path: 'test/clamp.test.js',
-            quote: "import test from 'node:test';" }) },
-        { name: 'assessment_stage', args: () => ({ category: 'risks',
-            claim: 'Late guide calls for a NaN and Infinity policy', path: 'docs/late-guide.md',
-            quote: 'Define a clear policy for reversed bounds and NaN or Infinity.' }) },
-        { name: 'assessment_stage', args: () => ({ category: 'scope', text: 'Assess the five-file clamp correction' }) },
-        { name: 'assessment_stage', args: () => ({ category: 'tiers',
-            T1: 'Focused source and unit tests', T2: 'Cross-boundary integration checks',
-            T3: 'Independent manual browser qualification' }) },
-        { name: 'assessment_finish', args: () => ({}) }
-    ];
-    const server = createServer(async (request, response) => {
-        let body = '';
-        for await (const chunk of request) body += chunk;
-        const incoming = JSON.parse(body) as { messages: Record<string, unknown>[];
-            tools: { function: { name: string } }[]; reasoning_effort?: string;
-            model: string; temperature?: number; top_p?: number };
-        assert.ok(incoming.messages.length);
-        capturedRequests.push(incoming);
-        assert.equal(incoming.model, model.id);
-        assert.equal(incoming.temperature, 1);
-        assert.equal(incoming.top_p, 1);
-        assert.equal(incoming.reasoning_effort, 'low');
-        if (next < plan.length)
-            assert.ok(incoming.tools.some(tool => tool.function.name === 'assessment_finish'));
-        if (next === 14) extendedRequest = incoming;
-        const operation = plan[next++];
-        if (operation?.name === 'read_file' && operation.args().path === 'docs/late-guide.md' &&
-            operation.args().offset === 4096 && !guideHash && next > 3) {
-            const verified = receipts(incoming.messages).find(receipt =>
-                receipt.path === 'docs/late-guide.md' && receipt.nextOffset === 4096 &&
-                typeof receipt.sourceHash === 'string');
-            assert.ok(verified?.sourceHash, 'provider must receive first-page sourceHash');
-            guideHash = verified.sourceHash;
-        }
-        const base = { id: 'offline-assessment', object: 'chat.completion.chunk',
-            created: 1, model: model.id };
-        response.writeHead(200, { 'content-type': 'text/event-stream' });
-        const send = (delta: object, finish_reason: string | null) => response.write(
-            `data: ${JSON.stringify({ ...base, choices: [{ index: 0, delta, finish_reason }] })}\n\n`);
-        if (operation) {
-            send({ role: 'assistant', reasoning: 'Synthetic source check.' }, null);
-            send({ role: 'assistant', tool_calls: [{ index: 0, id: `call-${next}`, type: 'function',
-                function: { name: operation.name, arguments: JSON.stringify(operation.args()) } }] }, null);
-            send({}, 'tool_calls');
-        } else if (allowPlanProbe && !planProbe) {
-            planProbe = true;
-            send({ role: 'assistant', tool_calls: [{ index: 0, id: 'plan-source', type: 'function',
-                function: { name: 'read_file', arguments: JSON.stringify({ path: 'src/clamp.js', offset: 0 }) } }] }, null);
-            send({}, 'tool_calls');
-        } else {
-            send({ role: 'assistant', content: 'Assessment sealed.' }, null);
-            send({}, 'stop');
-        }
-        response.end('data: [DONE]\n\n');
-    });
-    server.listen(0, '127.0.0.1');
-    await once(server, 'listening');
-    const endpoint = `http://127.0.0.1:${(server.address() as { port: number }).port}/v1`;
-    const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
-        providerId: 'local', models: [{ id: model.id, label: model.name, usable: true,
-            capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 32768,
-                maxInputTokens: 32768 } }] }] }),
-    async *generate(_selection: unknown, request: { messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
-        maxOutputTokens?: number; signal?: AbortSignal; projectTools?: { root: string; operationPolicy?: unknown;
-            assessmentTools?: boolean;
-            generationId?: string; execute(name: string, args: unknown, signal?: AbortSignal, id?: number): Promise<string> } }) {
-        const host = new PiRuntimeHost();
-        try {
-            await host.start();
-            await host.openChatToolsSession({ ...model, baseUrl: endpoint }, root, undefined,
-                'low', false, false, false, request.projectTools?.assessmentTools ?? false,
-                request.projectTools?.operationPolicy as never);
-            for await (const event of host.streamTurn(request.messages, request.maxOutputTokens ?? 4096,
-                request.signal, async call => {
-                    const output = await request.projectTools!.execute(call.name, call.arguments, request.signal, call.id);
-                    calls.push({ name: call.name, args: call.arguments as Record<string, unknown>, output });
-                    return { status: 'completed' as const, output };
-                }, request.projectTools?.generationId, request.projectTools?.operationPolicy as never)) {
-                if (event.type === 'complete') yield { type: 'complete' as const,
-                    text: event.result.text, actualModelId: event.result.modelId,
-                    finishReason: event.result.finishReason, usage: event.result.usage };
-                else if (event.type === 'delta' || event.type === 'activity' || event.type === 'reset') yield event;
-                else throw new Error('Unexpected mock Assessment pause');
-            }
-        } finally { host.dispose(); }
-    } };
-    const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'saved' }],
-        refs: [], diagnostics: [], usedTokens: 10, budgetTokens: 32768 }) };
-    const repository = new ChatRepository();
-    const grounder = new ChatProjectGrounder({} as never);
-    const backend = new ChatBackend(repository, { notifyChatEvent() {} },
-        models as never, composer as never, undefined, grounder);
-    try {
-        const { projectHandle } = await backend.attach(pathToFileURL(root).href);
-        const chatId = randomUUID();
-        await backend.mutate({ projectHandle, expectedRevision: 0,
-            operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Five-file Assessment' } });
-        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'fixture-owner' });
-        assert.equal(lease.acquired, true);
-        await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: model.id },
-            content: `/prompt-ass clamp-api-correction Inspect ${paths.join(' ')}` });
-        const saved = (await backend.get(projectHandle, chatId))!;
-        const assistant = saved.messages.find(message => message.role === 'assistant');
-        assert.equal(assistant?.execution.status, 'complete');
-        assert.equal(assistant.execution.sourceRefs?.filter(ref => ref.kind === 'file').length, 5);
-        const draft = currentPromptDraft(saved);
-        assert.equal(draft?.state, 'plan');
-        assert.ok(draft?.identity);
-        const checked = await new PromptDraftStore(repository, grounder).read(root, draft.identity,
-            lease.token);
-        assert.equal(checked.assessment?.revision, 1);
-        assert.equal(checked.plan, undefined);
-        const record = checked.assessment!.record as { omittedRequestedFiles: string[];
-            sourceRefs: unknown[]; observations: unknown[]; preservation: unknown[];
-            dependencies: unknown[]; risks: { path: string; start: number }[];
-            tiers: { T1: string; T2: string; T3: string } };
-        assert.deepEqual(record.omittedRequestedFiles, []);
-        assert.equal(new Set(checked.assessment!.sourceRefs.map(ref => ref.id)).size, 5);
-        assert.deepEqual([record.observations.length, record.preservation.length,
-            record.dependencies.length, record.risks.length], [1, 1, 1, 1]);
-        assert.equal(record.risks[0].path, 'docs/late-guide.md');
-        assert.ok(record.risks[0].start >= 4096);
-        assert.deepEqual(Object.keys(record.tiers).sort(), ['T1', 'T2', 'T3']);
-        await assert.rejects(new PromptDraftStore(repository, grounder).read(root,
-            { ...draft.identity, id: randomUUID() }, lease.token));
-        assert.deepEqual(calls.map(call => call.name), plan.map(call => call.name));
-        assert.equal(extendedRequest?.reasoning_effort, 'low');
-        assert.ok((extendedRequest?.messages.length ?? 0) >= 30);
-        assert.equal(extendedRequest?.tools.length, 7);
-        assert.ok(Buffer.byteLength(JSON.stringify(extendedRequest)) > 12_000,
-            'the long-history request includes source-like page content');
-        const history = extendedRequest!.messages;
-        for (let index = 2; index < history.length; index += 2) {
-            const assistantCall = history[index];
-            const toolReply = history[index + 1];
-            assert.equal(assistantCall.role, 'assistant');
-            assert.equal(toolReply.role, 'tool');
-            assert.equal((assistantCall.tool_calls as { id: string }[])[0].id, toolReply.tool_call_id);
-            assert.equal(typeof (assistantCall.reasoning ?? assistantCall.reasoning_content), 'string');
-        }
-        assert.equal(calls.filter(call => call.name === 'read_file').length, 17);
-        assert.match(calls.find(call => call.args.continue === true &&
-            calls.indexOf(call) < 3)!.output, /^SOURCE_IDENTITY_REQUIRED:/u);
-        const guideCalls = calls.filter(call => call.name === 'read_file' &&
-            call.args.path === 'docs/late-guide.md' && call.args.offset === 4096 &&
-            call.args.expectedSourceHash === undefined);
-        assert.match(guideCalls[0].output, /^SOURCE_IDENTITY_REQUIRED:/u);
-        assert.match(calls.find(call => call.args.path === 'docs/other-guide.md')!.output,
-            /^SOURCE_IDENTITY_REQUIRED:/u);
-        assert.match(calls.find(call => call.args.offset === 4098)!.output,
-            /^INVALID_OFFSET: Expected nextOffset 4096; received 4098\./u);
-        assert.match(calls.find(call => call.args.expectedSourceHash === '0'.repeat(64))!.output,
-            /^STALE_SOURCE:/u);
-        assert.match(calls.find(call => call.args.offset === 5000)!.output,
-            /^INVALID_OFFSET: Expected nextOffset 4096; received 5000\./u);
-        assert.equal(calls.filter(call => call.name === 'read_file' && call.args.continue === true &&
-            call.output.startsWith('INVALID_ARGUMENTS:')).length, 2);
-        assert.match(calls.find(call => call.args.path === 'docs/other-guide.md' &&
-            call.args.continue === true)!.output, /^SOURCE_IDENTITY_REQUIRED:/u);
-        assert.match(calls.findLast(call => call.name === 'read_file' &&
-            call.args.continue === true)!.output, /^INVALID_OFFSET:/u);
-        assert.match(calls.find(call => call.name === 'assessment_finish')!.output,
-            /ASSESSMENT_CATEGORY_INCOMPLETE/u);
-        assert.equal(JSON.parse(calls.filter(call => call.name === 'assessment_status')[1].output).sources,
-            '5/5 inspected');
-        assert.equal(JSON.parse(calls.filter(call => call.name === 'assessment_status')[2].output).findings, 1);
-        assert.equal(JSON.parse(calls.filter(call => call.name === 'assessment_stage')[1].output).code,
-            'ASSESSMENT_UNSUPPORTED_SOURCE');
-        const firstGuide = JSON.parse(calls.find(call => call.name === 'read_file' &&
-            call.args.path === 'docs/late-guide.md' && call.args.continue === undefined &&
-            call.args.offset === undefined)!.output);
-        const lateGuide = JSON.parse(calls.find(call => call.name === 'read_file' &&
-            call.args.path === 'docs/late-guide.md' && call.args.continue === true &&
-            call.args.expectedSourceHash === undefined && call.output.startsWith('{'))!.output);
-        assert.equal(firstGuide.nextOffset, 4096);
-        assert.equal(lateGuide.offset, 4096);
-        assert.equal(lateGuide.nextOffset, null);
-        assert.equal(firstGuide.text + lateGuide.text, guide);
-        assert.equal(lateGuide.offset, firstGuide.nextOffset);
-        assert.ok(capturedRequests.length > 10);
-        const finished = JSON.parse(calls.at(-1)!.output);
-        assert.equal(finished.complete, true);
-        assert.equal(assistant?.execution.toolEvents?.filter(event => event.name === 'assessment_stage' &&
-            event.status === 'completed').length, 6);
-        assert.equal(assistant?.execution.toolEvents?.findLast(event => event.name === 'assessment_finish')?.status,
-            'completed');
-        assert.ok(saved.messages.every(message => message.role !== 'assistant' ||
-            message.execution.status !== 'failed'));
-        await assert.rejects(readFile(join(root, 'docs/tasks/clamp-api-correction/prompt-assessment.md')),
-            /ENOENT/);
-        const owner = saved.messages.find(message => message.role === 'user' && message.promptDraft);
-        assert.ok(owner?.role === 'user');
-        allowPlanProbe = true;
-        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
-            selectedModel: { connectionId: 'local', modelId: model.id },
-            content: '/prompt-plan clamp-api-correction Outline checked implementation work',
-            promptDraftTarget: { draftId: draft.identity.id, ownerUserMessageId: owner.id,
-                stageMessageId: assistant!.id, stage: 'assessment', stageRevision: 1,
-                projectId: draft.identity.projectId, sourceFingerprint: draft.identity.sourceFingerprint,
-                leaseDigest: draft.identity.leaseDigest } }),
-        error => { assert.match(String(error), /PLAN_/u,
-            JSON.stringify({ error: String(error), detail: (error as { toolFailure?: unknown }).toolFailure }));
-            return true; }, 'bound Plan entry must reach Plan validation, not fail Assessment authority');
-        assert.equal((await new PromptDraftStore(repository, grounder).read(root, draft.identity,
-            lease.token)).plan, undefined);
-        await assert.rejects(readFile(join(root, 'docs/tasks/clamp-api-correction/implementation-plan.md')),
-            /ENOENT/);
-    } finally {
-        backend.dispose(); server.close();
-        await rm(temporary, { recursive: true, force: true, maxRetries: 10, retryDelay: 25 });
-    }
 });

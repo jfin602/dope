@@ -47,202 +47,75 @@ async function setup(root: string) {
         restoreBasis: () => { current = basis; } };
 }
 
-test('incremental assessment persists five-file coverage, exact findings and justified empty dependencies', () => fixture(async v => {
-    await mkdir(join(v.root, 'src')); await mkdir(join(v.root, 'test')); await mkdir(join(v.root, 'docs'));
-    const files = {
-        'src/clamp.js': 'export function clamp(value) { return value; }\n',
-        'test/clamp.test.js': 'assert.equal(clamp(2), 2);\n',
-        'package.json': '{"name":"fixture","dependencies":{}}\n',
-        'docs/late-guide.md': `${'early section\n'.repeat(350)}late section requires finite values\n`,
-        'RELEASE_NOTES.md': 'Existing scalar clamp remains available.\n'
-    };
-    for (const [path, content] of Object.entries(files)) await writeFile(join(v.root, path), content);
-    const requested = '/prompt-ass safe-task Inspect src/clamp.js test/clamp.test.js package.json docs/late-guide.md including the late section and RELEASE_NOTES.md';
+test('wireframe Assessment persists one relevant read, stable count and checked source claims', () => fixture(async v => {
     const controller = new IncrementalAssessment(v.repo, v.grounder, v.root, v.identity,
-        v.lease, requested, v.store);
+        v.lease, '/prompt-ass safe-task Build 2 work prompts for README.md', v.store);
     await controller.begin();
-    const refs = [] as never[];
-    const evidence = [] as never[];
-    const read = async (path: string, all = true) => {
-        let offset = 0, expected: string | undefined;
-        do {
-            const page = await v.grounder.readFileRange(v.root, path, offset, 4096, expected);
-            await controller.readPage(page);
-            refs.push({ schemaVersion: 1, kind: 'file', id: path, origin: 'tool',
-                projectId: hash(v.root), sourceHash: page.sourceHash,
-                start: page.offset, end: page.endOffset } as never);
-            evidence.push({ path, start: page.offset, end: page.endOffset,
-                sourceHash: page.sourceHash, text: page.text } as never);
-            expected = page.sourceHash;
-            if (!all || page.nextOffset === null) break;
-            offset = page.nextOffset;
-        } while (true);
-    };
-    await read('src/clamp.js'); await read('test/clamp.test.js');
-    assert.equal((await controller.status()).sources, '2/5 inspected');
-    await writeFile(join(v.root, 'src/clamp.js'), 'changed source\n');
-    await assert.rejects(controller.status(), /ASSESSMENT_SOURCE_DRIFT/);
-    await writeFile(join(v.root, 'src/clamp.js'), files['src/clamp.js']);
-    const invalid = controller.stage({ category: 'observations', claim: 'Invented',
-        path: 'src/clamp.js', quote: 'not in source' }, refs, evidence);
-    await assert.rejects(invalid, /ASSESSMENT_UNSUPPORTED_SOURCE/);
-    const finding = { category: 'observations', claim: 'Clamp source exports a function',
-        path: 'src/clamp.js', quote: 'export function clamp' };
-    await controller.stage(finding, refs, evidence);
-    await controller.stage(finding, refs, evidence);
-    await assert.rejects(controller.stage({ ...finding, quote: 'clamp' }, refs, evidence),
-        /ASSESSMENT_CONFLICTING_REPLAY/);
-    await assert.rejects(controller.stage({ category: 'scope', text: 'x'.repeat(1001) },
-        refs, evidence), /ASSESSMENT_SCOPE/);
-    assert.equal((await controller.status()).findings, 1);
-    await assert.rejects(controller.finish(), /ASSESSMENT_SOURCE_COVERAGE/);
-    await read('package.json'); await read('docs/late-guide.md', false);
-    assert.equal((await controller.status()).sources, '3/5 inspected');
-    const continuation = (await controller.status()).required.find(item => item.path === 'docs/late-guide.md');
-    assert.equal(continuation?.state, 'partially inspected');
-    assert.equal(continuation?.coveredBytes, 4096);
-    assert.equal(continuation?.nextOffset, 4096);
-    assert.match(continuation?.expectedSourceHash ?? '', /^[a-f0-9]{64}$/);
-    assert.match((await controller.status()).nextAction, /continue:true/);
-    await assert.rejects(v.grounder.readFileRange(v.root, 'docs/late-guide.md', 4096, 4096,
-        '0'.repeat(64)), /Stale file continuation/);
-    assert.equal((await controller.status()).sources, '3/5 inspected');
-    const overlap = await v.grounder.readFileRange(v.root, 'docs/late-guide.md', 1024, 1024,
-        continuation!.expectedSourceHash);
-    await controller.readPage(overlap);
-    assert.equal((await controller.status()).required.find(item => item.path === 'docs/late-guide.md')
-        ?.nextOffset, 4096);
-    const latePage = await v.grounder.readFileRange(v.root, 'docs/late-guide.md', 4200, 4096,
-        continuation!.expectedSourceHash);
-    await controller.readPage(latePage);
-    assert.equal((await controller.status()).required.find(item => item.path === 'docs/late-guide.md')
-        ?.nextOffset, 4096, 'a late page cannot skip the unread gap');
-    await assert.rejects(controller.stage({ category: 'dependencies', reason: 'No dependencies' },
-        refs, evidence), /ASSESSMENT_DEPENDENCIES_EMPTY/);
-    await read('docs/late-guide.md'); await read('RELEASE_NOTES.md');
-    assert.equal((await controller.status()).sources, '5/5 inspected');
-    assert.equal((await controller.status()).required.find(item => item.path === 'docs/late-guide.md')
-        ?.nextOffset, null);
-    await v.repo.release(v.root, v.chatId, v.lease);
-    const claimed = await new ChatRepository().claim(v.root, v.chatId, 'owner-after-restart');
-    if (!claimed.acquired) throw new Error('Reclaimed lease missing');
-    await assert.rejects(controller.status(), /lease/);
-    const reopened = new IncrementalAssessment(new ChatRepository(), v.grounder, v.root,
-        v.identity, claimed.token, requested, new PromptDraftStore(new ChatRepository(), v.grounder,
-            async () => basis));
-    assert.equal((await reopened.status()).findings, 1);
-    await assert.rejects(reopened.finish(), /ASSESSMENT_CATEGORY_INCOMPLETE/);
-    await reopened.stage({ category: 'preservation', claim: 'Scalar API remains',
-        path: 'RELEASE_NOTES.md', quote: 'Existing scalar clamp' }, refs, evidence);
-    await reopened.stage({ category: 'risks', claim: 'Late finite-value contract needs tests',
-        path: 'docs/late-guide.md', quote: 'late section requires finite values' }, refs, evidence);
-    await reopened.stage({ category: 'dependencies', reason: 'Inspected package declares no external dependencies' },
-        refs, evidence);
-    await reopened.stage({ category: 'scope', text: 'Review clamp behavior and late contract' }, refs, evidence);
-    const beforeTiers = (await v.store.read(v.root, v.identity, claimed.token)).revision;
-    await assert.rejects(reopened.stage({ category: 'tiers', T1: 'Unit tests',
-        T2: 'Integration checks', T3: 'Release notes' }, refs, evidence), /ASSESSMENT_TIERS: T1/);
-    assert.equal((await v.store.read(v.root, v.identity, claimed.token)).revision, beforeTiers);
-    await reopened.stage({ category: 'tiers', T1: 'Focused source unit tests',
-        T2: 'Cross-boundary integration checks', T3: 'Independent manual browser qualification' }, refs, evidence);
-    await assert.rejects(reopened.stage({ category: 'tiers', T1: 'Focused source unit regression',
-        T2: 'Cross-boundary integration checks', T3: 'Independent manual browser qualification',
-        correctRevision: (await reopened.status()).revision }, refs, evidence),
-    /ASSESSMENT_CONFLICTING_REPLAY/);
-    assert.equal((await reopened.status()).finishReady, true);
-    assert.deepEqual((await reopened.status()).blockedBy, []);
-    const completed = await reopened.finish();
-    await assert.rejects(reopened.stage({ category: 'tiers', T1: 'Focused source unit tests',
-        T2: 'Cross-boundary integration checks', T3: 'Independent manual browser qualification',
-        correctRevision: (await reopened.status()).revision }, refs, evidence), /ASSESSMENT_STAGE_SEALED/);
-    assert.equal((await reopened.finish()).revision, completed.revision);
-    assert.equal(completed.record.omittedRequestedFiles.length, 0);
-    assert.equal(completed.record.dependencies.length, 0);
-    assert.match(completed.record.emptyReasons?.dependencies ?? '', /no external dependencies/);
-    assert.equal((await v.store.read(v.root, v.identity, claimed.token)).assessment?.revision, 1);
-    assert.match(await v.store.assessmentView(v.root, v.identity, claimed.token),
-        /None: Inspected package declares no external dependencies/);
+    const page = await v.grounder.readFileRange(v.root, 'README.md', 0, 4096);
+    await controller.readPage(page);
+    const refs = [{ kind: 'file', id: 'README.md', origin: 'tool', projectId: hash(v.root),
+        sourceHash: page.sourceHash, start: page.offset, end: page.endOffset }] as never;
+    const evidence = [{ path: 'README.md', start: page.offset, end: page.endOffset,
+        sourceHash: page.sourceHash, text: page.text }];
+    const base = { kind: 'wireframe', objective: 'Improve the documented feature', count: 2,
+        rationale: 'The source change and integration check have distinct boundaries',
+        work: [{ id: 'step-1', title: 'Implement behavior', objective: 'Change the feature',
+            boundary: 'Source behavior', dependsOn: [] },
+            { id: 'step-2', title: 'Integrate behavior', objective: 'Check the feature path',
+                boundary: 'Integration', dependsOn: ['step-1'] }],
+        constraints: ['Preserve source identity'], deferrals: ['Detailed checks belong in Plan'],
+        closeout: { title: 'Manual closeout', objective: 'Observe the feature',
+            manualReason: 'Human review is separate' },
+        sourceClaims: [{ claim: 'README has source one', path: 'README.md', quote: 'source one' }] };
+    await assert.rejects(controller.stage({ ...base, count: 1 }, refs, evidence), /COUNT/);
+    await assert.rejects(controller.stage({ ...base, sourceClaims: [{ ...base.sourceClaims[0],
+        quote: 'invented' }] }, refs, evidence), /UNSUPPORTED_SOURCE/);
+    await assert.rejects(controller.stage({ ...base, work: [base.work[1], base.work[0]] }, refs,
+        evidence), /STEP/);
+    assert.equal((await controller.stage(base, refs, evidence)).idempotent, false);
+    assert.equal((await controller.stage(base, refs, evidence)).idempotent, true);
+    await assert.rejects(controller.stage({ ...base, rationale: 'Different division' }, refs,
+        evidence), /CONFLICTING_REPLAY/);
+    const completed = await controller.finish();
+    assert.equal(completed.record.count, 2);
+    assert.equal((await controller.status()).finishReady, true);
+    assert.match(await v.store.assessmentView(v.root, v.identity, v.lease), /Work prompts \(2\)/);
     await assert.rejects(lstat(join(v.root, 'docs', 'tasks', 'safe-task')), /ENOENT/);
+    await assert.rejects(controller.stage(base, refs, evidence), /STAGE_SEALED/);
+    await writeFile(join(v.root, 'README.md'), 'changed source');
+    await assert.rejects(controller.status(), /SOURCE_DRIFT|source changed/i);
 }));
 
-test('legacy invalid unsealed tiers require current-revision correction and retain an audit entry', () => fixture(async v => {
+test('source-neutral wireframe seals without a token read while source basis stays pinned', () => fixture(async v => {
+    const controller = new IncrementalAssessment(v.repo, v.grounder, v.root, v.identity,
+        v.lease, '/prompt-ass safe-task Use one work prompt to clarify a process', v.store);
+    await controller.begin();
+    const wireframe = { kind: 'wireframe', objective: 'Clarify the process', count: 1,
+        rationale: 'One bounded writing task is sufficient',
+        work: [{ id: 'step-1', title: 'Clarify process', objective: 'Write concise guidance',
+            boundary: 'Process wording', dependsOn: [] }], constraints: [], deferrals: [],
+        closeout: { title: 'Manual closeout', objective: 'Review the guidance',
+            manualReason: 'Human review is distinct' }, sourceClaims: [] };
+    assert.equal((await controller.stage(wireframe, [], [])).accepted, true);
+    const sealed = await controller.finish();
+    assert.equal(sealed.refs.length, 0);
+    assert.equal((await v.store.read(v.root, v.identity, v.lease)).assessment?.sourceRefs.length, 0);
+    v.changeBasis();
+    await assert.rejects(controller.status(), /source changed/i);
+}));
+
+test('historical partial category drafts remain stored but cannot seal as new wireframes', () => fixture(async v => {
     const controller = new IncrementalAssessment(v.repo, v.grounder, v.root, v.identity,
         v.lease, '/prompt-ass safe-task Inspect README.md', v.store);
     await controller.begin();
-    const original = { T1: 'Unit tests', T2: 'Integration checks', T3: 'Release notes' };
     await v.store.updatePartialAssessment(v.root, v.identity, v.lease, 0, {
         requested: ['README.md'], pages: [], blocked: {}, findings: {
             observations: [], preservation: [], dependencies: [], risks: [] },
-        emptyReasons: {}, tiers: original });
-    const valid = { category: 'tiers', T1: 'Focused source and unit validation',
-        T2: 'Cross-boundary integration validation',
-        T3: 'Independent manual browser qualification' };
-    const status = await controller.status();
-    assert.equal(status.finishReady, false);
-    assert.equal(status.tierState, 'invalid');
-    assert.ok(status.blockedBy.includes('tiers'));
-    await assert.rejects(controller.stage(valid, [], []), /ASSESSMENT_CONFLICTING_REPLAY/);
-    await assert.rejects(controller.stage({ ...valid, correctRevision: 0 }, [], []),
-        /ASSESSMENT_STAGE_STALE/);
-    await assert.rejects(controller.stage({ ...valid, correctRevision: 1,
-        T3: 'Release notes' }, [], []), /ASSESSMENT_TIERS: T3/);
-    await assert.rejects(v.store.correctInvalidTiers(v.root, v.identity, 'wrong-lease', 1,
-        { T1: valid.T1, T2: valid.T2, T3: valid.T3 }), /lease/i);
-    await assert.rejects(v.store.correctInvalidTiers(v.root,
-        { ...v.identity, id: randomUUID() }, v.lease, 1,
-        { T1: valid.T1, T2: valid.T2, T3: valid.T3 }));
-    const accepted = await controller.stage({ ...valid, correctRevision: status.revision }, [], []);
-    assert.equal(accepted.idempotent, false);
-    const saved = await v.store.read(v.root, v.identity, v.lease);
-    assert.equal(saved.revision, 2);
-    assert.deepEqual(saved.partialAssessment?.tierCorrection, {
-        revision: 2, original, replacement: { T1: valid.T1, T2: valid.T2, T3: valid.T3 } });
-    assert.equal((await controller.stage(valid, [], [])).idempotent, true);
-    await assert.rejects(controller.stage({ ...valid, T1: 'Focused unit regression checks' }, [], []),
-        /ASSESSMENT_CONFLICTING_REPLAY/);
-    await assert.rejects(controller.stage({ ...valid, T1: 'Focused unit regression checks',
-        correctRevision: 2 }, [], []), /ASSESSMENT_CONFLICTING_REPLAY/);
-    assert.deepEqual((await v.store.read(v.root, v.identity, v.lease)).partialAssessment?.tiers,
-        { T1: valid.T1, T2: valid.T2, T3: valid.T3 });
-}));
-
-test('a verified package dependency contradicts an empty dependency category', () => fixture(async v => {
-    await writeFile(join(v.root, 'package.json'), '{"dependencies":{"actual-package":"1.0.0"}}\n');
-    const controller = new IncrementalAssessment(v.repo, v.grounder, v.root, v.identity,
-        v.lease, '/prompt-ass safe-task Inspect README.md and package.json', v.store);
-    await controller.begin();
-    const refs = [] as never[], evidence = [] as never[];
-    for (const path of ['README.md', 'package.json']) {
-        const page = await v.grounder.readFileRange(v.root, path, 0, 4096);
-        await controller.readPage(page);
-        refs.push({ kind: 'file', id: path, origin: 'tool', projectId: hash(v.root),
-            sourceHash: page.sourceHash, start: page.offset, end: page.endOffset } as never);
-        evidence.push({ path, start: page.offset, end: page.endOffset,
-            sourceHash: page.sourceHash, text: page.text } as never);
-    }
-    for (const category of ['observations', 'preservation', 'risks']) await controller.stage({ category,
-        claim: 'Source must remain inspectable', path: 'README.md', quote: 'source one' }, refs, evidence);
-    await controller.stage({ category: 'dependencies', reason: 'No external dependencies exist' }, refs, evidence);
-    await controller.stage({ category: 'scope', text: 'Review package dependency source' }, refs, evidence);
-    await controller.stage({ category: 'tiers', T1: 'Focused source unit tests',
-        T2: 'Cross-boundary integration checks', T3: 'Independent manual browser qualification' }, refs, evidence);
-    assert.equal((await controller.status()).finishReady, false);
-    assert.deepEqual((await controller.status()).blockedBy, ['dependencies']);
-    await assert.rejects(controller.finish(), /ASSESSMENT_DEPENDENCIES_EMPTY/);
-    assert.equal((await v.store.read(v.root, v.identity, v.lease)).assessment, undefined);
-}));
-
-test('an empty requested file is covered by its own brokered zero-byte read', () => fixture(async v => {
-    await writeFile(join(v.root, 'EMPTY.md'), '');
-    const controller = new IncrementalAssessment(v.repo, v.grounder, v.root, v.identity,
-        v.lease, '/prompt-ass safe-task Inspect EMPTY.md and README.md', v.store);
-    await controller.begin();
-    const empty = await v.grounder.readFileRange(v.root, 'EMPTY.md', 0, 4096);
-    assert.equal(empty.fileBytes, 0);
-    await controller.readPage(empty);
-    assert.equal((await controller.status()).sources, '1/2 inspected');
-    assert.equal((await controller.status()).required.find(item => item.path === 'EMPTY.md')?.state,
-        'required range inspected');
+        emptyReasons: {}, scope: 'Historical scope' });
+    await assert.rejects(controller.stage({ kind: 'wireframe' }, [], []), /LEGACY_DRAFT/);
+    await assert.rejects(controller.finish(), /WIREFRAME_INCOMPLETE/);
+    assert.equal((await v.store.read(v.root, v.identity, v.lease)).partialAssessment?.scope,
+        'Historical scope');
 }));
 
 test('named stages persist atomically with revisions, broker hashes and dependency invalidation', () => fixture(async v => {

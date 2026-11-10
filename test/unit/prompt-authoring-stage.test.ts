@@ -21,7 +21,8 @@ import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/cha
 import { assertPromptDraftNameAvailable, finishedPromptStack, finishedPromptText, newPromptDraftIdentity,
     priorPromptDraft, promptStageCommand, promptStageInstruction, verifyPromptDraftIdentity, verifyPromptDraftSourceBasis,
     verifyPromptDraftSource, validatedAssessment, renderAssessment, validatedPlan, renderPlan,
-    requestedWorkPromptCount, planReceiptCurrent, validateAssessmentTiers } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
+    requestedWorkPromptCount, planReceiptCurrent, validateAssessmentTiers,
+    validatedAssessmentWireframe } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
 
 test('shared tier contract identifies the missing responsibility before acceptance', () => {
     const valid = { T1: 'Focused source and unit validation',
@@ -70,6 +71,8 @@ test('structured plan checks requested ten work tasks, source, order, T2/T3 and 
     const check = (candidate: unknown, source = refs, record = assessment, count = 10) =>
         validatedPlan(JSON.stringify(candidate), record, source, count);
     assert.equal(requestedWorkPromptCount('Build ten work tasks plus closeout'), 10);
+    assert.equal(requestedWorkPromptCount('Use one work prompt and a manual closeout'), 1);
+    assert.equal(requestedWorkPromptCount('Use four implementation prompts'), 4);
     assert.equal(check(plan).work.length, 10);
     assert.match(renderPlan(check(plan)), /Final manual closeout \(T3\)/);
     const receipt = `Plan record sha256: ${'a'.repeat(64)}; revision: 1.`;
@@ -402,14 +405,51 @@ test('exact P8-R2 provisional Assessment is denied against its two brokered read
         ['package.json', 'docs/late-guide.md', 'RELEASE_NOTES.md']);
 });
 
-test('assessment instruction requires staged exact citations and all requested late source', () => {
+test('Assessment instruction requests one bounded wireframe and leaves detail to Plan', () => {
     const instruction = promptStageInstruction({ stage: 'prompt-ass', folder: 'clamp-api-correction' }, {});
-    assert.match(instruction, /assessment_status first/);
-    assert.match(instruction, /all requested source pages.*continue:true/);
+    assert.match(instruction, /Decide only the work-prompt count and task division/);
+    assert.match(instruction, /One work prompt is valid/);
+    assert.match(instruction, /one assessment_stage call/);
     assert.doesNotMatch(instruction, /expectedSourceHash|nextOffset/);
-    assert.match(instruction, /Stage a limited number of clear findings.*unique verbatim substring/);
-    assert.match(instruction, /assessment_finish only when finishReady is true/);
+    assert.doesNotMatch(instruction, /all requested source pages|Stage T1 focused|ten efficiency gates/);
+    assert.match(instruction, /Then call assessment_finish/);
     assert.doesNotMatch(instruction, /\{claim,path,start,end,sourceHash,quote\}/);
+});
+
+test('wireframe checks one and several work steps, owner count, order and source claims', () => {
+    const text = 'export function clamp(value) { return value; }';
+    const sourceHash = 'e'.repeat(64);
+    const refs = [{ kind: 'file', id: 'src/clamp.js', origin: 'tool',
+        sourceHash, start: 0, end: Buffer.byteLength(text) }] as never;
+    const evidence = [{ path: 'src/clamp.js', start: 0, end: Buffer.byteLength(text),
+        sourceHash, text }];
+    const step = { id: 'step-1', title: 'Clamp behavior', objective: 'Add bounded clamp behavior',
+        boundary: 'Source implementation', dependsOn: [] };
+    const base = { kind: 'wireframe', objective: 'Clamp values', count: 1,
+        rationale: 'One bounded source task is enough', work: [step], constraints: [], deferrals: [],
+        closeout: { title: 'Manual closeout', objective: 'Observe clamp behavior',
+            manualReason: 'Independent human check' }, sourceClaims: [] };
+    assert.equal(validatedAssessmentWireframe(base, refs, evidence, 1).work.length, 1);
+    assert.throws(() => validatedAssessmentWireframe(base, refs, evidence, 2), /COUNT/);
+    assert.throws(() => validatedAssessmentWireframe({ ...base, count: 2 }, refs, evidence), /COUNT/);
+    const two = { ...base, count: 2, work: [step, { ...step, id: 'step-2',
+        title: 'Integrate clamp', boundary: 'Integration', dependsOn: ['step-1'] }] };
+    assert.equal(validatedAssessmentWireframe(two, refs, evidence).count, 2);
+    assert.throws(() => validatedAssessmentWireframe({ ...two, work: [two.work[1], step] },
+        refs, evidence), /STEP/);
+    assert.throws(() => validatedAssessmentWireframe({ ...two, work: [step,
+        { ...two.work[1], dependsOn: ['step-3'] }] }, refs, evidence), /STEP/);
+    assert.throws(() => validatedAssessmentWireframe({ ...base, rationale: 'x'.repeat(17_000) },
+        refs, evidence), /SHAPE/);
+    const claimed = { ...base, sourceClaims: [{ claim: 'Clamp returns value',
+        path: 'src/clamp.js', quote: 'return value;' }] };
+    assert.equal(validatedAssessmentWireframe(claimed, refs, evidence).sourceClaims.length, 1);
+    assert.throws(() => validatedAssessmentWireframe({ ...claimed, sourceClaims: [{
+        ...claimed.sourceClaims[0], quote: 'invented source' }] }, refs, evidence), /UNSUPPORTED_SOURCE/);
+    assert.throws(() => validatedAssessmentWireframe({ ...base, objective: 'Change src/clamp.js' },
+        refs, evidence), /WIREFRAME_SOURCE/);
+    assert.equal(validatedAssessmentWireframe({ ...claimed,
+        objective: 'Change src/clamp.js' }, refs, evidence).count, 1);
 });
 
 test('P8-R4 empty dependencies cannot pass without verified coverage and a reason', () => {

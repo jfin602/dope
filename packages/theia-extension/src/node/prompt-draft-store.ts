@@ -3,7 +3,8 @@ import type { ChatPromptDraftIdentity } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
 import type { ChatProjectGrounder } from './chat-project-grounder';
 import { renderAssessment, renderPlan, validateAssessmentTiers, verifyPromptDraftSourceBasis, verifyPromptSourceRefs,
-    type AssessmentRecord, type AssessmentFinding, type AssessmentCategory, type PlanRecord } from './prompt-authoring-stage';
+    type AssessmentRecord, type LegacyAssessmentRecord, type AssessmentWireframe,
+    type AssessmentFinding, type AssessmentCategory, type PlanRecord } from './prompt-authoring-stage';
 import { capturePromptSourceEvidence } from './prompt-stack-proposal';
 
 export type PromptDraftStage = 'assessment' | 'plan';
@@ -27,12 +28,13 @@ export interface StoredPromptDraft {
         requested: string[];
         pages: { path: string; start: number; end: number; fileBytes: number; sourceHash: string }[];
         blocked: Record<string, string>;
+        wireframe?: AssessmentWireframe;
         scope?: string;
         findings: Record<AssessmentCategory, AssessmentFinding[]>;
         emptyReasons: Partial<Record<AssessmentCategory, string>>;
-        tiers?: AssessmentRecord['tiers'];
-        tierCorrection?: { revision: number; original: AssessmentRecord['tiers'];
-            replacement: AssessmentRecord['tiers'] };
+        tiers?: LegacyAssessmentRecord['tiers'];
+        tierCorrection?: { revision: number; original: LegacyAssessmentRecord['tiers'];
+            replacement: LegacyAssessmentRecord['tiers'] };
     };
     plan?: StoredPromptDraftStage;
     history: { stage: PromptDraftStage; value: StoredPromptDraftStage }[];
@@ -66,6 +68,11 @@ function validPartial(value: StoredPromptDraft['partialAssessment']): boolean {
         !Number.isSafeInteger(page.fileBytes) || page.start < 0 ||
         (page.fileBytes === 0 ? page.start !== 0 || page.end !== 0 : page.end <= page.start) ||
         page.end > page.fileBytes)) return false;
+    if (value.wireframe && (value.wireframe.kind !== 'wireframe' ||
+        value.wireframe.count !== value.wireframe.work.length ||
+        value.wireframe.sourceClaims.some(claim => !value.pages.some(page =>
+            page.path === claim.path && page.sourceHash === claim.sourceHash &&
+            page.start <= claim.start && page.end >= claim.end)))) return false;
     for (const category of ['observations', 'preservation', 'dependencies', 'risks'] as const) {
         const items = value.findings[category];
         if (!Array.isArray(items) || items.length > 12 || items.some(item => !item ||
@@ -105,7 +112,10 @@ function checked(raw: unknown, identity: ChatPromptDraftIdentity): StoredPromptD
         if (!stage) continue;
         if (!Number.isSafeInteger(stage.revision) || stage.revision < 1 ||
             !hex(stage.contentHash) || stage.contentHash !== sha256(canonical(stage.record)) ||
-            !Array.isArray(stage.sourceRefs) || !stage.sourceRefs.length || stage.sourceRefs.length > 32 ||
+            !Array.isArray(stage.sourceRefs) || stage.sourceRefs.length > 32 ||
+            !stage.sourceRefs.length && !(
+                (stage.record as { kind?: unknown; sourceClaims?: unknown[] }).kind === 'wireframe' &&
+                (stage.record as { sourceClaims?: unknown[] }).sourceClaims?.length === 0) ||
             !hex(stage.sourceRefsHash) || stage.sourceRefsHash !== sha256(canonical(stage.sourceRefs)) ||
             stage.sourceRefs.some(ref => !hex(ref.sourceHash) || ref.projectId !== identity.projectId) ||
             stage.dependencyHash !== undefined && !hex(stage.dependencyHash))
@@ -143,7 +153,7 @@ export class PromptDraftStore {
     async read(root: string, identity: ChatPromptDraftIdentity, leaseToken: string): Promise<StoredPromptDraft> {
         return this.transact(root, identity, leaseToken, async current => {
             if (!current || current.state !== 'active') throw new Error('Named prompt draft is unavailable or aborted');
-            for (const stage of [current.assessment, current.plan]) if (stage)
+            for (const stage of [current.assessment, current.plan]) if (stage && stage.sourceRefs.length)
                 await verifyPromptSourceRefs(root, stage.sourceRefs.map(ref => ({ ...ref, schemaVersion: 1,
                     kind: 'file', label: ref.id, estimatedTokens: 0 })), this.grounder);
             for (const page of current.partialAssessment?.pages ?? []) {
@@ -178,7 +188,7 @@ export class PromptDraftStore {
 
     /** A single auditable repair for legacy invalid unsealed tiers, bound to the current draft revision. */
     async correctInvalidTiers(root: string, identity: ChatPromptDraftIdentity, leaseToken: string,
-        expectedRevision: number, replacement: AssessmentRecord['tiers']): Promise<StoredPromptDraft> {
+        expectedRevision: number, replacement: LegacyAssessmentRecord['tiers']): Promise<StoredPromptDraft> {
         validateAssessmentTiers(replacement);
         return this.transact(root, identity, leaseToken, async current => {
             if (!current || current.state !== 'active' || current.revision !== expectedRevision ||
@@ -223,11 +233,14 @@ export class PromptDraftStore {
         sourceRefs: StoredPromptDraftStage['sourceRefs']): Promise<StoredPromptDraft> {
         if (!['assessment', 'plan'].includes(kind) || !record || Array.isArray(record) ||
             Buffer.byteLength(canonical(record), 'utf8') > 32_000 ||
-            !Array.isArray(sourceRefs) || !sourceRefs.length || sourceRefs.length > 32 ||
+            !Array.isArray(sourceRefs) || sourceRefs.length > 32 ||
+            !sourceRefs.length && !(kind === 'assessment' &&
+                (record as { kind?: unknown; sourceClaims?: unknown[] }).kind === 'wireframe' &&
+                (record as { sourceClaims?: unknown[] }).sourceClaims?.length === 0) ||
             sourceRefs.some(ref => !hex(ref.sourceHash) || ref.projectId !== identity.projectId ||
                 !ref.id || ref.id.startsWith('/') || ref.id.split('/').includes('..')))
             throw new Error('Invalid or oversized named prompt draft stage');
-        await verifyPromptSourceRefs(root, sourceRefs.map(ref => ({ ...ref, schemaVersion: 1,
+        if (sourceRefs.length) await verifyPromptSourceRefs(root, sourceRefs.map(ref => ({ ...ref, schemaVersion: 1,
             kind: 'file', label: ref.id, estimatedTokens: 0 })), this.grounder);
         return this.transact(root, identity, leaseToken, async current => {
             if (!current || current.state !== 'active') throw new Error('Named prompt draft is unavailable or aborted');

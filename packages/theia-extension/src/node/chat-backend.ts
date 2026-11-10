@@ -2007,7 +2007,9 @@ export class ChatBackend implements ChatService {
         const discovery = docsReview ? await discoverDocumentation(root, reviewObjective!) : undefined;
         const promptRequestedCount = promptStage?.stage === 'prompt-write' ? savedPlanRecord?.work.length :
             promptStage?.stage === 'prompt-plan' ?
-                requestedWorkPromptCount(priorAssessment?.user.content ?? '', content) : undefined;
+                savedAssessmentRecord && 'kind' in savedAssessmentRecord &&
+                savedAssessmentRecord.kind === 'wireframe' ? savedAssessmentRecord.count :
+                    requestedWorkPromptCount(priorAssessment?.user.content ?? '', content) : undefined;
         const discoveryPrompt = discovery ? `\nVerified local discovery: ${discovery.enumerated} documents enumerated, ` +
             `${discovery.searched} searched. Candidate paths and section byte offsets (search is not a model read): ` +
             JSON.stringify(discovery.candidates) + `\nOmissions: ${JSON.stringify(discovery.omitted)}. ` +
@@ -2270,8 +2272,7 @@ export class ChatBackend implements ChatService {
         const protectedProposal = retryIndex < 0 && (docsReview || promptStage?.stage === 'prompt-write');
         const protectedAssessment = promptStage?.stage === 'prompt-ass';
         const readExecutionId = randomUUID();
-        // Persistent coverage proves inspection, while this short-lived owner proves that
-        // the continuation belongs to the active execution that performed the first read.
+        // Read receipts prove cited bytes and bind any later page to the active execution.
         const assessmentReadReceipts = protectedAssessment ? new AssessmentReadReceipts({
             root, projectHandle: request.projectHandle, chatId: key, turnId: readExecutionId,
             leaseToken: request.leaseToken, ownerId: this.leases.get(key)!.ownerId }) : undefined;
@@ -2293,13 +2294,8 @@ export class ChatBackend implements ChatService {
                     const assessmentName = name as 'assessment_status' | 'assessment_stage' | 'assessment_finish';
                     const stageArg = args && typeof args === 'object' && !Array.isArray(args) ?
                         args as Record<string, unknown> : undefined;
-                    const category = ['scope', 'tiers', 'observations', 'preservation', 'dependencies', 'risks']
-                        .includes(String(stageArg?.category)) ? stageArg!.category as 'scope' | 'tiers' |
-                            'observations' | 'preservation' | 'dependencies' | 'risks' : 'unrecognized';
-                    const shape = !stageArg ? 'invalid' : category === 'scope' ? 'scope' :
-                        category === 'tiers' ? 'tiers' : stageArg.reason !== undefined ? 'empty' :
-                            stageArg.claim !== undefined || stageArg.path !== undefined || stageArg.quote !== undefined ?
-                                'finding' : 'invalid';
+                    const category = stageArg?.kind === 'wireframe' ? 'wireframe' : 'unrecognized';
+                    const shape = stageArg?.kind === 'wireframe' ? 'wireframe' : 'invalid';
                     recordActivity('tool', `${assessmentName}: running`);
                     let status: 'completed' | 'failed' | 'denied' = 'denied';
                     let stageCode = 'ASSESSMENT_INTERNAL';
@@ -2354,7 +2350,10 @@ export class ChatBackend implements ChatService {
                             error.message : 'ASSESSMENT_STAGE_FAILED: Retry after checking assessment_status';
                         assessmentFailure = message;
                         const [code, reason] = message.split(/:\s*/u, 2);
-                        const recoverable = new Set(['ASSESSMENT_CITATION', 'ASSESSMENT_UNSUPPORTED_SOURCE',
+                        const recoverable = new Set(['ASSESSMENT_WIREFRAME_SHAPE', 'ASSESSMENT_WIREFRAME_COUNT',
+                            'ASSESSMENT_WIREFRAME_STEP', 'ASSESSMENT_WIREFRAME_CLOSEOUT',
+                            'ASSESSMENT_WIREFRAME_SOURCE', 'ASSESSMENT_WIREFRAME_INCOMPLETE',
+                            'ASSESSMENT_READ_REQUIRED', 'ASSESSMENT_CITATION', 'ASSESSMENT_UNSUPPORTED_SOURCE',
                             'ASSESSMENT_AMBIGUOUS_SOURCE', 'ASSESSMENT_STAGE_SHAPE', 'ASSESSMENT_STAGE_CATEGORY',
                             'ASSESSMENT_SCOPE', 'ASSESSMENT_TIERS', 'ASSESSMENT_CATEGORY_INCOMPLETE',
                             'ASSESSMENT_SOURCE_COVERAGE', 'ASSESSMENT_CONFLICTING_REPLAY',
@@ -2383,9 +2382,9 @@ export class ChatBackend implements ChatService {
                                 ?.findings ?? assessmentFindingCount;
                         const ready = assessmentOutcome === 'recoverable' && assessmentController ?
                             await assessmentController.status().catch(() => undefined) : undefined;
-                        return JSON.stringify({ code, field: name === 'assessment_stage' ? 'category or citation' :
+                        return JSON.stringify({ code, field: name === 'assessment_stage' ? 'wireframe or source claim' :
                             name, reason, expectedShape: name === 'assessment_stage' ?
-                            '{category, claim, path, quote} or {category, reason} or scope/tiers' : '{}',
+                            '{kind:"wireframe",objective,count,rationale,work,constraints,deferrals,closeout,sourceClaims}' : '{}',
                             recovery: code === 'ASSESSMENT_SOURCE_COVERAGE' ? 'Use assessment_status, then read_file' :
                                 code === 'ASSESSMENT_CATEGORY_INCOMPLETE' ? ready?.nextAction ??
                                     'Use assessment_status and complete the listed missing categories' :

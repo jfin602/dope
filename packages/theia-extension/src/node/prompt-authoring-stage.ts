@@ -98,6 +98,10 @@ export function priorPromptDraft(chat: Chat, stage: 'prompt-ass' | 'prompt-plan'
 
 export async function verifyPromptDraftSource(root: string, assistant: ChatAssistantMessage,
     grounder: ChatProjectGrounder): Promise<void> {
+    if (!assistant.execution.sourceRefs?.some(ref => ref.kind === 'file')) {
+        if (assistant.content.startsWith(heading['prompt-ass'] + '\n')) return;
+        throw new Error('Saved prompt draft lacks broker-read source identity');
+    }
     await verifyPromptSourceRefs(root, assistant.execution.sourceRefs ?? [], grounder);
 }
 
@@ -133,8 +137,8 @@ export function promptStageInstruction(command: { stage: PromptStage; folder?: s
         compactAssessmentContext(assessmentRecord) : prior.assessment.content.slice(0, 8_000)}`,
         prior.plan && `Selected plan ${prior.plan.id}:\n${planRecord ? JSON.stringify(planRecord) :
             prior.plan.content.slice(0, 12_000)}`].filter(Boolean).join('\n\n');
-    const common = 'Use the saved Chat discussion and only brokered project reads. Do not write canonical files, publish prompts, grant or run Work, or award Roadmap status. For each claim distinguish listed/searched paths from files actually read. Read relevant source and tests with read_file; report omissions. Keep the final response under 12,000 characters.';
-    if (command.stage === 'prompt-ass') return `${common}\nThe owner selected immutable task name ${JSON.stringify(command.folder)}. Assess only the supplied task details. Call assessment_status first and use its remaining work and revision. Read all requested source pages. For example: first read_file({path:"docs/late-guide.md"}), then read_file({path:"docs/late-guide.md",continue:true}) until complete. Use each actual requested path; Dope owns offsets and hashes. A list_files result is not a read. Stage a limited number of clear findings with {category,claim,path,quote}; quote a short unique verbatim substring from a successful read. Never invent citations or supply hashes or offsets. Stage scope once with {category:"scope",text:"..."}; do not repeat accepted scope or categories. Stage T1 focused source/unit, T2 integration or cross-boundary, and T3 independent manual browser qualification with {category:"tiers",T1,T2,T3}. Only after complete source reads may genuinely empty dependencies or risks use {category,reason}. Check assessment_status and call assessment_finish only when finishReady is true. Correct rejected operations using their specific feedback; invalid legacy tiers require {category:"tiers",T1,T2,T3,correctRevision:<status revision>} and cannot replace valid tiers. A tool receipt, never final prose, proves completion. Keep final prose short and factual.`;
+    const common = 'Use the saved Chat discussion and only brokered project reads. Do not write canonical files, publish prompts, grant or run Work, or award Roadmap status. For each claim distinguish listed/searched paths from files actually read. Read source and tests with read_file when making factual claims; report omissions. Keep the final response under 12,000 characters.';
+    if (command.stage === 'prompt-ass') return `${common}\nThe owner selected immutable task name ${JSON.stringify(command.folder)}. Decide only the work-prompt count and task division. Honor an explicit owner count; otherwise justify a bounded count. One work prompt is valid. Read only relevant source with read_file; a factual source claim needs a short exact quote from a successful read. A wireframe with no factual source claim needs no token read. Submit one assessment_stage call with {kind:"wireframe",objective,count,rationale,work:[{id:"step-1",title,objective,boundary,dependsOn:[]}],constraints:[],deferrals:[],closeout:{title,objective,manualReason},sourceClaims:[]}. Add grounded {claim,path,quote} sourceClaims only when making source claims. Then call assessment_finish. Do not produce detailed implementation, T1/T2/T3 or efficiency gates here. The tool receipt, not prose, seals the draft.`;
     if (command.stage === 'prompt-plan') return `${common}\n${inherited}\nReturn one compact JSON object with exact keys work, closeout, efficiencyAudit. work is an ordered array of bounded {id,title,objective,tier,dependsOn,workingSet,validationTargets,buildNeeds,acceptanceCriteria} records; tier is T1 for focused implementation or T2 for explicit cross-boundary integration. Use stable step-N IDs and prior IDs for dependencies. workingSet contains only broker-read source/test paths; read_file each relevant source and late page before claiming it. buildNeeds states the actual narrow compiled-output requirement or "none". closeout has {title,objective,manualReason,browserRequired:true,acceptanceCriteria,tier:"T3"} and is separate from work. efficiencyAudit has exactly ten concise findings in docs/workflow.md order: single responsibility, 8/10/15-minute runtime, test precision, build precision, evidence distribution, command deduplication, model economy and deferral, runnable/traceable contract, UI Design Compliance (ADR 0016 and theme tokens if applicable), Human Usability (ADR 0037, entry/feedback/recovery/keyboard/narrow if applicable). Never invent CI, browser demo files, CommonJS adapters or dependencies. Do not return Markdown or claim publication.`;
     const planTests = prior.plan?.execution?.sourceRefs?.filter(ref => ref.kind === 'file' &&
         (/(?:^|\/)test(?:s)?\//u.test(ref.id) || /\.test\.[^.]+$/u.test(ref.id))).map(ref => ref.id) ?? [];
@@ -148,9 +152,12 @@ export function promptStageInstruction(command: { stage: PromptStage; folder?: s
 /** Only an explicit small numeric request binds a count; a vague plan never invents one. */
 export function requestedWorkPromptCount(...texts: string[]): number | undefined {
     const source = texts.join('\n');
-    const matched = /\b(\d{1,2}|ten)[-\s]+(?:(?:substantial|dependency-ordered|ordered|implementation|work)[-\s]+){0,4}(?:work[-\s]+)?(?:prompts?|steps?|tasks?)\b/iu.exec(source);
+    const matched = /\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve)[-\s]+(?:(?:substantial|dependency-ordered|ordered|implementation|work)[-\s]+){0,4}(?:work[-\s]+)?(?:prompts?|steps?|tasks?)\b/iu.exec(source);
     if (!matched) return undefined;
-    const count = matched[1].toLowerCase() === 'ten' ? 10 : Number(matched[1]);
+    const words = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+        'eleven', 'twelve'];
+    const word = words.indexOf(matched[1].toLowerCase());
+    const count = word >= 0 ? word + 1 : Number(matched[1]);
     return count >= 1 && count <= 48 ? count : undefined;
 }
 
@@ -158,12 +165,76 @@ export interface AssessmentFinding { claim: string; path: string; start: number;
     sourceHash: string; quote: string }
 interface AssessmentCitation { claim: string; path: string; quote: string }
 export interface AssessmentRead { path: string; start: number; end: number; sourceHash: string; text: string }
-export interface AssessmentRecord {
+export interface LegacyAssessmentRecord {
     scope: string; observations: AssessmentFinding[]; preservation: AssessmentFinding[];
     dependencies: AssessmentFinding[]; risks: AssessmentFinding[];
     tiers: { T1: string; T2: string; T3: string };
     emptyReasons?: Partial<Record<'observations' | 'preservation' | 'dependencies' | 'risks', string>>;
     omittedRequestedFiles: string[];
+}
+export interface AssessmentWireframe {
+    kind: 'wireframe'; objective: string; count: number; rationale: string;
+    work: { id: string; title: string; objective: string; boundary: string; dependsOn: string[] }[];
+    constraints: string[]; deferrals: string[];
+    closeout: { title: string; objective: string; manualReason: string };
+    sourceClaims: AssessmentFinding[];
+}
+export type AssessmentRecord = LegacyAssessmentRecord | AssessmentWireframe;
+export function isAssessmentWireframe(value: AssessmentRecord): value is AssessmentWireframe {
+    return 'kind' in value && value.kind === 'wireframe';
+}
+/** One bounded submission; claims are checked only against successful brokered reads. */
+export function validatedAssessmentWireframe(raw: unknown,
+    refs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']>,
+    evidence: readonly AssessmentRead[], ownerCount?: number): AssessmentWireframe {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
+        Buffer.byteLength(JSON.stringify(raw), 'utf8') > 16_000 ||
+        !planKeys(raw, ['kind', 'objective', 'count', 'rationale', 'work', 'constraints',
+            'deferrals', 'closeout', 'sourceClaims']))
+        throw new Error('ASSESSMENT_WIREFRAME_SHAPE: Submit one bounded wireframe');
+    const value = raw as Record<string, unknown>;
+    if (value.kind !== 'wireframe' || !planText(value.objective, 1000) ||
+        !planText(value.rationale, 500) || !Number.isSafeInteger(value.count) ||
+        (value.count as number) < 1 || (value.count as number) > 48 ||
+        ownerCount !== undefined && value.count !== ownerCount ||
+        !Array.isArray(value.work) || value.work.length !== value.count)
+        throw new Error('ASSESSMENT_WIREFRAME_COUNT: Use the owner count or justify 1–48 work prompts');
+    const seen = new Set<string>();
+    const work = value.work.map((rawStep: unknown, index: number) => {
+        if (!rawStep || typeof rawStep !== 'object' || Array.isArray(rawStep) ||
+            !planKeys(rawStep, ['id', 'title', 'objective', 'boundary', 'dependsOn']))
+            throw new Error('ASSESSMENT_WIREFRAME_STEP: Supply a compact step and primary boundary');
+        const step = rawStep as AssessmentWireframe['work'][number];
+        if (step.id !== `step-${index + 1}` || !planText(step.title, 120) ||
+            !planText(step.objective, 500) || !planText(step.boundary, 300) ||
+            !Array.isArray(step.dependsOn) || step.dependsOn.length > 12 ||
+            new Set(step.dependsOn).size !== step.dependsOn.length ||
+            step.dependsOn.some(id => typeof id !== 'string' || !seen.has(id)))
+            throw new Error('ASSESSMENT_WIREFRAME_STEP: Stable ordered IDs and earlier dependencies required');
+        seen.add(step.id);
+        return step;
+    });
+    const strings = (items: unknown): items is string[] => Array.isArray(items) &&
+        items.length <= 12 && items.every(item => planText(item, 300));
+    const closeout = value.closeout;
+    if (!strings(value.constraints) || !strings(value.deferrals) || !closeout ||
+        typeof closeout !== 'object' || Array.isArray(closeout) ||
+        !planKeys(closeout, ['title', 'objective', 'manualReason']) ||
+        !Object.values(closeout).every(item => planText(item, 300)))
+        throw new Error('ASSESSMENT_WIREFRAME_CLOSEOUT: Include constraints, deferrals and one manual closeout');
+    if (!Array.isArray(value.sourceClaims) || value.sourceClaims.length > 8)
+        throw new Error('ASSESSMENT_WIREFRAME_SOURCE: Supply at most eight grounded source claims');
+    const sourceClaims = value.sourceClaims.map(item =>
+        validatedAssessmentFinding(item, 'observations', refs, evidence));
+    const claimedPaths = new Set(sourceClaims.map(item => item.path));
+    const narrative = [value.objective, value.rationale, ...work.flatMap(step =>
+        [step.title, step.objective, step.boundary]), ...value.constraints, ...value.deferrals,
+        ...(Object.values(closeout) as string[])].join(' ');
+    for (const path of requestedPaths(narrative)) if (!claimedPaths.has(path))
+        throw new Error(`ASSESSMENT_WIREFRAME_SOURCE: ${path} is named without a broker-grounded source claim`);
+    return { kind: 'wireframe', objective: value.objective as string, count: value.count as number,
+        rationale: value.rationale as string, work, constraints: value.constraints,
+        deferrals: value.deferrals, closeout: closeout as AssessmentWireframe['closeout'], sourceClaims };
 }
 export interface PlanWorkRecord { id: string; title: string; objective: string; tier: 'T1' | 'T2';
     dependsOn: string[]; workingSet: string[]; validationTargets: string[]; buildNeeds: string;
@@ -187,16 +258,17 @@ export function validatedPlan(modelText: string, assessment: AssessmentRecord,
         !planKeys(parsed, ['work', 'closeout', 'efficiencyAudit']))
         throw new Error('PLAN_SHAPE: Supply work, closeout and efficiencyAudit only');
     const value = parsed as Record<string, unknown>;
-    if (!Array.isArray(value.work) || value.work.length < 2 || value.work.length > 48 ||
+    if (!Array.isArray(value.work) || value.work.length < 1 || value.work.length > 48 ||
         requestedCount !== undefined && value.work.length !== requestedCount)
-        throw new Error(`PLAN_WORK_COUNT: Supply ${requestedCount ?? '2–48'} work tasks plus a separate closeout`);
+        throw new Error(`PLAN_WORK_COUNT: Supply ${requestedCount ?? '1–48'} work tasks plus a separate closeout`);
     const readPaths = new Set(refs.filter(ref => ref.kind === 'file' && ref.origin === 'tool' && ref.sourceHash)
         .map(ref => ref.id));
     if (!readPaths.size) throw new Error('PLAN_READ_REQUIRED: Read actual source with read_file before planning');
-    const assessedPaths = new Set([...assessment.observations, ...assessment.preservation,
-        ...assessment.dependencies, ...assessment.risks].map(item => item.path));
+    const assessedPaths = new Set((isAssessmentWireframe(assessment) ? assessment.sourceClaims :
+        [...assessment.observations, ...assessment.preservation, ...assessment.dependencies, ...assessment.risks])
+        .map(item => item.path));
     const supported = new Set([...readPaths, ...assessedPaths]);
-    if (assessment.omittedRequestedFiles.some(path => !readPaths.has(path)))
+    if (!isAssessmentWireframe(assessment) && assessment.omittedRequestedFiles.some(path => !readPaths.has(path)))
         throw new Error(`PLAN_MISSING_SOURCE: Read requested file ${assessment.omittedRequestedFiles.find(path => !readPaths.has(path))} before planning`);
     let t2 = 0;
     const seen = new Set<string>();
@@ -219,7 +291,8 @@ export function validatedPlan(modelText: string, assessment: AssessmentRecord,
         if (/\b(?:read tiers?|T[123] read|source read only)\b/iu.test(item.objective) ||
             /\b(?:CI pipeline|CommonJS|browser demo|npm install|new dependency)\b/iu.test(
                 [item.title, item.objective, item.buildNeeds, ...item.validationTargets].join(' ')) &&
-            ![...assessment.observations, ...assessment.dependencies].some(finding =>
+            !(isAssessmentWireframe(assessment) ? assessment.sourceClaims :
+                [...assessment.observations, ...assessment.dependencies]).some(finding =>
                 /\b(?:CI pipeline|CommonJS|browser demo|npm install|new dependency)\b/iu.test(finding.claim)))
             throw new Error(`PLAN_UNSUPPORTED_ASSUMPTION: ${item.id} asserts a read tier or unverified infrastructure`);
         for (const path of item.workingSet) if (!supported.has(path))
@@ -231,7 +304,7 @@ export function validatedPlan(modelText: string, assessment: AssessmentRecord,
         seen.add(item.id);
         return item;
     });
-    if (!t2) throw new Error('PLAN_T2_REQUIRED: Include an explicit cross-boundary integration work task');
+    if (!t2 && value.work.length > 1) throw new Error('PLAN_T2_REQUIRED: Include an explicit cross-boundary integration work task');
     const closeout = value.closeout;
     if (!closeout || typeof closeout !== 'object' || Array.isArray(closeout) ||
         !planKeys(closeout, ['title', 'objective', 'manualReason', 'browserRequired', 'acceptanceCriteria', 'tier']) ||
@@ -268,6 +341,7 @@ export function planReceiptCurrent(content: string, contentHash: string | undefi
     return !!match && match[1] === contentHash && Number(match[2]) === revision;
 }
 function compactAssessmentContext(record: AssessmentRecord): string {
+    if (isAssessmentWireframe(record)) return JSON.stringify(record);
     const section = (items: AssessmentFinding[]) => ({ count: items.length,
         sample: items.slice(0, 4).map(item => ({ claim: item.claim.slice(0, 180), path: item.path,
             start: item.start, end: item.end, sourceHash: item.sourceHash })) });
@@ -281,7 +355,7 @@ const assessmentFields = ['scope', 'observations', 'preservation', 'dependencies
 export const requestedPaths = (text: string): string[] => [...new Set(text.match(/\b(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*\.(?:md|txt|json|js|jsx|ts|tsx)\b/gu) ?? [])];
 export type AssessmentCategory = 'observations' | 'preservation' | 'dependencies' | 'risks';
 /** The same content contract applies to incremental staging and final sealing. */
-export function validateAssessmentTiers(raw: unknown): asserts raw is AssessmentRecord['tiers'] {
+export function validateAssessmentTiers(raw: unknown): asserts raw is LegacyAssessmentRecord['tiers'] {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
         Object.keys(raw).sort().join(',') !== 'T1,T2,T3')
         throw new Error('ASSESSMENT_TIERS: Supply exactly T1, T2 and T3');
@@ -344,7 +418,7 @@ export function validatedAssessmentFinding(raw: unknown, kind: AssessmentCategor
 /** Validate model claims against successful broker reads; metadata searches never count. */
 export function validatedAssessment(modelText: string,
     refs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']>, requestedText: string,
-    evidence: readonly AssessmentRead[]): AssessmentRecord {
+    evidence: readonly AssessmentRead[]): LegacyAssessmentRecord {
     if (Buffer.byteLength(modelText, 'utf8') > 20_000) throw new Error('ASSESSMENT_PAYLOAD_LIMIT: Return fewer, shorter findings');
     let parsed: unknown;
     try { parsed = JSON.parse(modelText.trim()); }
@@ -365,7 +439,7 @@ export function validatedAssessment(modelText: string,
     const read = refs.filter(ref => ref.kind === 'file' && ref.origin === 'tool' && ref.sourceHash &&
         Number.isSafeInteger(ref.start) && Number.isSafeInteger(ref.end) && ref.end! > ref.start!);
     if (!read.length) throw new Error('ASSESSMENT_READ_REQUIRED: Read source with read_file before assessment');
-    const findings = {} as Pick<AssessmentRecord, 'observations' | 'preservation' | 'dependencies' | 'risks'>;
+    const findings = {} as Pick<LegacyAssessmentRecord, 'observations' | 'preservation' | 'dependencies' | 'risks'>;
     for (const kind of ['observations', 'preservation', 'dependencies', 'risks'] as const) {
         const items = value[kind];
         if (!Array.isArray(items) || items.length > 12)
@@ -385,14 +459,21 @@ export function validatedAssessment(modelText: string,
     const omittedRequestedFiles = requestedPaths(requestedText).filter(path =>
         !read.some(ref => ref.id === path));
     return { scope: value.scope as string, ...findings,
-        ...(value.emptyReasons ? { emptyReasons: value.emptyReasons as AssessmentRecord['emptyReasons'] } : {}),
+        ...(value.emptyReasons ? { emptyReasons: value.emptyReasons as LegacyAssessmentRecord['emptyReasons'] } : {}),
         tiers, omittedRequestedFiles };
 }
 
 export function renderAssessment(record: AssessmentRecord): string {
+    if (isAssessmentWireframe(record)) return `${heading['prompt-ass']}\n\nDraft only. This command did not change project files or start Work.\n\n` +
+        `## Objective\n${record.objective}\n\n## Work prompts (${record.count})\n${record.rationale}\n\n` +
+        record.work.map(step => `- ${step.id}: ${step.title} — ${step.objective}; boundary: ${step.boundary}; depends on: ${step.dependsOn.join(', ') || 'none'}`).join('\n') +
+        `\n\n## Constraints\n${record.constraints.map(item => `- ${item}`).join('\n') || '- None stated'}\n\n` +
+        `## Deferrals\n${record.deferrals.map(item => `- ${item}`).join('\n') || '- None stated'}\n\n` +
+        `## Final manual closeout\n${record.closeout.title} — ${record.closeout.objective}; ${record.closeout.manualReason}\n\n` +
+        `## Source claims\n${record.sourceClaims.map(item => `- ${item.claim} — “${item.quote}” (${item.path})`).join('\n') || '- None'}\n`;
     const section = (title: string, items: AssessmentFinding[]) =>
         `## ${title}\n${items.length ? items.map(item => `- ${item.claim} — “${item.quote}” (${item.path} bytes ${item.start}–${item.end}, sha256 ${item.sourceHash})`).join('\n') :
-            `- None: ${record.emptyReasons?.[title.toLowerCase() as keyof NonNullable<AssessmentRecord['emptyReasons']>] ?? 'Not justified'}`}`;
+            `- None: ${record.emptyReasons?.[title.toLowerCase() as keyof NonNullable<LegacyAssessmentRecord['emptyReasons']>] ?? 'Not justified'}`}`;
     return `${heading['prompt-ass']}\n\nDraft only. This command did not change project files or start Work.\n\n` +
         `## Scope\n${record.scope}\n\n${section('Observations', record.observations)}\n\n` +
         `${section('Preservation', record.preservation)}\n\n${section('Dependencies', record.dependencies)}\n\n` +
