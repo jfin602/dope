@@ -10,8 +10,9 @@ import { dispatch, beforeNativeCompaction, nativeCompactionOutcome, frameStreamE
 test('incremental assessment advertises top-level object tools without command or write access', () => {
   assert.deepEqual(Object.keys(ASSESSMENT_TOOLS).sort(), ['assessment_finish', 'assessment_stage',
     'assessment_status', 'list_files', 'read_file', 'search_paths', 'search_text']);
-  assert.equal(ASSESSMENT_TOOLS.assessment_stage.category.anyOf.length, 6);
-  assert.equal(ASSESSMENT_TOOLS.assessment_stage.claim.type, 'string');
+  assert.equal(ASSESSMENT_TOOLS.assessment_stage.kind.const, 'wireframe');
+  assert.equal(ASSESSMENT_TOOLS.assessment_stage.work.type, 'array');
+  assert.equal(ASSESSMENT_TOOLS.assessment_stage.sourceClaims.items.properties.quote.type, 'string');
   assert.equal(ASSESSMENT_TOOLS.read_file.continue.type, 'boolean');
   assert.equal(PROPOSAL_TOOLS.read_file.continue, undefined);
 });
