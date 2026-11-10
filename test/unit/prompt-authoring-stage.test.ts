@@ -21,7 +21,20 @@ import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/cha
 import { assertPromptDraftNameAvailable, finishedPromptStack, finishedPromptText, newPromptDraftIdentity,
     priorPromptDraft, promptStageCommand, promptStageInstruction, verifyPromptDraftIdentity, verifyPromptDraftSourceBasis,
     verifyPromptDraftSource, validatedAssessment, renderAssessment, validatedPlan, renderPlan,
-    requestedWorkPromptCount, planReceiptCurrent } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
+    requestedWorkPromptCount, planReceiptCurrent, validateAssessmentTiers } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
+
+test('shared tier contract identifies the missing responsibility before acceptance', () => {
+    const valid = { T1: 'Focused source and unit validation',
+        T2: 'Cross-boundary integration validation',
+        T3: 'Independent manual browser qualification' };
+    assert.doesNotThrow(() => validateAssessmentTiers(valid));
+    assert.throws(() => validateAssessmentTiers({ ...valid, T1: 'Unit tests' }),
+        /ASSESSMENT_TIERS: T1/);
+    assert.throws(() => validateAssessmentTiers({ ...valid, T2: 'Documentation only' }),
+        /ASSESSMENT_TIERS: T2/);
+    assert.throws(() => validateAssessmentTiers({ ...valid, T3: 'Release notes' }),
+        /ASSESSMENT_TIERS: T3/);
+});
 
 test('structured plan checks requested ten work tasks, source, order, T2/T3 and all efficiency gates', () => {
     const finding = { claim: 'Read relevant source', path: 'src/clamp.ts', start: 0, end: 20,
@@ -245,7 +258,7 @@ test('structured assessment requires actual brokered byte ranges and discloses o
         const input = { scope: 'Assess the requested source', observations: [finding],
             preservation: [finding], dependencies: [finding], risks: [finding],
             tiers: { T1: 'Focused source test', T2: 'Cross-boundary integration',
-                T3: 'Manual browser qualification' } };
+                T3: 'Independent manual browser qualification' } };
         const record = validatedAssessment(JSON.stringify(input), refs,
             '/prompt-ass safe-task Inspect README.md and AGENTS.md', evidence);
         assert.deepEqual(record.omittedRequestedFiles, ['AGENTS.md']);
@@ -282,7 +295,8 @@ test('assessment resolves exact ASCII and UTF-8 citations across brokered pages 
     ];
     const input = { scope: 'Review clamp source', observations: findings,
         preservation: [findings[0]], dependencies: [findings[1]], risks: [findings[2]],
-        tiers: { T1: 'Focused tests', T2: 'Integration', T3: 'Manual browser' } };
+        tiers: { T1: 'Focused source tests', T2: 'Integration',
+            T3: 'Independent manual browser qualification' } };
     const check = (candidate: unknown, read = refs, observed = pages) =>
         validatedAssessment(JSON.stringify(candidate), read, '', observed);
     const record = check(input);
@@ -319,7 +333,8 @@ test('saved P8 GPT-OSS citation is denied while an exact quote from that same re
         quote: "export function clamp(value, min, max) {\\n  if (typeof value !== 'number' || typeof min !== 'number' || typeof max !== 'number') {" };
     const candidate = (finding: unknown) => ({ scope: 'clamp API implementation review',
         observations: [finding], preservation: [finding], dependencies: [finding], risks: [finding],
-        tiers: { T1: 'Focused source', T2: 'Integration', T3: 'Manual browser' } });
+        tiers: { T1: 'Focused source', T2: 'Integration',
+            T3: 'Independent manual browser qualification' } });
     assert.throws(() => validatedAssessment(JSON.stringify(candidate(p8)), refs, '', evidence),
         /ASSESSMENT_CITATION/);
     const exact = { claim: p8.claim, path: p8.path,
@@ -372,7 +387,10 @@ test('exact P8-R2 provisional Assessment is denied against its two brokered read
     assert.throws(() => validatedAssessment(JSON.stringify(model), refs,
         '/prompt-ass clamp-api-correction Inspect src/clamp.js test/clamp.test.js package.json docs/late-guide.md RELEASE_NOTES.md',
         pages), /ASSESSMENT_UNSUPPORTED_SOURCE/);
-    const corrected = { ...model, observations: [{ ...model.observations[0],
+    const corrected = { ...model, tiers: { T1: 'Focused source and unit validation',
+        T2: 'Cross-boundary integration validation',
+        T3: 'Independent manual browser qualification' },
+        observations: [{ ...model.observations[0],
         quote: "if (typeof value !== 'number' || typeof min !== 'number' || typeof max !== 'number') {" },
         model.observations[1]], preservation: [
             { ...model.preservation[0], quote: 'assert.equal(clamp(4, 0, 10), 4);' },
@@ -387,9 +405,10 @@ test('exact P8-R2 provisional Assessment is denied against its two brokered read
 test('assessment instruction requires staged exact citations and all requested late source', () => {
     const instruction = promptStageInstruction({ stage: 'prompt-ass', folder: 'clamp-api-correction' }, {});
     assert.match(instruction, /assessment_status first/);
-    assert.match(instruction, /every requested file.*nextOffset.*expectedSourceHash/);
-    assert.match(instruction, /assessment_stage.*unique exact quote/);
-    assert.match(instruction, /assessment_finish only after coverage and categories/);
+    assert.match(instruction, /all requested source pages.*continue:true/);
+    assert.doesNotMatch(instruction, /expectedSourceHash|nextOffset/);
+    assert.match(instruction, /Stage a limited number of clear findings.*unique verbatim substring/);
+    assert.match(instruction, /assessment_finish only when finishReady is true/);
     assert.doesNotMatch(instruction, /\{claim,path,start,end,sourceHash,quote\}/);
 });
 
@@ -424,7 +443,8 @@ test('assessment keeps JSON escaped newline distinct from literal source backsla
         preservation: [{ claim: 'Observed lines', path: 'src/example.js', quote }],
         dependencies: [{ claim: 'Observed lines', path: 'src/example.js', quote }],
         risks: [{ claim: 'Observed lines', path: 'src/example.js', quote }],
-        tiers: { T1: 'Source checks', T2: 'Integration', T3: 'Manual browser' } });
+        tiers: { T1: 'Focused source checks', T2: 'Integration',
+            T3: 'Independent manual browser qualification' } });
     const valid = validatedAssessment(JSON.stringify(candidate('first line\nsecond line')),
         refs, '', evidence);
     assert.equal(valid.observations[0].start, 0);

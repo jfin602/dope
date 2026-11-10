@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import type { ChatPromptDraftIdentity } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
 import type { ChatProjectGrounder } from './chat-project-grounder';
-import { renderAssessment, renderPlan, verifyPromptDraftSourceBasis, verifyPromptSourceRefs,
+import { renderAssessment, renderPlan, validateAssessmentTiers, verifyPromptDraftSourceBasis, verifyPromptSourceRefs,
     type AssessmentRecord, type AssessmentFinding, type AssessmentCategory, type PlanRecord } from './prompt-authoring-stage';
 import { capturePromptSourceEvidence } from './prompt-stack-proposal';
 
@@ -31,6 +31,8 @@ export interface StoredPromptDraft {
         findings: Record<AssessmentCategory, AssessmentFinding[]>;
         emptyReasons: Partial<Record<AssessmentCategory, string>>;
         tiers?: AssessmentRecord['tiers'];
+        tierCorrection?: { revision: number; original: AssessmentRecord['tiers'];
+            replacement: AssessmentRecord['tiers'] };
     };
     plan?: StoredPromptDraftStage;
     history: { stage: PromptDraftStage; value: StoredPromptDraftStage }[];
@@ -76,6 +78,16 @@ function validPartial(value: StoredPromptDraft['partialAssessment']): boolean {
         if (value.emptyReasons[category] !== undefined &&
             (typeof value.emptyReasons[category] !== 'string' ||
             (value.emptyReasons[category]?.length ?? 0) > 500)) return false;
+    }
+    if (value.tierCorrection) {
+        const audit = value.tierCorrection;
+        if (!Number.isSafeInteger(audit.revision) || audit.revision < 1 ||
+            !audit.original || !audit.replacement ||
+            canonical(audit.replacement) !== canonical(value.tiers)) return false;
+        try { validateAssessmentTiers(audit.replacement); }
+        catch { return false; }
+        try { validateAssessmentTiers(audit.original); return false; }
+        catch { /* Only previously invalid tiers can be corrected. */ }
     }
     return Object.entries(value.blocked).every(([path, reason]) => value.requested.includes(path) &&
         typeof reason === 'string' && reason.length <= 80);
@@ -157,6 +169,35 @@ export class PromptDraftStore {
                     .catch(() => { throw new Error('ASSESSMENT_SOURCE_DRIFT: Source unavailable during staging'); });
                 if (actual.sourceHash !== page.sourceHash || actual.fileBytes !== page.fileBytes)
                     throw new Error('ASSESSMENT_SOURCE_DRIFT: Source changed during staging');
+            }
+            const { integrityHash: _integrityHash, ...body } = current;
+            const snapshot = sealed({ ...body, revision: current.revision + 1, partialAssessment: partial });
+            return { snapshot, result: snapshot };
+        });
+    }
+
+    /** A single auditable repair for legacy invalid unsealed tiers, bound to the current draft revision. */
+    async correctInvalidTiers(root: string, identity: ChatPromptDraftIdentity, leaseToken: string,
+        expectedRevision: number, replacement: AssessmentRecord['tiers']): Promise<StoredPromptDraft> {
+        validateAssessmentTiers(replacement);
+        return this.transact(root, identity, leaseToken, async current => {
+            if (!current || current.state !== 'active' || current.revision !== expectedRevision ||
+                current.assessment || !current.partialAssessment?.tiers)
+                throw new Error('ASSESSMENT_STAGE_STALE: Tier correction requires the current active unsealed draft revision');
+            const original = current.partialAssessment.tiers;
+            let originalValid = true;
+            try { validateAssessmentTiers(original); }
+            catch { originalValid = false; }
+            if (current.partialAssessment.tierCorrection || originalValid)
+                throw new Error('ASSESSMENT_CONFLICTING_REPLAY: Valid accepted tiers cannot be replaced');
+            const partial = { ...current.partialAssessment, tiers: replacement,
+                tierCorrection: { revision: current.revision + 1, original, replacement } };
+            if (!validPartial(partial)) throw new Error('ASSESSMENT_STAGE_LIMIT: Tier correction exceeds draft limits');
+            for (const page of partial.pages) {
+                const actual = await this.grounder.readFileRange(root, page.path, 0, 1)
+                    .catch(() => { throw new Error('ASSESSMENT_SOURCE_DRIFT: Source unavailable during correction'); });
+                if (actual.sourceHash !== page.sourceHash || actual.fileBytes !== page.fileBytes)
+                    throw new Error('ASSESSMENT_SOURCE_DRIFT: Source changed during correction');
             }
             const { integrityHash: _integrityHash, ...body } = current;
             const snapshot = sealed({ ...body, revision: current.revision + 1, partialAssessment: partial });

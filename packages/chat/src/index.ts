@@ -119,6 +119,8 @@ export interface ChatExecution {
         'assessment_status' | 'assessment_stage' | 'assessment_finish';
         status: 'completed' | 'failed' | 'denied'; truncated: boolean;
         code?: string; stage?: string; brokerExecuted?: boolean;
+        assessmentOutcome?: 'advanced' | 'source-page' | 'idempotent' | 'status' |
+            'recoverable' | 'hard-authority' | 'repeated-non-progress' | 'resource-ceiling';
         assessment?: { ordinal: number; category: 'scope' | 'tiers' | 'observations' | 'preservation' |
             'dependencies' | 'risks' | 'unrecognized'; shape: 'finding' | 'empty' | 'scope' |
             'tiers' | 'invalid'; code: string; field: 'none' | 'shape' | 'category' |
@@ -623,7 +625,7 @@ function parseExecution(value: unknown): ChatExecution {
         execution.toolEvents = v.toolEvents.map(item => {
             const event = record(item, ['name', 'status', 'truncated', 'code', 'stage', 'brokerExecuted',
                 'offset', 'pageSize', 'sourceHashSupplied', 'endOffset', 'commandMode', 'approval',
-                'commandExecuted', 'commandDigest', 'assessment'], ['name', 'status', 'truncated']);
+                'commandExecuted', 'commandDigest', 'assessment', 'assessmentOutcome'], ['name', 'status', 'truncated']);
             if (typeof event.truncated !== 'boolean') throw new Error('Invalid Chat tool truncation');
             let assessment: NonNullable<NonNullable<ChatExecution['toolEvents']>[number]['assessment']> | undefined;
             if (event.assessment !== undefined) {
@@ -653,6 +655,10 @@ function parseExecution(value: unknown): ChatExecution {
                 'assessment_status', 'assessment_stage', 'assessment_finish'] as const,
                 'Chat tool'), status: choice(event.status, ['completed', 'failed', 'denied'] as const, 'Chat tool status'),
                 truncated: event.truncated, ...(assessment ? { assessment } : {}),
+                ...(event.assessmentOutcome === undefined ? {} : { assessmentOutcome: choice(event.assessmentOutcome,
+                    ['advanced', 'source-page', 'idempotent', 'status', 'recoverable',
+                        'hard-authority', 'repeated-non-progress', 'resource-ceiling'] as const,
+                    'Assessment outcome') }),
                 ...(event.code === undefined ? {} : { code: choice(event.code, ['INVALID_ARGUMENTS',
                     'INVALID_OFFSET', 'INVALID_PAGE_SIZE', 'SOURCE_IDENTITY_REQUIRED',
                     'INVALID_SOURCE_IDENTITY', 'STALE_SOURCE', 'OUTPUT_BUDGET', 'AUTHORITY_DENIED',

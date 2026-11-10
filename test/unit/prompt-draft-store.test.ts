@@ -103,7 +103,7 @@ test('incremental assessment persists five-file coverage, exact findings and jus
     assert.equal(continuation?.coveredBytes, 4096);
     assert.equal(continuation?.nextOffset, 4096);
     assert.match(continuation?.expectedSourceHash ?? '', /^[a-f0-9]{64}$/);
-    assert.match((await controller.status()).nextAction, /offset 4096 and expectedSourceHash/);
+    assert.match((await controller.status()).nextAction, /continue:true/);
     await assert.rejects(v.grounder.readFileRange(v.root, 'docs/late-guide.md', 4096, 4096,
         '0'.repeat(64)), /Stale file continuation/);
     assert.equal((await controller.status()).sources, '3/5 inspected');
@@ -139,9 +139,22 @@ test('incremental assessment persists five-file coverage, exact findings and jus
     await reopened.stage({ category: 'dependencies', reason: 'Inspected package declares no external dependencies' },
         refs, evidence);
     await reopened.stage({ category: 'scope', text: 'Review clamp behavior and late contract' }, refs, evidence);
+    const beforeTiers = (await v.store.read(v.root, v.identity, claimed.token)).revision;
+    await assert.rejects(reopened.stage({ category: 'tiers', T1: 'Unit tests',
+        T2: 'Integration checks', T3: 'Release notes' }, refs, evidence), /ASSESSMENT_TIERS: T1/);
+    assert.equal((await v.store.read(v.root, v.identity, claimed.token)).revision, beforeTiers);
     await reopened.stage({ category: 'tiers', T1: 'Focused source unit tests',
         T2: 'Cross-boundary integration checks', T3: 'Independent manual browser qualification' }, refs, evidence);
+    await assert.rejects(reopened.stage({ category: 'tiers', T1: 'Focused source unit regression',
+        T2: 'Cross-boundary integration checks', T3: 'Independent manual browser qualification',
+        correctRevision: (await reopened.status()).revision }, refs, evidence),
+    /ASSESSMENT_CONFLICTING_REPLAY/);
+    assert.equal((await reopened.status()).finishReady, true);
+    assert.deepEqual((await reopened.status()).blockedBy, []);
     const completed = await reopened.finish();
+    await assert.rejects(reopened.stage({ category: 'tiers', T1: 'Focused source unit tests',
+        T2: 'Cross-boundary integration checks', T3: 'Independent manual browser qualification',
+        correctRevision: (await reopened.status()).revision }, refs, evidence), /ASSESSMENT_STAGE_SEALED/);
     assert.equal((await reopened.finish()).revision, completed.revision);
     assert.equal(completed.record.omittedRequestedFiles.length, 0);
     assert.equal(completed.record.dependencies.length, 0);
@@ -150,6 +163,47 @@ test('incremental assessment persists five-file coverage, exact findings and jus
     assert.match(await v.store.assessmentView(v.root, v.identity, claimed.token),
         /None: Inspected package declares no external dependencies/);
     await assert.rejects(lstat(join(v.root, 'docs', 'tasks', 'safe-task')), /ENOENT/);
+}));
+
+test('legacy invalid unsealed tiers require current-revision correction and retain an audit entry', () => fixture(async v => {
+    const controller = new IncrementalAssessment(v.repo, v.grounder, v.root, v.identity,
+        v.lease, '/prompt-ass safe-task Inspect README.md', v.store);
+    await controller.begin();
+    const original = { T1: 'Unit tests', T2: 'Integration checks', T3: 'Release notes' };
+    await v.store.updatePartialAssessment(v.root, v.identity, v.lease, 0, {
+        requested: ['README.md'], pages: [], blocked: {}, findings: {
+            observations: [], preservation: [], dependencies: [], risks: [] },
+        emptyReasons: {}, tiers: original });
+    const valid = { category: 'tiers', T1: 'Focused source and unit validation',
+        T2: 'Cross-boundary integration validation',
+        T3: 'Independent manual browser qualification' };
+    const status = await controller.status();
+    assert.equal(status.finishReady, false);
+    assert.equal(status.tierState, 'invalid');
+    assert.ok(status.blockedBy.includes('tiers'));
+    await assert.rejects(controller.stage(valid, [], []), /ASSESSMENT_CONFLICTING_REPLAY/);
+    await assert.rejects(controller.stage({ ...valid, correctRevision: 0 }, [], []),
+        /ASSESSMENT_STAGE_STALE/);
+    await assert.rejects(controller.stage({ ...valid, correctRevision: 1,
+        T3: 'Release notes' }, [], []), /ASSESSMENT_TIERS: T3/);
+    await assert.rejects(v.store.correctInvalidTiers(v.root, v.identity, 'wrong-lease', 1,
+        { T1: valid.T1, T2: valid.T2, T3: valid.T3 }), /lease/i);
+    await assert.rejects(v.store.correctInvalidTiers(v.root,
+        { ...v.identity, id: randomUUID() }, v.lease, 1,
+        { T1: valid.T1, T2: valid.T2, T3: valid.T3 }));
+    const accepted = await controller.stage({ ...valid, correctRevision: status.revision }, [], []);
+    assert.equal(accepted.idempotent, false);
+    const saved = await v.store.read(v.root, v.identity, v.lease);
+    assert.equal(saved.revision, 2);
+    assert.deepEqual(saved.partialAssessment?.tierCorrection, {
+        revision: 2, original, replacement: { T1: valid.T1, T2: valid.T2, T3: valid.T3 } });
+    assert.equal((await controller.stage(valid, [], [])).idempotent, true);
+    await assert.rejects(controller.stage({ ...valid, T1: 'Focused unit regression checks' }, [], []),
+        /ASSESSMENT_CONFLICTING_REPLAY/);
+    await assert.rejects(controller.stage({ ...valid, T1: 'Focused unit regression checks',
+        correctRevision: 2 }, [], []), /ASSESSMENT_CONFLICTING_REPLAY/);
+    assert.deepEqual((await v.store.read(v.root, v.identity, v.lease)).partialAssessment?.tiers,
+        { T1: valid.T1, T2: valid.T2, T3: valid.T3 });
 }));
 
 test('a verified package dependency contradicts an empty dependency category', () => fixture(async v => {
@@ -172,6 +226,8 @@ test('a verified package dependency contradicts an empty dependency category', (
     await controller.stage({ category: 'scope', text: 'Review package dependency source' }, refs, evidence);
     await controller.stage({ category: 'tiers', T1: 'Focused source unit tests',
         T2: 'Cross-boundary integration checks', T3: 'Independent manual browser qualification' }, refs, evidence);
+    assert.equal((await controller.status()).finishReady, false);
+    assert.deepEqual((await controller.status()).blockedBy, ['dependencies']);
     await assert.rejects(controller.finish(), /ASSESSMENT_DEPENDENCIES_EMPTY/);
     assert.equal((await v.store.read(v.root, v.identity, v.lease)).assessment, undefined);
 }));

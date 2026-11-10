@@ -20,6 +20,51 @@ test('backend policy dispatch uses validated operation flags, never inert reques
     assert.equal(trustedOperationForTurn({ ...ordinary, roadmapEdit: true }), 'roadmap-edit');
 });
 
+test('Assessment broker retains the 128-tool ceiling with a distinct resource receipt', async () => {
+    const temporary = await folder(), root = join(temporary, 'project');
+    await mkdir(root);
+    await writeFile(join(root, 'package.json'), '{"name":"fixture","version":"1.4.2"}\n');
+    await execute('git', ['init', '-q', root]);
+    await execute('git', ['-C', root, 'add', 'package.json']);
+    await execute('git', ['-C', root, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
+        'commit', '-qm', 'Fixture']);
+    const outputs: { code?: string }[] = [];
+    const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
+        providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
+            capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 16384,
+                maxInputTokens: 16384 } }] }] }),
+    async *generate(_selection: unknown, request: { projectTools?: {
+        execute(name: string, args: unknown): Promise<string> } }) {
+        for (let index = 0; index < 129; index++)
+            outputs.push(JSON.parse(await request.projectTools!.execute('assessment_status', {})));
+        yield { type: 'complete' as const, text: 'No sealed assessment', actualModelId: 'q4',
+            finishReason: 'stop' as const, usage: { tokenMeasurement: 'unavailable' as const } };
+    } };
+    const backend = new ChatBackend(new ChatRepository(), { notifyChatEvent() {} }, models as never,
+        { compose: async () => ({ messages: [{ role: 'user', content: 'saved' }], refs: [],
+            diagnostics: [], usedTokens: 10, budgetTokens: 16384 }) } as never,
+        undefined, new ChatProjectGrounder({} as never));
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Ceiling' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'owner' });
+        assert.equal(lease.acquired, true);
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' },
+            content: '/prompt-ass ceiling Check package.json' }));
+        assert.equal(outputs.length, 129);
+        assert.equal(outputs[127].code, undefined);
+        assert.equal(outputs[128].code, 'ASSESSMENT_RESOURCE_CEILING');
+        const saved = (await backend.get(projectHandle, chatId))!;
+        const events = saved.messages.find(message => message.role === 'assistant')?.execution.toolEvents ?? [];
+        assert.equal(events.at(-1)?.assessmentOutcome, 'resource-ceiling');
+    } finally {
+        backend.dispose(); await rm(temporary, { recursive: true, force: true,
+            maxRetries: 10, retryDelay: 25 });
+    }
+});
+
 test('explicit current-turn tool opt-out is narrow and distinct from read-only constraints', () => {
     assert.equal(forbidsProjectTools('What is 1+1? Do not call tools or modify files.'), true);
     assert.equal(forbidsProjectTools('Do not use any tools.'), true);

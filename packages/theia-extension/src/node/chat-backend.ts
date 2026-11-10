@@ -2257,7 +2257,10 @@ export class ChatBackend implements ChatService {
         const assessmentReads: AssessmentRead[] = [];
         let assessmentController: IncrementalAssessment | undefined;
         let finishedAssessment: AssessmentRecord | undefined;
-        let rejectedAssessmentCalls = 0;
+        // Eight consecutive recoverable failures without a verified draft/category/file advance.
+        // Status polling and idempotent replay never replenish this budget.
+        let assessmentFailureStreak = 0;
+        let assessmentStopped = false;
         let assessmentFailure: string | undefined;
         let assessmentFindingCount = 0;
         const toolEvents: NonNullable<ChatAssistantMessage['execution']['toolEvents']> = [];
@@ -2302,12 +2305,19 @@ export class ChatBackend implements ChatService {
                     let stageCode = 'ASSESSMENT_INTERNAL';
                     let stageField: 'none' | 'shape' | 'category' | 'citation' | 'source' |
                         'authority' | 'resource' | 'internal' = 'internal';
+                    let assessmentOutcome: 'advanced' | 'idempotent' | 'status' | 'recoverable' |
+                        'hard-authority' | 'repeated-non-progress' | 'resource-ceiling' = 'status';
                     try {
                         if (!protectedAssessment || !assessmentController || signal?.aborted || abort.signal.aborted ||
                             this.active(request.projectHandle) !== root || this.turns.get(key)?.abort !== abort ||
-                            this.leases.get(key)?.token !== request.leaseToken || toolEvents.length >= 128 ||
-                            rejectedAssessmentCalls >= 8)
+                            this.leases.get(key)?.token !== request.leaseToken || assessmentStopped)
                             throw new Error('ASSESSMENT_TOOL_AUTHORITY: Start a new authorized assessment turn');
+                        if (toolEvents.length >= 128)
+                            throw new Error('ASSESSMENT_RESOURCE_CEILING: 128 tool events reached');
+                        if (assessmentFailureStreak >= 8) {
+                            assessmentStopped = true;
+                            throw new Error('ASSESSMENT_NON_PROGRESS_LIMIT: Eight consecutive recoverable failures without verified progress; start a new authorized assessment turn');
+                        }
                         if (!args || typeof args !== 'object' || Array.isArray(args))
                             throw new Error('ASSESSMENT_STAGE_SHAPE: Supply a top-level object');
                         const result = name === 'assessment_status' ?
@@ -2330,16 +2340,36 @@ export class ChatBackend implements ChatService {
                             assessmentFindingCount = accepted.findings;
                             stageCode = accepted.idempotent ? 'ASSESSMENT_IDEMPOTENT' : 'ASSESSMENT_ACCEPTED';
                             stageField = 'none';
+                            assessmentOutcome = accepted.idempotent ? 'idempotent' : 'advanced';
+                            if (!accepted.idempotent) assessmentFailureStreak = 0;
+                        } else if (assessmentName === 'assessment_finish') {
+                            assessmentOutcome = 'advanced';
+                            assessmentFailureStreak = 0;
                         }
                         return JSON.stringify(name === 'assessment_finish' ?
                             { complete: true, revision: (result as { revision: number }).revision } : result);
                     } catch (error) {
                         status = 'failed';
-                        rejectedAssessmentCalls++;
                         const message = error instanceof Error && error.message.startsWith('ASSESSMENT_') ?
                             error.message : 'ASSESSMENT_STAGE_FAILED: Retry after checking assessment_status';
                         assessmentFailure = message;
                         const [code, reason] = message.split(/:\s*/u, 2);
+                        const recoverable = new Set(['ASSESSMENT_CITATION', 'ASSESSMENT_UNSUPPORTED_SOURCE',
+                            'ASSESSMENT_AMBIGUOUS_SOURCE', 'ASSESSMENT_STAGE_SHAPE', 'ASSESSMENT_STAGE_CATEGORY',
+                            'ASSESSMENT_SCOPE', 'ASSESSMENT_TIERS', 'ASSESSMENT_CATEGORY_INCOMPLETE',
+                            'ASSESSMENT_SOURCE_COVERAGE', 'ASSESSMENT_CONFLICTING_REPLAY',
+                            'ASSESSMENT_STATUS_ARGUMENTS', 'ASSESSMENT_FINISH_ARGUMENTS',
+                            'ASSESSMENT_OBSERVATIONS_EMPTY', 'ASSESSMENT_PRESERVATION_EMPTY',
+                            'ASSESSMENT_DEPENDENCIES_EMPTY', 'ASSESSMENT_RISKS_EMPTY']);
+                        if (recoverable.has(code)) {
+                            assessmentFailureStreak++;
+                            assessmentOutcome = 'recoverable';
+                        } else {
+                            assessmentOutcome = code === 'ASSESSMENT_NON_PROGRESS_LIMIT' ?
+                                'repeated-non-progress' : code === 'ASSESSMENT_RESOURCE_CEILING' ?
+                                    'resource-ceiling' : 'hard-authority';
+                            assessmentStopped = true;
+                        }
                         stageCode = code;
                         stageField = /AUTHORITY|STALE|SEALED/u.test(code) ? 'authority' :
                             /SOURCE|COVERAGE|READ/u.test(code) ? 'source' :
@@ -2347,13 +2377,20 @@ export class ChatBackend implements ChatService {
                                     /CITATION|UNSUPPORTED|AMBIGUOUS/u.test(code) ? 'citation' :
                                         /CATEGORY|SCOPE|TIERS|EMPTY/u.test(code) ? 'category' :
                                             /SHAPE|JSON/u.test(code) ? 'shape' : 'internal';
-                        if (assessmentName === 'assessment_stage' && assessmentController)
+                        if (assessmentName === 'assessment_stage' && assessmentController &&
+                            assessmentOutcome === 'recoverable')
                             assessmentFindingCount = (await assessmentController.status().catch(() => undefined))
                                 ?.findings ?? assessmentFindingCount;
+                        const ready = assessmentOutcome === 'recoverable' && assessmentController ?
+                            await assessmentController.status().catch(() => undefined) : undefined;
                         return JSON.stringify({ code, field: name === 'assessment_stage' ? 'category or citation' :
                             name, reason, expectedShape: name === 'assessment_stage' ?
                             '{category, claim, path, quote} or {category, reason} or scope/tiers' : '{}',
                             recovery: code === 'ASSESSMENT_SOURCE_COVERAGE' ? 'Use assessment_status, then read_file' :
+                                code === 'ASSESSMENT_CATEGORY_INCOMPLETE' ? ready?.nextAction ??
+                                    'Use assessment_status and complete the listed missing categories' :
+                                code === 'ASSESSMENT_TIERS' ? ready?.nextAction ??
+                                    'Stage T1 focused source/unit, T2 integration, and T3 independent manual browser qualification' :
                                 code === 'ASSESSMENT_CITATION' ?
                                     'Send only category, claim, project-relative path and a short verbatim quote; remove hashes, offsets and extra fields' :
                                 code === 'ASSESSMENT_UNSUPPORTED_SOURCE' || code === 'ASSESSMENT_AMBIGUOUS_SOURCE' ?
@@ -2362,14 +2399,15 @@ export class ChatBackend implements ChatService {
                                         'Finish requested source coverage and cite declared dependencies; then check assessment_status' :
                                         code === 'ASSESSMENT_STAGE_SHAPE' ?
                                             'Supply the required top-level fields for this category; then check assessment_status' :
-                                            code === 'ASSESSMENT_CONFLICTING_REPLAY' ?
-                                                'Do not overwrite an accepted finding in this turn; check assessment_status' :
-                                                'Check assessment_status and retry with corrected arguments',
+                                code === 'ASSESSMENT_CONFLICTING_REPLAY' ? reason :
+                                'Check assessment_status and retry with corrected arguments',
+                            ...(ready ? { finishReady: ready.finishReady, blockedBy: ready.blockedBy,
+                                nextAction: ready.nextAction } : {}),
                             previousFindingsPreserved: true });
                     } finally {
                         recordActivity('tool', `${assessmentName}: ${status}`);
                         toolEvents.push({ name: assessmentName, status, truncated: false,
-                            brokerExecuted: status === 'completed', stage: 'broker',
+                            brokerExecuted: status === 'completed', stage: 'broker', assessmentOutcome,
                             ...(assessmentName === 'assessment_stage' ? { assessment: {
                                 ordinal: toolEvents.length + 1, category, shape, code: stageCode,
                                 field: stageField, previousFindingsPreserved: true,
@@ -2774,10 +2812,15 @@ export class ChatBackend implements ChatService {
                         if (promptStage?.stage === 'prompt-ass') assessmentReads.push({ path: page.path,
                             start: page.offset, end: page.endOffset, sourceHash: page.sourceHash,
                             text: page.text });
-                        if (protectedAssessment) await assessmentController!.readPage(page);
+                        const assessmentReadProgress = protectedAssessment ?
+                            await assessmentController!.readPage(page) : undefined;
+                        if (assessmentReadProgress === 'complete') assessmentFailureStreak = 0;
                         if (protectedAssessment) assessmentReadReceipts!.record(page);
                         toolEvents.push({ name: toolName, status: 'completed', truncated: page.truncated,
                             stage: 'broker', brokerExecuted: true, ...rangeMeta,
+                            ...(protectedAssessment ? { assessmentOutcome: assessmentReadProgress === 'complete' ?
+                                'advanced' as const : assessmentReadProgress === 'page' ?
+                                    'source-page' as const : 'idempotent' as const } : {}),
                             offset: page.offset, endOffset: page.endOffset });
                         return payload;
                     }

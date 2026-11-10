@@ -134,7 +134,7 @@ export function promptStageInstruction(command: { stage: PromptStage; folder?: s
         prior.plan && `Selected plan ${prior.plan.id}:\n${planRecord ? JSON.stringify(planRecord) :
             prior.plan.content.slice(0, 12_000)}`].filter(Boolean).join('\n\n');
     const common = 'Use the saved Chat discussion and only brokered project reads. Do not write canonical files, publish prompts, grant or run Work, or award Roadmap status. For each claim distinguish listed/searched paths from files actually read. Read relevant source and tests with read_file; report omissions. Keep the final response under 12,000 characters.';
-    if (command.stage === 'prompt-ass') return `${common}\nThe owner selected immutable task name ${JSON.stringify(command.folder)}. Assess only the supplied task details. Call assessment_status first for Dope's required source checklist. Read every requested file with read_file using offset:0 and maxBytes:4096. After each partial read call assessment_status and follow its exact nextOffset and expectedSourceHash for that file; Dope computes continuation metadata, not you. Continue until nextOffset is null. Do not reread completed files. A list_files result is never a read. For each source-backed claim call assessment_stage with category (observations, preservation, dependencies or risks), claim, path and one short unique exact quote from a brokered read. Do not supply hashes or offsets. Stage scope with {category:"scope",text:"..."}. Stage tiers with {category:"tiers",T1:"focused source/unit...",T2:"cross-boundary integration...",T3:"independent manual browser..."}. After all requested files are fully read, an actually empty dependencies or risks category may be staged with {category:"dependencies",reason:"..."} or risks likewise; never invent a finding. After any rejected stage inspect its specific code and call assessment_status before retrying with corrected arguments. Read assessment_status for remaining work. Call assessment_finish only after coverage and categories are complete. The tool receipt, not your final prose, controls completion. Keep final prose short and factual; do not return a whole Assessment JSON or Markdown.`;
+    if (command.stage === 'prompt-ass') return `${common}\nThe owner selected immutable task name ${JSON.stringify(command.folder)}. Assess only the supplied task details. Call assessment_status first and use its remaining work and revision. Read all requested source pages. For example: first read_file({path:"docs/late-guide.md"}), then read_file({path:"docs/late-guide.md",continue:true}) until complete. Use each actual requested path; Dope owns offsets and hashes. A list_files result is not a read. Stage a limited number of clear findings with {category,claim,path,quote}; quote a short unique verbatim substring from a successful read. Never invent citations or supply hashes or offsets. Stage scope once with {category:"scope",text:"..."}; do not repeat accepted scope or categories. Stage T1 focused source/unit, T2 integration or cross-boundary, and T3 independent manual browser qualification with {category:"tiers",T1,T2,T3}. Only after complete source reads may genuinely empty dependencies or risks use {category,reason}. Check assessment_status and call assessment_finish only when finishReady is true. Correct rejected operations using their specific feedback; invalid legacy tiers require {category:"tiers",T1,T2,T3,correctRevision:<status revision>} and cannot replace valid tiers. A tool receipt, never final prose, proves completion. Keep final prose short and factual.`;
     if (command.stage === 'prompt-plan') return `${common}\n${inherited}\nReturn one compact JSON object with exact keys work, closeout, efficiencyAudit. work is an ordered array of bounded {id,title,objective,tier,dependsOn,workingSet,validationTargets,buildNeeds,acceptanceCriteria} records; tier is T1 for focused implementation or T2 for explicit cross-boundary integration. Use stable step-N IDs and prior IDs for dependencies. workingSet contains only broker-read source/test paths; read_file each relevant source and late page before claiming it. buildNeeds states the actual narrow compiled-output requirement or "none". closeout has {title,objective,manualReason,browserRequired:true,acceptanceCriteria,tier:"T3"} and is separate from work. efficiencyAudit has exactly ten concise findings in docs/workflow.md order: single responsibility, 8/10/15-minute runtime, test precision, build precision, evidence distribution, command deduplication, model economy and deferral, runnable/traceable contract, UI Design Compliance (ADR 0016 and theme tokens if applicable), Human Usability (ADR 0037, entry/feedback/recovery/keyboard/narrow if applicable). Never invent CI, browser demo files, CommonJS adapters or dependencies. Do not return Markdown or claim publication.`;
     const planTests = prior.plan?.execution?.sourceRefs?.filter(ref => ref.kind === 'file' &&
         (/(?:^|\/)test(?:s)?\//u.test(ref.id) || /\.test\.[^.]+$/u.test(ref.id))).map(ref => ref.id) ?? [];
@@ -280,6 +280,26 @@ function compactAssessmentContext(record: AssessmentRecord): string {
 const assessmentFields = ['scope', 'observations', 'preservation', 'dependencies', 'risks', 'tiers'];
 export const requestedPaths = (text: string): string[] => [...new Set(text.match(/\b(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+(?:\.[a-zA-Z0-9_-]+)*\.(?:md|txt|json|js|jsx|ts|tsx)\b/gu) ?? [])];
 export type AssessmentCategory = 'observations' | 'preservation' | 'dependencies' | 'risks';
+/** The same content contract applies to incremental staging and final sealing. */
+export function validateAssessmentTiers(raw: unknown): asserts raw is AssessmentRecord['tiers'] {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
+        Object.keys(raw).sort().join(',') !== 'T1,T2,T3')
+        throw new Error('ASSESSMENT_TIERS: Supply exactly T1, T2 and T3');
+    const tiers = raw as Record<string, unknown>;
+    const bounded = (value: unknown): value is string => typeof value === 'string' &&
+        !!value.trim() && value.length <= 500 && !/[\u0000-\u001f\u007f]/u.test(value);
+    for (const tier of ['T1', 'T2', 'T3'] as const)
+        if (!bounded(tiers[tier]))
+            throw new Error(`ASSESSMENT_TIERS: ${tier} needs bounded nonempty text (max 500 characters)`);
+    if (!/\bfocused\b/iu.test(tiers.T1 as string) ||
+        !/\b(?:source|unit)\b/iu.test(tiers.T1 as string))
+        throw new Error('ASSESSMENT_TIERS: T1 must describe focused source or unit validation');
+    if (!/\b(?:integration|cross.boundary)\b/iu.test(tiers.T2 as string))
+        throw new Error('ASSESSMENT_TIERS: T2 must describe integration or cross-boundary validation');
+    if (!/\bindependent\b/iu.test(tiers.T3 as string) ||
+        !/\bmanual\b/iu.test(tiers.T3 as string) || !/\bbrowser\b/iu.test(tiers.T3 as string))
+        throw new Error('ASSESSMENT_TIERS: T3 must describe independent manual browser qualification');
+}
 /** Resolve a model citation only within bytes returned by a successful brokered read. */
 export function validatedAssessmentFinding(raw: unknown, kind: AssessmentCategory,
     refs: NonNullable<ChatAssistantMessage['execution']['sourceRefs']>,
@@ -360,16 +380,13 @@ export function validatedAssessment(modelText: string,
         }
         findings[kind] = items.map((raw: unknown) => validatedAssessmentFinding(raw, kind, refs, evidence));
     }
-    const tiers = value.tiers as Record<string, unknown> | undefined;
-    if (!tiers || typeof tiers !== 'object' || Array.isArray(tiers) ||
-        Object.keys(tiers).sort().join(',') !== 'T1,T2,T3' ||
-        !short(tiers.T1) || !short(tiers.T2) || !short(tiers.T3))
-        throw new Error('ASSESSMENT_TIERS: Supply T1 focused, T2 integration and T3 manual qualification');
+    const tiers = value.tiers;
+    validateAssessmentTiers(tiers);
     const omittedRequestedFiles = requestedPaths(requestedText).filter(path =>
         !read.some(ref => ref.id === path));
     return { scope: value.scope as string, ...findings,
         ...(value.emptyReasons ? { emptyReasons: value.emptyReasons as AssessmentRecord['emptyReasons'] } : {}),
-        tiers: tiers as AssessmentRecord['tiers'], omittedRequestedFiles };
+        tiers, omittedRequestedFiles };
 }
 
 export function renderAssessment(record: AssessmentRecord): string {

@@ -315,7 +315,8 @@ export const ASSESSMENT_TOOLS = {
     'dependencies', 'risks', 'tiers'].map(Type.Literal)), claim: Type.Optional(Type.String()),
     path: Type.Optional(Type.String()), quote: Type.Optional(Type.String()), reason: Type.Optional(Type.String()),
     text: Type.Optional(Type.String()), T1: Type.Optional(Type.String()),
-    T2: Type.Optional(Type.String()), T3: Type.Optional(Type.String()) },
+    T2: Type.Optional(Type.String()), T3: Type.Optional(Type.String()),
+    correctRevision: Type.Optional(Type.Number()) },
   assessment_finish: {}
 };
 // Keep this compact: Pi sees the legal discriminator and required fields, while

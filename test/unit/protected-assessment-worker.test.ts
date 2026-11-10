@@ -85,6 +85,206 @@ test('Assessment read receipts bind source, sequence, execution, owner and expir
         undefined, 'a new execution starts without a receipt');
 });
 
+test('real worker Assessment survives nine recoverable mistakes across verified progress', async () => {
+    const temporary = await mkdtemp(join(tmpdir(), 'dope-assessment-r8-replay-'));
+    const root = join(temporary, 'project');
+    await mkdir(root);
+    for (const [path, content] of Object.entries(fixture)) {
+        await mkdir(join(root, path.split('/').slice(0, -1).join('/')), { recursive: true });
+        await writeFile(join(root, path), content);
+    }
+    await run('git', ['init', '-q', root]);
+    await run('git', ['-C', root, 'add', ...paths]);
+    await run('git', ['-C', root, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
+        'commit', '-qm', 'Fixture']);
+    const calls: { name: string; output: string }[] = [];
+    const invalid = (category: string, quote: string) => ({ name: 'assessment_stage',
+        args: { category, claim: `Claim ${quote}`, path: 'src/clamp.js', quote } });
+    let operations = [
+        { name: 'assessment_status', args: {} },
+        ...paths.map(path => ({ name: 'read_file', args: { path } })),
+        { name: 'read_file', args: { path: 'docs/late-guide.md', continue: true } },
+        { name: 'assessment_finish', args: {} },
+        invalid('observations', 'invented one'), invalid('observations', 'invented two'),
+        invalid('observations', 'invented three'),
+        { name: 'assessment_stage', args: { category: 'observations',
+            claim: 'Clamp source bounds finite values', path: 'src/clamp.js',
+            quote: 'return Math.min(Math.max(value, min), max);' } },
+        invalid('preservation', 'invented four'), invalid('preservation', 'invented five'),
+        { name: 'assessment_stage', args: { category: 'preservation',
+            claim: 'Finite behavior remains stable', path: 'RELEASE_NOTES.md',
+            quote: 'Existing finite scalar clamp behavior is stable.' } },
+        { name: 'assessment_stage', args: { category: 'dependencies',
+            claim: 'Fixture uses node:test', path: 'test/clamp.test.js',
+            quote: "import test from 'node:test';" } },
+        { name: 'assessment_stage', args: { category: 'risks',
+            claim: 'Late guide requires nonfinite policy', path: 'docs/late-guide.md',
+            quote: 'Define a clear policy for reversed bounds and NaN or Infinity.' } },
+        { name: 'assessment_stage', args: { category: 'scope', text: 'Assess the five-file clamp correction' } },
+        { name: 'assessment_stage', args: { category: 'scope', text: 'Conflicting scope replay' } },
+        { name: 'assessment_stage', args: { category: 'tiers', T1: 'Unit tests',
+            T2: 'Integration checks', T3: 'Release notes' } },
+        { name: 'assessment_stage', args: { category: 'tiers', T1: 'Focused source and unit validation',
+            T2: 'Cross-boundary integration validation',
+            T3: 'Independent manual browser qualification' } },
+        invalid('observations', 'invented six'),
+        { name: 'assessment_status', args: {} },
+        { name: 'assessment_finish', args: {} }
+    ];
+    let next = 0, allowPlanProbe = false, planProbe = false;
+    const server = createServer(async (request, response) => {
+        for await (const _chunk of request) { /* Drain the deterministic provider request. */ }
+        const operation = operations[next++];
+        const base = { id: 'offline-r8', object: 'chat.completion.chunk',
+            created: 1, model: model.id };
+        response.writeHead(200, { 'content-type': 'text/event-stream' });
+        const send = (delta: object, finish_reason: string | null) => response.write(
+            `data: ${JSON.stringify({ ...base, choices: [{ index: 0, delta, finish_reason }] })}\n\n`);
+        if (operation) {
+            send({ role: 'assistant', tool_calls: [{ index: 0, id: `r8-${next}`, type: 'function',
+                function: { name: operation.name, arguments: JSON.stringify(operation.args) } }] }, null);
+            send({}, 'tool_calls');
+        } else if (allowPlanProbe && !planProbe) {
+            planProbe = true;
+            send({ role: 'assistant', tool_calls: [{ index: 0, id: 'r8-plan-probe', type: 'function',
+                function: { name: 'read_file', arguments: JSON.stringify({ path: 'src/clamp.js' }) } }] }, null);
+            send({}, 'tool_calls');
+        } else {
+            send({ role: 'assistant', content: 'Assessment sealed.' }, null);
+            send({}, 'stop');
+        }
+        response.end('data: [DONE]\n\n');
+    });
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const endpoint = `http://127.0.0.1:${(server.address() as { port: number }).port}/v1`;
+    const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
+        providerId: 'local', models: [{ id: model.id, label: model.name, usable: true,
+            capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 32768,
+                maxInputTokens: 32768 } }] }] }),
+    async *generate(_selection: unknown, request: { messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
+        maxOutputTokens?: number; signal?: AbortSignal; projectTools?: { root: string;
+            operationPolicy?: unknown; assessmentTools?: boolean; generationId?: string;
+            execute(name: string, args: unknown, signal?: AbortSignal, id?: number): Promise<string> } }) {
+        const host = new PiRuntimeHost();
+        try {
+            await host.start();
+            await host.openChatToolsSession({ ...model, baseUrl: endpoint }, root, undefined,
+                'low', false, false, false, request.projectTools?.assessmentTools ?? false,
+                request.projectTools?.operationPolicy as never);
+            for await (const event of host.streamTurn(request.messages, request.maxOutputTokens ?? 4096,
+                request.signal, async call => {
+                    const output = await request.projectTools!.execute(call.name, call.arguments,
+                        request.signal, call.id);
+                    calls.push({ name: call.name, output });
+                    return { status: 'completed' as const, output };
+                }, request.projectTools?.generationId, request.projectTools?.operationPolicy as never)) {
+                if (event.type === 'complete') yield { type: 'complete' as const,
+                    text: event.result.text, actualModelId: event.result.modelId,
+                    finishReason: event.result.finishReason, usage: event.result.usage };
+                else if (event.type === 'delta' || event.type === 'activity' || event.type === 'reset') yield event;
+            }
+        } finally { host.dispose(); }
+    } };
+    const repository = new ChatRepository(), grounder = new ChatProjectGrounder({} as never);
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
+        { compose: async () => ({ messages: [{ role: 'user', content: 'saved' }], refs: [],
+            diagnostics: [], usedTokens: 10, budgetTokens: 32768 }) } as never,
+        undefined, grounder);
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href);
+        const chatId = randomUUID();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'R8 replay' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'fixture-owner' });
+        assert.equal(lease.acquired, true);
+        await backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: model.id },
+            content: `/prompt-ass clamp-api-correction Inspect ${paths.join(' ')}` });
+        const saved = (await backend.get(projectHandle, chatId))!;
+        const assistant = saved.messages.find(message => message.role === 'assistant');
+        assert.equal(assistant?.execution.status, 'complete');
+        const draft = currentPromptDraft(saved)!;
+        assert.equal(draft.state, 'plan');
+        const checked = await new PromptDraftStore(repository, grounder).read(root, draft.identity!, lease.token);
+        assert.equal(checked.assessment?.revision, 1);
+        assert.equal(checked.history.length, 0);
+        const sealed = checked.assessment!.record as { scope: string; observations: unknown[];
+            preservation: unknown[]; dependencies: unknown[]; risks: unknown[] };
+        assert.equal(sealed.scope, 'Assess the five-file clamp correction');
+        assert.deepEqual([sealed.observations.length, sealed.preservation.length,
+            sealed.dependencies.length, sealed.risks.length], [1, 1, 1, 1]);
+        assert.equal(calls.filter(call => call.name.startsWith('assessment_') &&
+            JSON.parse(call.output).code).length, 9);
+        const premature = JSON.parse(calls.find(call => call.name === 'assessment_finish')!.output);
+        assert.equal(premature.code, 'ASSESSMENT_CATEGORY_INCOMPLETE');
+        assert.ok(premature.blockedBy.includes('observations'));
+        assert.equal(JSON.parse(calls.find(call => call.name === 'assessment_stage' &&
+            JSON.parse(call.output).code === 'ASSESSMENT_TIERS')!.output).code, 'ASSESSMENT_TIERS');
+        assert.equal(JSON.parse(calls.findLast(call => call.name === 'assessment_status')!.output).finishReady, true);
+        assert.equal(JSON.parse(calls.findLast(call => call.name === 'assessment_finish')!.output).complete, true);
+        assert.equal(assistant?.execution.toolEvents?.filter(event =>
+            event.assessmentOutcome === 'recoverable').length, 9);
+        assert.ok(assistant?.execution.toolEvents?.some(event => event.assessmentOutcome === 'advanced'));
+        const owner = saved.messages.find(message => message.role === 'user' && message.promptDraft);
+        assert.ok(owner?.role === 'user');
+        allowPlanProbe = true;
+        await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: model.id },
+            content: '/prompt-plan clamp-api-correction Outline checked work',
+            promptDraftTarget: { draftId: draft.identity!.id, ownerUserMessageId: owner.id,
+                stageMessageId: assistant!.id, stage: 'assessment', stageRevision: 1,
+                projectId: draft.identity!.projectId, sourceFingerprint: draft.identity!.sourceFingerprint,
+                leaseDigest: draft.identity!.leaseDigest } }),
+        error => { assert.match(String(error), /PLAN_/u); return true; });
+        assert.equal(planProbe, true);
+        assert.equal((await new PromptDraftStore(repository, grounder).read(root,
+            draft.identity!, lease.token)).plan, undefined);
+
+        // A separate execution cannot replenish its budget with status polling or an identical stage.
+        calls.length = 0; next = 0; allowPlanProbe = false;
+        const malformed = invalid('observations', 'same invented quote');
+        const poll = { name: 'assessment_status', args: {} };
+        operations = [
+            { name: 'assessment_stage', args: { category: 'scope', text: 'Assess fixture' } },
+            ...Array.from({ length: 4 }, () => [malformed, poll]).flat(),
+            { name: 'assessment_stage', args: { category: 'scope', text: 'Assess fixture' } },
+            ...Array.from({ length: 5 }, () => [malformed, poll]).flat(),
+            { name: 'assessment_status', args: {} }
+        ];
+        const secondChat = randomUUID();
+        await backend.mutate({ projectHandle, expectedRevision: (await repository.read(root)).revision,
+            operation: { type: 'create-chat', id: secondChat, folderPath: '', title: 'No progress' } });
+        const secondLease = await backend.claim({ projectHandle, chatId: secondChat, ownerId: 'fixture-owner' });
+        assert.equal(secondLease.acquired, true);
+        let secondFailure = '';
+        await assert.rejects(backend.runTurn({ projectHandle, chatId: secondChat,
+            leaseToken: secondLease.token, selectedModel: { connectionId: 'local', modelId: model.id },
+            content: `/prompt-ass no-progress Check ${paths.join(' ')}` }), error => {
+            secondFailure = String(error); return true;
+        });
+        assert.ok(calls.length >= operations.length, `${secondFailure}: ${JSON.stringify(calls)}`);
+        assert.equal(JSON.parse(calls.filter(call => call.name === 'assessment_stage')[1].output).code,
+            'ASSESSMENT_UNSUPPORTED_SOURCE');
+        assert.equal(JSON.parse(calls.filter(call => call.name === 'assessment_stage')[5].output).accepted, true);
+        assert.equal(JSON.parse(calls.filter(call => call.name === 'assessment_stage')[5].output).idempotent, true);
+        assert.ok(calls.some(call => JSON.parse(call.output).code === 'ASSESSMENT_NON_PROGRESS_LIMIT'));
+        assert.equal(JSON.parse(calls.at(-1)!.output).code, 'ASSESSMENT_TOOL_AUTHORITY');
+        const stopped = (await backend.get(projectHandle, secondChat))!;
+        const stoppedAssistant = stopped.messages.find(message => message.role === 'assistant');
+        assert.equal(stoppedAssistant?.execution.status, 'failed');
+        assert.equal(stoppedAssistant?.execution.toolEvents?.filter(event =>
+            event.assessmentOutcome === 'recoverable').length, 8);
+        assert.ok(stoppedAssistant?.execution.toolEvents?.some(event =>
+            event.assessmentOutcome === 'repeated-non-progress'));
+        assert.equal((await new PromptDraftStore(repository, grounder).read(root,
+            currentPromptDraft(stopped)!.identity!, secondLease.token)).assessment, undefined);
+    } finally {
+        backend.dispose(); server.close();
+        await rm(temporary, { recursive: true, force: true, maxRetries: 10, retryDelay: 25 });
+    }
+});
+
 test('broker-resolved Assessment identity is rechecked against changed file bytes', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-assessment-source-drift-'));
     try {
