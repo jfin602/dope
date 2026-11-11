@@ -12,6 +12,76 @@ import { ChatBackend, forbidsProjectTools } from '../../packages/theia-extension
 import { ModelRuntimeFailure } from '../../packages/contracts/lib/model-runtime.js';
 import { PiConversationFailure } from '../../packages/theia-extension/lib/node/pi-conversation-runtime.js';
 import { trustedOperationForTurn } from '../../packages/theia-extension/lib/node/operation-context-policy.js';
+import { PromptDraftStore } from '../../packages/theia-extension/lib/node/prompt-draft-store.js';
+
+test('direct stack entry saves one source-bound noncanonical draft without a Plan or model call', async () => {
+    const temporary = await folder(), root = join(temporary, 'project');
+    await mkdir(root);
+    await writeFile(join(root, 'package.json'), '{"name":"fixture","version":"0.13.11"}\n');
+    await execute('git', ['init', '-q', root]);
+    await execute('git', ['-C', root, 'add', 'package.json']);
+    await execute('git', ['-C', root, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
+        'commit', '-qm', 'Fixture']);
+    const repository = new ChatRepository(), grounder = new ChatProjectGrounder({} as never);
+    let modelCalls = 0;
+    const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
+        models: [{ id: 'q4', usable: true }] }] }),
+    async *generate() { modelCalls++; yield { type: 'complete', text: 'Unexpected' }; } };
+    const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
+        undefined, undefined, grounder);
+    try {
+        const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
+        await backend.mutate({ projectHandle, expectedRevision: 0,
+            operation: { type: 'create-chat', id: chatId, folderPath: '' } });
+        const lease = await backend.claim({ projectHandle, chatId, ownerId: 'panel' });
+        if (!lease.acquired) throw new Error('Lease missing');
+        const priorUser = id(), priorAssistant = id(), now = new Date().toISOString();
+        await repository.mutate(root, (await repository.read(root)).revision,
+            { type: 'append-user', chatId, message: { schemaVersion: 1, id: priorUser, role: 'user',
+                createdAt: now, content: 'Preserve Unicode labels in this feature.', contextRefs: [] } }, lease.token);
+        await repository.mutate(root, (await repository.read(root)).revision,
+            { type: 'begin-assistant', chatId, message: { schemaVersion: 1, id: priorAssistant,
+                role: 'assistant', createdAt: now, content: '', execution: { schemaVersion: 1,
+                    id: id(), status: 'pending', selectedModel: { connectionId: 'local', modelId: 'q4' },
+                    resolutionSource: 'explicit-turn', startedAt: now } } }, lease.token);
+        await repository.mutate(root, (await repository.read(root)).revision,
+            { type: 'finish-assistant', chatId, messageId: priorAssistant, outcome: 'complete',
+                content: 'Update the separator tests too.', actualModel: { schemaVersion: 1,
+                    connectionId: 'local', modelId: 'q4', providerId: 'local', modelLabel: 'Q4' } }, lease.token);
+        const submit = (content: string) => backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
+            selectedModel: { connectionId: 'local', modelId: 'q4' }, content });
+        await assert.rejects(submit('> /gen-stack direct-task Do work'));
+        await submit('/gen-stack direct-task Fix repeated separators and update tests');
+        const saved = (await backend.get(projectHandle, chatId))!;
+        const user = saved.messages.find(message => message.role === 'user' && message.promptDraft);
+        assert.ok(user?.role === 'user' && user.promptDraft);
+        const identity = user.promptDraft;
+        const stored = await new PromptDraftStore(repository, grounder).read(root, identity, lease.token);
+        assert.equal(stored.direct?.status, 'initializing');
+        assert.match(stored.direct!.instruction, /repeated separators/);
+        assert.match(stored.direct!.discussion, /Preserve Unicode labels/);
+        assert.match(stored.direct!.discussion, /separator tests too/);
+        assert.equal(stored.assessment, undefined);
+        assert.equal(stored.plan, undefined);
+        assert.equal(modelCalls, 0);
+        const receipt = saved.messages.at(-1);
+        assert.equal(receipt?.role === 'assistant' && receipt.execution.actualModel, undefined);
+        assert.equal(receipt?.role === 'assistant' && receipt.execution.finishReason,
+            'direct-stack-initialized');
+        assert.equal(saved.messages.filter(message => message.role === 'assistant' &&
+            message.planningActivity?.kind === 'prompt-stack-proposal').length, 0);
+        await assert.rejects(submit('/gen-stack direct-task Do it again'), /already exists/);
+        await mkdir(join(root, 'docs', 'tasks', 'existing-task'), { recursive: true });
+        await assert.rejects(submit('/gen-stack existing-task Do work'), /already exists/);
+        await assert.rejects(readFile(join(root, 'docs', 'tasks', 'direct-task', 'README.md')), /ENOENT/);
+        await writeFile(join(root, 'source.txt'), 'new source\n');
+        await assert.rejects(new PromptDraftStore(repository, grounder).read(root, identity, lease.token),
+            /source changed/i);
+    } finally {
+        backend.dispose(); await rm(temporary, { recursive: true, force: true,
+            maxRetries: 10, retryDelay: 25 });
+    }
+});
 
 test('backend policy dispatch uses validated operation flags, never inert request text', () => {
     const ordinary = { docsReview: false, roadmapEdit: false, investigation: false };

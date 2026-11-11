@@ -6,7 +6,7 @@ import type { ChatSkill, ChatSkillChange, ChatSkillSnapshot } from '@dope/chat/l
 
 const skillsPath = () => join(process.env.XDG_CONFIG_HOME || join(homedir(), '.config'), 'dope', 'chat-skills.json');
 const reserved = new Set(['docs-review', 'docs-apply', 'roadmap', 'gen-roadmap',
-    'prompt-ass', 'prompt-plan', 'prompt-write', 'skill']);
+    'prompt-ass', 'prompt-plan', 'prompt-write', 'gen-stack', 'skill']);
 const builtins: ChatSkill[] = [{ id: 'builtin:explain', name: 'explain',
     title: 'Explain',
     description: 'Explain a topic clearly using the current conversation.',
@@ -36,6 +36,10 @@ const builtins: ChatSkill[] = [{ id: 'builtin:explain', name: 'explain',
     description: 'Generate a validated, unpublished stack from the selected saved plan.',
     body: 'Use the bound saved assessment and plan. Stage one ordered plan step or bounded detailed section at a time through proposal_stage_prompt, inspect compact receipts, and call proposal_finish only after one terminal manual closeout. Dope composes and validates the exact prompt bytes. Do not return a whole-stack JSON packet, write files or claim publication, Work grants, Run or Gate status.',
     enabled: true, provenance: 'builtin', version: 3 },
+{ id: 'builtin:gen-stack', name: 'gen-stack', title: 'Generate prompt stack',
+    description: 'Start a direct, unpublished Prompt Stack draft from this request and saved Chat.',
+    body: 'Use /gen-stack <slug> <task details>. Dope records the original request and bounded saved discussion under the current project, Chat, owner lease and source. File staging is pending until the direct stack tools are available. Do not claim a proposal, publication, Work Run or Roadmap award.',
+    enabled: true, provenance: 'builtin', version: 1 },
 ];
 let serial = Promise.resolve();
 
@@ -165,4 +169,11 @@ export function boundPromptStage(skill: ChatSkillSnapshot | undefined):
         skill.body !== builtIn.body ||
         skill.digest !== createHash('sha256').update(builtIn.body).digest('hex')) return undefined;
     return builtIn.name as 'prompt-ass' | 'prompt-plan' | 'prompt-write';
+}
+
+export function isBoundDirectStackSkill(skill: ChatSkillSnapshot | undefined): boolean {
+    const builtIn = builtins.find(item => item.id === 'builtin:gen-stack')!;
+    return !!skill && skill.id === builtIn.id && skill.name === builtIn.name &&
+        skill.version === builtIn.version && skill.body === builtIn.body &&
+        skill.digest === createHash('sha256').update(builtIn.body).digest('hex');
 }

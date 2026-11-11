@@ -23,6 +23,11 @@ export interface StoredPromptDraft {
     identity: ChatPromptDraftIdentity;
     revision: number;
     state: 'active' | 'aborted';
+    /** Direct candidate has no AssessmentRecord or PlanRecord dependency. */
+    direct?: { kind: 'direct'; status: 'initializing' | 'staging' | 'blocked' | 'stale';
+        instruction: string; discussion: string; ownerId: string; worktreeId: string;
+        model: { connectionId: string; modelId: string };
+        roadmap?: { projectId: string; revision: number } };
     assessment?: StoredPromptDraftStage;
     partialAssessment?: {
         requested: string[];
@@ -115,6 +120,22 @@ function checked(raw: unknown, identity: ChatPromptDraftIdentity): StoredPromptD
         !['active', 'aborted'].includes(value.state) || !Array.isArray(value.history) ||
         value.history.length > 8 || !hex(integrityHash) || integrityHash !== sha256(canonical(body)))
         throw new Error('Corrupt or foreign named prompt draft');
+    if (value.direct && (value.direct.kind !== 'direct' ||
+        !['initializing', 'staging', 'blocked', 'stale'].includes(value.direct.status) ||
+        typeof value.direct.instruction !== 'string' || !value.direct.instruction.trim() ||
+        typeof value.direct.discussion !== 'string' ||
+        Buffer.byteLength(value.direct.instruction, 'utf8') > 16_000 ||
+        Buffer.byteLength(value.direct.discussion, 'utf8') > 12_000 ||
+        typeof value.direct.ownerId !== 'string' || !value.direct.ownerId ||
+        value.direct.worktreeId !== identity.sourceFingerprint ||
+        !value.direct.model || typeof value.direct.model.connectionId !== 'string' ||
+        !value.direct.model.connectionId || typeof value.direct.model.modelId !== 'string' ||
+        !value.direct.model.modelId ||
+        value.direct.roadmap !== undefined &&
+            (!value.direct.roadmap || typeof value.direct.roadmap.projectId !== 'string' ||
+            !Number.isSafeInteger(value.direct.roadmap.revision) || value.direct.roadmap.revision < 0) ||
+        value.assessment || value.plan || value.partialAssessment || value.partialPlan))
+        throw new Error('Corrupt direct prompt draft');
     for (const stage of [value.assessment, value.plan, value.pendingAssessment?.value,
         ...value.history.map(item => item.value)]) {
         if (!stage) continue;
@@ -169,6 +190,16 @@ export class PromptDraftStore {
             if (current) throw new Error('Named prompt draft already started');
             const snapshot = sealed({ schemaVersion: 1, identity, revision: 0, state: 'active', history: [] });
             return { snapshot, result: snapshot };
+        });
+    }
+
+    async beginDirect(root: string, identity: ChatPromptDraftIdentity, leaseToken: string,
+        direct: NonNullable<StoredPromptDraft['direct']>): Promise<StoredPromptDraft> {
+        return this.transact(root, identity, leaseToken, async current => {
+            if (current) throw new Error('Prompt draft already started');
+            const snapshot = sealed({ schemaVersion: 1, identity, revision: 0, state: 'active',
+                direct, history: [] });
+            return { snapshot: checked(snapshot, identity), result: snapshot };
         });
     }
 

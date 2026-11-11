@@ -11,7 +11,32 @@ const heading = { 'prompt-ass': '# Unpublished prompt assessment',
     'prompt-plan': '# Unpublished prompt plan', 'prompt-write': '# Unpublished prompt stack draft' } as const;
 const hash = (value: string): string => createHash('sha256').update(value).digest('hex');
 const reservedSlugs = new Set(['drafts', 'docs', 'tasks', 'prompt-ass', 'prompt-plan', 'prompt-write',
-    'readme', 'index', 'new', 'current', 'latest', 'null', 'undefined']);
+    'gen-stack', 'readme', 'index', 'new', 'current', 'latest', 'null', 'undefined']);
+
+/** Only a send-time, leading built-in invocation can create a direct draft. */
+export function directStackCommand(content: string, trusted: boolean):
+    { slug: string; details: string } | undefined {
+    if (!trusted) return undefined;
+    const match = /^\/gen-stack[ \t]+([^\s]+)[ \t]+([\s\S]*\S)[ \t]*$/u.exec(content);
+    if (!match) throw new Error('Usage: /gen-stack <slug> <task details>');
+    if (Buffer.byteLength(match[2], 'utf8') > 16_000)
+        throw new Error('Direct stack task details exceed 16,000 bytes');
+    return { slug: promptDraftSlug(match[1]), details: match[2] };
+}
+
+export function directStackDiscussion(chat: Chat): string {
+    const relevant = chat.messages.filter(message => message.role === 'user' ||
+        message.role === 'assistant' && message.execution.status === 'complete' && !!message.content);
+    const parts: string[] = [];
+    let bytes = 0;
+    for (const message of relevant.slice(-24).reverse()) {
+        const part = `${message.role}: ${message.content}`;
+        const size = Buffer.byteLength(part, 'utf8');
+        if (size > 4_000 || bytes + size + 1 > 12_000) continue;
+        parts.unshift(part); bytes += size + 1;
+    }
+    return parts.join('\n');
+}
 
 export function promptDraftSlug(slug: string): string {
     if (slug.length < 3 || slug.length > 32 || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(slug) ||

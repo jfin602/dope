@@ -696,7 +696,9 @@ function parseExecution(value: unknown): ChatExecution {
     if (['complete', 'stopped-incomplete', 'failed', 'cancelled', 'interrupted'].includes(execution.status) !== Boolean(execution.finishedAt) ||
         (execution.status === 'failed' && !execution.failure ||
             !['failed', 'interrupted'].includes(execution.status) && Boolean(execution.failure)) ||
-        (['streaming', 'paused-output-limit', 'complete', 'stopped-incomplete'].includes(execution.status) && !execution.actualModel) ||
+        (['streaming', 'paused-output-limit', 'complete', 'stopped-incomplete'].includes(execution.status) &&
+            !execution.actualModel && !(execution.status === 'complete' &&
+                execution.finishReason === 'direct-stack-initialized')) ||
         (execution.finishedAt && Date.parse(execution.finishedAt) < Date.parse(execution.startedAt)))
         throw new Error('Invalid execution lifecycle');
     return execution;

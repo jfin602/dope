@@ -104,6 +104,26 @@ test('source-neutral wireframe seals without a token read while source basis sta
     await assert.rejects(controller.status(), /source changed/i);
 }));
 
+test('direct draft survives repository restart with no Assessment or Plan authority', () => fixture(async v => {
+    const direct = { kind: 'direct' as const, status: 'initializing' as const,
+        instruction: 'Fix separators and update tests', discussion: 'user: Preserve Unicode',
+        ownerId: 'owner', worktreeId: basis.worktreeFingerprint,
+        model: { connectionId: 'local', modelId: 'q4' } };
+    await v.store.beginDirect(v.root, v.identity, v.lease, direct);
+    const reopened = new PromptDraftStore(new ChatRepository(), v.grounder, async () => basis);
+    const saved = await reopened.read(v.root, v.identity, v.lease);
+    assert.deepEqual(saved.direct, direct);
+    assert.equal(saved.assessment, undefined);
+    assert.equal(saved.plan, undefined);
+    await assert.rejects(reopened.read(v.root, v.identity, 'wrong-lease'), /lease|ownership/i);
+    await mkdir(join(v.root, 'foreign'));
+    await assert.rejects(reopened.read(join(v.root, 'foreign'), v.identity, v.lease),
+        /ownership|source|project|lease/i);
+    v.changeBasis();
+    await assert.rejects(v.store.read(v.root, v.identity, v.lease), /source changed/i);
+    await assert.rejects(lstat(join(v.root, 'docs', 'tasks', 'safe-task')), /ENOENT/);
+}));
+
 test('reviewed Assessment candidate preserves the old Plan until Accept, then invalidates it atomically', () => fixture(async v => {
     const outline = (count: number) => ({ kind: 'wireframe' as const, objective: 'Improve feature', count,
         rationale: 'Split by independent responsibilities',

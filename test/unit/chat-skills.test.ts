@@ -4,7 +4,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { changeChatSkill, isBoundDocumentationSkill, isBoundRoadmapSkill, listChatSkills, resolveChatSkill, skillCommand, validateSkill } from
+import { changeChatSkill, isBoundDirectStackSkill, isBoundDocumentationSkill, isBoundRoadmapSkill, listChatSkills, resolveChatSkill, skillCommand, validateSkill } from
     '../../packages/theia-extension/lib/node/chat-skills.js';
 import { parseChatMessage } from '../../packages/chat/lib/index.js';
 
@@ -20,6 +20,7 @@ test('Dope skills validate, persist, protect built-ins, and bind exact turn snap
         assert.throws(() => validateSkill('prompt-ass', 'description', 'body'));
         assert.throws(() => validateSkill('prompt-plan', 'description', 'body'));
         assert.throws(() => validateSkill('prompt-write', 'description', 'body'));
+        assert.throws(() => validateSkill('gen-stack', 'description', 'body'));
         assert.throws(() => validateSkill('a--b', 'description', 'body'));
         assert.throws(() => validateSkill('valid', '', 'body'));
         assert.throws(() => validateSkill('valid', 'description', 'body', ''));
@@ -44,6 +45,10 @@ test('Dope skills validate, persist, protect built-ins, and bind exact turn snap
         assert.equal(isBoundDocumentationSkill({ ...review!, body: 'forged' }, 'docs-review'), false);
         assert.equal((await listChatSkills()).some(skill => skill.name === 'docs-apply'), false);
         assert.equal(await resolveChatSkill('`/docs-review` is an example'), undefined);
+        const direct = await resolveChatSkill('/gen-stack safe-task Do work');
+        assert.equal(isBoundDirectStackSkill(direct), true);
+        assert.equal(isBoundDirectStackSkill({ ...direct!, body: 'forged' }), false);
+        assert.equal(await resolveChatSkill('> /gen-stack safe-task Do work'), undefined);
         await assert.rejects(changeChatSkill({ type: 'delete', id: roadmap.id }));
         await assert.rejects(changeChatSkill({ type: 'add', name: 'roadmap', description: 'collision', body: 'body' }));
         await assert.rejects(changeChatSkill({ type: 'add', name: 'gen-roadmap', description: 'collision', body: 'body' }));
@@ -79,7 +84,7 @@ test('Dope skills validate, persist, protect built-ins, and bind exact turn snap
         assert.equal(skillCommand('literal /test-skill'), undefined);
         assert.equal(skillCommand('/test-skill arguments'), 'test-skill');
         await changeChatSkill({ type: 'delete', id: custom.id });
-        assert.equal((await listChatSkills()).length, 7);
+        assert.equal((await listChatSkills()).length, 8);
     } finally {
         if (previous === undefined) delete process.env.XDG_CONFIG_HOME;
         else process.env.XDG_CONFIG_HOME = previous;

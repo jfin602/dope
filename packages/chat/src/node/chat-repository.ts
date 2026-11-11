@@ -159,6 +159,9 @@ export class ChatRepository {
             if (owner?.role !== 'user' || JSON.stringify(owner.promptDraft) !== JSON.stringify(identity) ||
                 identity.projectId !== createHash('sha256').update(root).digest('hex'))
                 throw new Error('Named prompt draft identity is not owned by this project and Chat');
+            if (chats.chats.some(chat => chat.messages.some(message => message.role === 'user' &&
+                message.id !== identity.userMessageId && message.promptDraft?.slug === identity.slug)))
+                throw new Error('Named prompt draft slug already belongs to another Chat turn');
             let tasks = root;
             for (const part of ['docs', 'tasks']) {
                 tasks = join(tasks, part);

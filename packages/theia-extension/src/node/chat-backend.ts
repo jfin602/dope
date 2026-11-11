@@ -4,7 +4,7 @@ import type { ChatClient, ChatDeltaRequest, ChatLeaseRequest, ChatMutation, Chat
     ChatContextSelection, ChatEvent, ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
 import type { ChatRoadmapStageSnapshot } from '@dope/chat/lib/service';
 import type { ChatSkill, ChatSkillChange } from '@dope/chat/lib/service';
-import { boundPromptStage, changeChatSkill, generationChatSkillSnapshot, isBoundDocumentationSkill, isBoundRoadmapSkill, listChatSkills, resolveChatSkill, roadmapPublicationIntent } from './chat-skills';
+import { boundPromptStage, changeChatSkill, generationChatSkillSnapshot, isBoundDirectStackSkill, isBoundDocumentationSkill, isBoundRoadmapSkill, listChatSkills, resolveChatSkill, roadmapPublicationIntent } from './chat-skills';
 import { suggestedChatTitle, ChatActivityRecorder, safeChatToolPath, type Chat, type ChatAssistantMessage, type ChatModelProvenance, type ChatModelSelection, type ChatPlanningActivity, type ChatPromptStackProposal, type ChatRoadmapAction, type ChatUserMessage } from '@dope/chat';
 import { parseChatContextRef } from '@dope/chat';
 import { ChatRepository } from '@dope/chat/lib/node';
@@ -38,7 +38,7 @@ import { prepareDocumentationReview, documentationReviewApplicability, documenta
 import { applyDocumentationProposal, reconcileDocumentationApplication } from './documentation-application';
 import { discoverDocumentation, documentationReviewObjective } from './documentation-discovery';
 import type { DocumentationReadPage } from './documentation-skill-review';
-import { assertPromptDraftNameAvailable, newPromptDraftIdentity, promptStageCommand, priorPromptDraft,
+import { assertPromptDraftNameAvailable, directStackCommand, directStackDiscussion, newPromptDraftIdentity, promptStageCommand, priorPromptDraft,
     verifyPromptDraftIdentity, verifyPromptDraftSource, verifyPromptDraftSourceBasis, verifyPromptSourceRefs,
     promptStageInstruction, finishedPromptText, requestedPaths,
     renderAssessment, planReceiptCurrent, isAssessmentWireframe,
@@ -1896,6 +1896,62 @@ export class ChatBackend implements ChatService {
         if (skill && createHash('sha256').update(skill.body).digest('hex') !== skill.digest)
             throw new Error('Saved skill instructions changed; start a fresh turn');
         const promptStage = promptStageCommand(content, boundPromptStage(skill));
+        const directStack = directStackCommand(content, isBoundDirectStackSkill(skill));
+        if (/^\/gen-stack(?=\s|$)/u.test(content) && !directStack)
+            throw new Error('Protected direct stack skill identity changed; start a fresh turn');
+        if (directStack) {
+            if (retryIndex >= 0 || request.promptDraftTarget || request.promptStackRevision ||
+                request.documentationRevision || request.bridgeProposal || request.planningSteps)
+                throw new Error('Direct stack entry requires a fresh standalone Chat command');
+            if (!this.grounder) throw new Error('Prompt source owner is unavailable');
+            await assertPromptDraftNameAvailable(root, snapshot.chats, directStack.slug);
+            const choice = request.selectedModel ?? (chat.settings.modelPolicy.type === 'exact' ?
+                chat.settings.modelPolicy.model : (await this.routing?.resolve('interactive',
+                    { ...chatHard, locality: 'local-only' }, false))?.resolution.selectedTarget);
+            if (!choice) throw new Error('Select a local Pi model for direct stack generation');
+            const connection = (await this.models.list()).connections.find(item => item.id === choice.connectionId);
+            if (!connection?.ready || connection.providerId !== 'local' ||
+                !connection.models.some(item => item.id === choice.modelId && item.usable))
+                throw new Error('Direct stack generation requires a ready local Pi model');
+            const selectedRoadmap = (request.context ?? []).filter(item => item.kind === 'roadmap');
+            if (selectedRoadmap.length > 1) throw new Error('Select at most one Roadmap revision');
+            let roadmap: { projectId: string; revision: number } | undefined;
+            if (selectedRoadmap.length) {
+                const current = await this.roadmapStore?.read<RoadmapGateIndex>(root);
+                const selected = selectedRoadmap[0];
+                if (!current || selected.projectId !== current.projectId ||
+                    selected.ownerRevision !== current.revision || current.projectRoot !== root)
+                    throw new Error('Selected Roadmap revision is stale or foreign');
+                roadmap = { projectId: current.projectId, revision: current.revision };
+            }
+            const source = await capturePromptSourceEvidence(root);
+            const identity = newPromptDraftIdentity(directStack.slug, root, request.chatId, randomUUID(),
+                request.leaseToken, source.head, source.packageVersion, source.worktreeFingerprint);
+            const ownerId = this.leases.get(request.chatId)?.ownerId;
+            if (!ownerId) throw new Error('Chat owner lease is unavailable');
+            const user: ChatUserMessage = { schemaVersion: 1, id: identity.userMessageId, role: 'user',
+                createdAt: new Date().toISOString(), content, contextRefs: [], skill: skill!, promptDraft: identity };
+            await this.repository.mutate(root, (await this.repository.read(root)).revision,
+                { type: 'append-user', chatId: request.chatId, message: user }, request.leaseToken);
+            await new PromptDraftStore(this.repository, this.grounder).beginDirect(root, identity,
+                request.leaseToken, { kind: 'direct', status: 'initializing', instruction: directStack.details,
+                    discussion: directStackDiscussion(chat), ownerId, worktreeId: source.worktreeFingerprint,
+                    model: { connectionId: choice.connectionId, modelId: choice.modelId },
+                    ...(roadmap ? { roadmap } : {}) });
+            const now = new Date().toISOString();
+            const assistant: ChatAssistantMessage = { schemaVersion: 1, id: randomUUID(), role: 'assistant',
+                createdAt: now, content: '', execution: { schemaVersion: 1, id: randomUUID(),
+                    status: 'pending', outputLimitPolicy: chat.settings.outputLimitPolicy,
+                    selectedModel: choice, resolutionSource: request.selectedModel ? 'explicit-turn' :
+                        chat.settings.modelPolicy.type === 'exact' ? 'chat-exact-default' : 'role-policy', startedAt: now } };
+            await this.repository.mutate(root, (await this.repository.read(root)).revision,
+                { type: 'begin-assistant', chatId: request.chatId, message: assistant }, request.leaseToken);
+            await this.repository.mutate(root, (await this.repository.read(root)).revision,
+                { type: 'finish-assistant', chatId: request.chatId, messageId: assistant.id, outcome: 'complete',
+                    content: `Direct Prompt Stack draft ${directStack.slug} is saved and initializing. File staging is pending; there is no complete proposal to Accept or publish. No project files or Work were changed.`,
+                    finishReason: 'direct-stack-initialized' }, request.leaseToken);
+            return { refs: [], diagnostics: [], usedTokens: 0, budgetTokens: 0 };
+        }
         const assessmentRevision = promptStage?.stage === 'prompt-ass' &&
             request.promptDraftTarget?.purpose === 'revise-assessment';
         if (/^\/prompt-(?:ass|plan|write)(?=\s|$)/u.test(content) && !promptStage)

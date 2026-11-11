@@ -19,10 +19,28 @@ test('only bound prompt command stages select protected policy classes', () => {
 });
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { assertPromptDraftNameAvailable, finishedPromptStack, finishedPromptText, newPromptDraftIdentity,
-    priorPromptDraft, promptStageCommand, promptStageInstruction, verifyPromptDraftIdentity, verifyPromptDraftSourceBasis,
+    directStackCommand, directStackDiscussion, priorPromptDraft, promptStageCommand, promptStageInstruction, verifyPromptDraftIdentity, verifyPromptDraftSourceBasis,
     verifyPromptDraftSource, validatedAssessment, renderAssessment, validatedPlan, renderPlan,
     requestedWorkPromptCount, planReceiptCurrent, validateAssessmentTiers,
     validatedAssessmentWireframe, normalizeAssessmentSubmission } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
+
+test('direct stack command requires a trusted leading invocation and preserves task details', () => {
+    assert.deepEqual(directStackCommand('/gen-stack safe-task Fix repeated separators\nUpdate tests', true),
+        { slug: 'safe-task', details: 'Fix repeated separators\nUpdate tests' });
+    assert.equal(directStackCommand('/gen-stack safe-task Do work', false), undefined);
+    assert.equal(directStackCommand('> /gen-stack safe-task Do work', false), undefined);
+    for (const input of ['/gen-stack', '/gen-stack ../escape Do work',
+        '/gen-stack prompt-plan Do work', '/gen-stack UPPER Do work',
+        '/gen-stack a Do work']) assert.throws(() => directStackCommand(input, true));
+    const discussion = directStackDiscussion({ messages: [
+        { role: 'user', content: 'The feature must preserve Unicode.' },
+        { role: 'assistant', content: 'We should test leading separators.', execution: { status: 'complete' } },
+        { role: 'assistant', content: 'Unfinished guess', execution: { status: 'failed' } }
+    ] } as never);
+    assert.match(discussion, /preserve Unicode/);
+    assert.match(discussion, /leading separators/);
+    assert.doesNotMatch(discussion, /Unfinished guess/);
+});
 
 test('shared tier contract identifies the missing responsibility before acceptance', () => {
     const valid = { T1: 'Focused source and unit validation',
