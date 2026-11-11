@@ -14,7 +14,11 @@ import { PlanningBridgeApprovals } from './planning-bridge-approvals';
 
 const digest = (value: string | Buffer): string => createHash('sha256').update(value).digest('hex');
 const missing = (error: unknown): boolean => (error as NodeJS.ErrnoException).code === 'ENOENT';
-const safeFolder = (name: string): boolean => /^([cp][a-z0-9-]+)$/u.test(name) && name.length <= 100;
+const safeFolder = (name: string): boolean =>
+    (/^[cp][a-z0-9-]+$/u.test(name) && name.length <= 100) ||
+    (/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(name) && name.length >= 3 && name.length <= 32 &&
+        !['drafts', 'docs', 'tasks', 'prompt-ass', 'prompt-plan', 'prompt-write',
+            'gen-stack', 'readme', 'index', 'new', 'current', 'latest', 'null', 'undefined'].includes(name));
 const hex = (value: unknown): boolean => typeof value === 'string' && /^[a-f0-9]{64}$/u.test(value);
 const publicationFiles = (draft: DraftStack) => [
     ...draft.files.map(file => ({ filename: file.filename, path: file.path, text: file.text })),
@@ -180,19 +184,22 @@ export class PlanningStackPublication {
         if (proposal.root !== root) throw new Error('Foreign prompt stack publication');
         const paths = await this.location(root, proposal.folder);
         const files = proposal.files;
-        if (files.length < 5 || files.length > 52 ||
-            files[0]?.path !== `docs/tasks/${proposal.folder}/prompt-assessment.md` ||
-            files[1]?.path !== `docs/tasks/${proposal.folder}/implementation-plan.md` ||
-            files[2]?.path !== `docs/tasks/${proposal.folder}/README.md` ||
+        const promptOffset = proposal.domain === 'direct-prompt' ? 1 : 3;
+        if (files.length < promptOffset + 2 || files.length > 52 ||
+            (proposal.domain === 'direct-prompt' ?
+                files[0]?.path !== `docs/tasks/${proposal.folder}/README.md` :
+                files[0]?.path !== `docs/tasks/${proposal.folder}/prompt-assessment.md` ||
+                files[1]?.path !== `docs/tasks/${proposal.folder}/implementation-plan.md` ||
+                files[2]?.path !== `docs/tasks/${proposal.folder}/README.md`) ||
             new Set(files.map(file => file.path)).size !== files.length ||
             files.some(file => !file.path.startsWith(`docs/tasks/${proposal.folder}/`) ||
             file.afterHash !== digest(file.after)) ||
-            files.slice(3).some((file, index) =>
+            files.slice(promptOffset).some((file, index) =>
                 !new RegExp(`^docs/tasks/${proposal.folder}/P${index + 1}-[a-z0-9-]+\\.txt$`, 'u').test(file.path)))
             throw new Error('Prompt stack file set changed');
         // Extract only the basename from checked, project-relative target paths.
         const imported = await importPhaseStack(proposal.folder,
-            files.slice(3).map(file => ({ filename: file.path.split('/').pop()!, text: file.after })),
+            files.slice(promptOffset).map(file => ({ filename: file.path.split('/').pop()!, text: file.after })),
             `docs/tasks/${proposal.folder}`);
         if (imported.mode === 'correction' && imported.unchangedVersion !== proposal.sourceVersion)
             throw new Error('Reviewed prompt version differs from the project');

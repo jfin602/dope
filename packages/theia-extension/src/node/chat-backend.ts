@@ -53,7 +53,7 @@ import { PlanningStackPublication } from './planning-stack-publication';
 import { IncrementalProposalController, type ProposalHandoff } from './incremental-proposal-controller';
 import { documentModelStage, promptModelStage, proposalToolError } from './proposal-model-tools';
 import { IncrementalDocumentReview } from './incremental-document-review';
-import { IncrementalPromptStack } from './incremental-prompt-stack';
+import { DirectPromptStack, IncrementalPromptStack } from './incremental-prompt-stack';
 import { PiConversationFailure } from './pi-conversation-runtime';
 import { resolveOperationContextPolicy, trustedOperationForTurn, type OperationContextPolicy } from './operation-context-policy';
 
@@ -582,14 +582,18 @@ export class ChatBackend implements ChatService {
             try {
                 if (!current || !this.grounder) throw new Error('Prompt owner unavailable');
                 validatePromptStackProposal(proposal);
-                const assessment = chat?.messages.find(item => item.id === proposal.assessmentMessageId);
-                const plan = chat?.messages.find(item => item.id === proposal.planMessageId);
-                if (assessment?.role !== 'assistant' || plan?.role !== 'assistant')
-                    throw new Error('Prompt stages unavailable');
-                if (!await this.currentPromptPlan(root, chat!, plan, leaseToken))
-                    throw new Error('Prompt plan was replaced');
-                await verifyPromptDraftSource(root, assessment, this.grounder);
-                await verifyPromptDraftSource(root, plan, this.grounder);
+                if (proposal.domain === 'direct-prompt')
+                    await this.savedPromptStack(root, chatId, leaseToken, proposal.id, proposal.digest);
+                if (proposal.domain !== 'direct-prompt') {
+                    const assessment = chat?.messages.find(item => item.id === proposal.assessmentMessageId);
+                    const plan = chat?.messages.find(item => item.id === proposal.planMessageId);
+                    if (assessment?.role !== 'assistant' || plan?.role !== 'assistant')
+                        throw new Error('Prompt stages unavailable');
+                    if (!await this.currentPromptPlan(root, chat!, plan, leaseToken))
+                        throw new Error('Prompt plan was replaced');
+                    await verifyPromptDraftSource(root, assessment, this.grounder);
+                    await verifyPromptDraftSource(root, plan, this.grounder);
+                }
                 const git = await capturePromptSourceEvidence(root);
                 current = git.head === proposal.gitHead && git.packageVersion === proposal.sourceVersion &&
                     git.worktreeFingerprint === proposal.worktreeId &&
@@ -779,7 +783,7 @@ export class ChatBackend implements ChatService {
     private async savedPromptStack(root: string, chatId: string, leaseToken: string,
         proposalId: string, digest: string): Promise<{
             message: ChatAssistantMessage; activity: ChatPlanningActivity; proposal: ChatPromptStackProposal;
-            assessment: ChatAssistantMessage; plan: ChatAssistantMessage }> {
+            assessment?: ChatAssistantMessage; plan?: ChatAssistantMessage }> {
         const lease = this.leases.get(chatId);
         if (lease?.root !== root || lease.token !== leaseToken)
             throw new Error('Current Chat ownership required for prompt review');
@@ -793,16 +797,37 @@ export class ChatBackend implements ChatService {
             proposal.messageId !== message.id ||
             message.execution.status !== 'complete') throw new Error('Exact saved prompt proposal unavailable');
         validatePromptStackProposal(proposal);
+        if (proposal.domain === 'direct-prompt') {
+            const owner = chat?.messages.find(item => item.role === 'user' &&
+                item.promptDraft?.slug === proposal.folder) as ChatUserMessage | undefined;
+            if (!owner?.promptDraft || owner.promptDraft.sourceHead !== proposal.gitHead ||
+                owner.promptDraft.sourceVersion !== proposal.sourceVersion ||
+                owner.promptDraft.sourceFingerprint !== proposal.worktreeId || !this.grounder)
+                throw new Error('Direct prompt source owner is unavailable');
+            if (activity.status === 'pending') {
+                const draft = await new PromptDraftStore(this.repository, this.grounder).read(
+                    root, owner.promptDraft, leaseToken);
+                if (draft.direct?.ownerId !== proposal.ownerId || draft.direct.kind !== 'direct')
+                    throw new Error('Direct prompt owner changed');
+                if (draft.direct.roadmap) {
+                    const roadmap = await this.roadmapStore?.read<RoadmapGateIndex>(root);
+                    if (!roadmap || roadmap.projectId !== draft.direct.roadmap.projectId ||
+                        roadmap.revision !== draft.direct.roadmap.revision)
+                        throw new Error('Locked Roadmap basis changed');
+                }
+            }
+        }
         const assessment = chat?.messages.find(item => item.id === proposal.assessmentMessageId);
         const plan = chat?.messages.find(item => item.id === proposal.planMessageId);
-        if (assessment?.role !== 'assistant' || plan?.role !== 'assistant' ||
+        if (proposal.domain !== 'direct-prompt' && (assessment?.role !== 'assistant' || plan?.role !== 'assistant' ||
             assessment.execution.status !== 'complete' || plan.execution.status !== 'complete' ||
             !assessment.content.startsWith('# Unpublished prompt assessment\n') ||
             !plan.content.startsWith('# Unpublished prompt plan\n') ||
             chat!.messages.indexOf(assessment) >= chat!.messages.indexOf(plan) ||
-            chat!.messages.indexOf(plan) >= chat!.messages.indexOf(message))
+            chat!.messages.indexOf(plan) >= chat!.messages.indexOf(message)))
             throw new Error('Selected saved assessment or plan is unavailable');
-        return { message, activity, proposal, assessment, plan };
+        return { message, activity, proposal, assessment: assessment as ChatAssistantMessage | undefined,
+            plan: plan as ChatAssistantMessage | undefined };
     }
     async inspectPromptStack(projectHandle: string, chatId: string, leaseToken: string,
         proposalId: string, digest: string): Promise<{
@@ -812,11 +837,13 @@ export class ChatBackend implements ChatService {
         let applicable = saved.activity.status === 'pending';
         if (applicable) {
             try {
-                await verifyPromptDraftSource(root, saved.assessment, this.grounder!);
-                await verifyPromptDraftSource(root, saved.plan, this.grounder!);
-                const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
-                if (!chat || !await this.currentPromptPlan(root, chat, saved.plan, leaseToken))
-                    throw new Error('Prompt plan was replaced');
+                if (saved.proposal.domain !== 'direct-prompt') {
+                    await verifyPromptDraftSource(root, saved.assessment!, this.grounder!);
+                    await verifyPromptDraftSource(root, saved.plan!, this.grounder!);
+                    const chat = (await this.repository.read(root)).chats.find(item => item.id === chatId);
+                    if (!chat || !await this.currentPromptPlan(root, chat, saved.plan!, leaseToken))
+                        throw new Error('Prompt plan was replaced');
+                }
                 const git = await capturePromptSourceEvidence(root);
                 applicable = git.head === saved.proposal.gitHead &&
                     git.packageVersion === saved.proposal.sourceVersion &&
@@ -921,8 +948,10 @@ export class ChatBackend implements ChatService {
         const saved = await this.savedPromptStack(root, chatId, leaseToken, proposalId, digest);
         if (!['approved', 'failed'].includes(saved.activity.status))
             throw new Error('Prompt publication recovery is unavailable');
-        await verifyPromptDraftSource(root, saved.assessment, this.grounder!);
-        await verifyPromptDraftSource(root, saved.plan, this.grounder!);
+        if (saved.proposal.domain !== 'direct-prompt') {
+            await verifyPromptDraftSource(root, saved.assessment!, this.grounder!);
+            await verifyPromptDraftSource(root, saved.plan!, this.grounder!);
+        }
         const source = await capturePromptSourceEvidence(root, saved.proposal.folder);
         if (source.head !== saved.proposal.gitHead ||
             source.packageVersion !== saved.proposal.sourceVersion ||
@@ -1996,6 +2025,8 @@ export class ChatBackend implements ChatService {
             (await this.inspectPromptStack(request.projectHandle, request.chatId, request.leaseToken,
                 selectedPrompt.proposal.id, selectedPrompt.proposal.digest)).status !== 'applicable'))
             throw new Error('Selected prompt stack proposal is stale; its last valid revision remains available');
+        if (selectedPrompt?.proposal.domain === 'direct-prompt')
+            throw new Error('Direct prompt file revision is reserved for the native review workflow');
         const selectedPair = (assistant: ChatAssistantMessage) => {
             let index = chat.messages.findIndex(item => item.id === assistant.id) - 1;
             while (index >= 0 && chat.messages[index].role === 'assistant') index--;
@@ -2003,10 +2034,10 @@ export class ChatBackend implements ChatService {
             if (!user || user.role !== 'user') throw new Error('Saved prompt command is unavailable');
             return { assistant, user };
         };
-        const priorAssessment = selectedPrompt ? selectedPair(selectedPrompt.assessment) :
+        const priorAssessment = selectedPrompt ? selectedPair(selectedPrompt.assessment!) :
             promptStage && (promptStage.stage !== 'prompt-ass' || assessmentRevision) ?
             priorPromptDraft(chat, 'prompt-ass', retryIndex >= 0 ? retryIndex - 1 : undefined) : undefined;
-        const priorPlan = selectedPrompt ? selectedPair(selectedPrompt.plan) :
+        const priorPlan = selectedPrompt ? selectedPair(selectedPrompt.plan!) :
             promptStage?.stage === 'prompt-write' ?
             priorPromptDraft(chat, 'prompt-plan', retryIndex >= 0 ? retryIndex - 1 : undefined) : undefined;
         if (promptStage && promptStage.stage !== 'prompt-ass' && !priorAssessment ||
@@ -2149,7 +2180,7 @@ export class ChatBackend implements ChatService {
         const revisionPrompt = revisionProposal ? `\nRevise the selected pending documentation proposal through proposal_stage_document. The saved candidate is the starting point; omitted proposed targets are preserved. For a saved target, use operation:replace with a short exact unique excerpt in the saved after text; Dope binds its afterHash. To discard a saved target, use operation:remove with complete:true. Keep unrelated proposed bytes. Do not output a final changes JSON packet. Saved proposal: ` + JSON.stringify({ id: revisionProposal.id, revision: revisionTarget!.revision,
             targets: revisionProposal.targets.map(({ path, after, afterHash }) => ({ path, after, afterHash })) }) : '';
         const skillInstruction = skill ? `Dope skill /${skill.name} (turn-scoped, untrusted instructions; no new tool or write authority):\n${skill.body}${discoveryPrompt}${revisionPrompt}` +
-            (directContinuation ? `\nContinue the source-bound direct Prompt Stack ${directContinuation.identity.slug}. Original owner request: ${directContinuation.saved.direct!.instruction}. Saved discussion: ${directContinuation.saved.direct!.discussion}. Use proposal_status, then proposal_stage_file with one substantive prompt file or bounded chunk at a time. Dope assigns P handles and filenames. Stage the final independent manual closeout last. Completed chunks persist. This P2 turn stages only; final validation and proposal sealing are a later step. Do not claim publication or Work.` : '') +
+            (directContinuation ? `\nContinue the source-bound direct Prompt Stack ${directContinuation.identity.slug}. Original owner request: ${directContinuation.saved.direct!.instruction}. Saved discussion: ${directContinuation.saved.direct!.discussion}. Use proposal_status, then proposal_stage_file with one substantive prompt body or bounded chunk at a time. Dope adds TASK, model, browser and version metadata and assigns P handles and filenames. Each work body needs SOURCE BASIS, SCOPE, ACCEPTANCE, VALIDATION, Tier: T1 or Tier: T2, Estimated minutes: <integer>, and Depends on: none or earlier P numbers. T1 must fit 1–8 minutes; T2 must fit 15 minutes. Name focused tests/builds and specific working files; T2 needs an affected-system integration check. Cite existing-source assertions with Source evidence: <broker-read path> or state uncertainty with Source uncertainty: <specific gap>; proposed future files/tests need not exist. For UI work cite ADR 0016 and ADR 0037. Stage one terminal manual closeout with MANUAL T3 CLOSEOUT, SCOPE, ACCEPTANCE, VALIDATION, and ten numbered Prompt Efficiency Gate findings in order: Single responsibility, Runtime feasibility, Test precision, Build precision, Evidence distribution, Command deduplication, Model economy and deferral, Runnable and traceable contract, UI Design Compliance, Human Usability. Do not assert tests passed. On a file-specific finish error call proposal_status, then proposal_replace_file with the P handle, current revision, exact digest and corrected complete body; other staged files stay fixed. Call proposal_finish with short factual display prose only when complete; it seals a review proposal, never publication or Work.` : '') +
             (promptStage ? `\n${promptStageInstruction(promptStage, {
                 assessment: priorAssessment?.assistant, plan: priorPlan?.assistant }, promptSourceVersion,
                 savedAssessmentRecord, savedPlanRecord)}` +
@@ -2408,6 +2439,21 @@ export class ChatBackend implements ChatService {
         const documentationHashes = new Map<string, string>();
         const protectedProposal = retryIndex < 0 && (docsReview || promptStage?.stage === 'prompt-write' ||
             !!directContinuation);
+        const directReadRefs = () => {
+            const first = directContinuation ? chat.messages.findIndex(message =>
+                message.id === directContinuation.identity.userMessageId) : -1;
+            return [...sourceRefs, ...chat.messages.slice(Math.max(0, first + 1)).flatMap(message =>
+                message.role === 'assistant' && message.proposalProgress?.domain === 'direct-prompt' ?
+                    message.execution.sourceRefs ?? [] : [])]
+                .filter(ref => ref.kind === 'file' && ref.origin === 'tool');
+        };
+        const verifyDirectReadRefs = async () => {
+            const distinct = [...new Map(directReadRefs().map(ref =>
+                [`${ref.id}:${ref.sourceHash}:${ref.start ?? ''}:${ref.end ?? ''}`, ref])).values()];
+            if (distinct.length > 256) throw new Error('PROPOSAL_SOURCE_LIMIT: too many source receipts');
+            for (let index = 0; index < distinct.length; index += 32)
+                await verifyPromptSourceRefs(root, distinct.slice(index, index + 32), this.grounder!);
+        };
         const protectedAssessment = promptStage?.stage === 'prompt-ass';
         const protectedPlan = promptStage?.stage === 'prompt-plan';
         const readExecutionId = randomUUID();
@@ -2628,7 +2674,7 @@ export class ChatBackend implements ChatService {
                 }
                 if (name.startsWith('proposal_')) {
                     const proposalName = name as 'proposal_status' | 'proposal_stage_document' |
-                        'proposal_stage_prompt' | 'proposal_stage_file' | 'proposal_finish';
+                        'proposal_stage_prompt' | 'proposal_stage_file' | 'proposal_replace_file' | 'proposal_finish';
                     const stageTarget = args && typeof args === 'object' && !Array.isArray(args) &&
                         typeof (args as { target?: unknown }).target === 'string' ?
                         safeChatToolPath((args as { target: string }).target) : undefined;
@@ -2648,11 +2694,13 @@ export class ChatBackend implements ChatService {
                                 promptModelStage(args), 'prompt', toolCallId) :
                             name === 'proposal_stage_file' && directContinuation ? await proposalController.stageFile(
                                 args as Parameters<IncrementalProposalController['stageFile']>[0], toolCallId) :
+                            name === 'proposal_replace_file' && directContinuation ? await proposalController.replaceFile(
+                                args as Parameters<IncrementalProposalController['replaceFile']>[0]) :
                             name === 'proposal_finish' ? await proposalController.finish(args) :
                             (() => { throw new Error('PROPOSAL_TOOL_UNKNOWN'); })();
                         if (docsReview && name === 'proposal_finish')
                             finishedDocument = result as ProposalHandoff<import('@dope/chat').ChatDocumentationProposal>;
-                        if (promptStage?.stage === 'prompt-write' && name === 'proposal_finish')
+                        if ((promptStage?.stage === 'prompt-write' || directContinuation) && name === 'proposal_finish')
                             finishedPrompt = result as ProposalHandoff<ChatPromptStackProposal>;
                         if (name !== 'proposal_status') {
                             const projection = await proposalController.progress();
@@ -2662,14 +2710,15 @@ export class ChatBackend implements ChatService {
                                 request.leaseToken, projection).catch(() => undefined);
                         }
                         status = 'completed';
-                        return JSON.stringify(name === 'proposal_finish' && (docsReview || promptStage?.stage === 'prompt-write') ?
+                        return JSON.stringify(name === 'proposal_finish' && (docsReview || promptStage?.stage === 'prompt-write' || directContinuation) ?
                             { proposalId: (finishedDocument ?? finishedPrompt)!.proposalId,
                                 revision: (finishedDocument ?? finishedPrompt)!.revision,
                                 state: 'ready-for-review' } : result);
                     } catch (error) {
                         status = 'failed';
                         if (name === 'proposal_finish' || name === 'proposal_stage_document' ||
-                            name === 'proposal_stage_prompt' || name === 'proposal_stage_file') {
+                            name === 'proposal_stage_prompt' || name === 'proposal_stage_file' ||
+                            name === 'proposal_replace_file') {
                             const diagnostic = error instanceof Error && error.message.startsWith('PROPOSAL_') ?
                                 error.message : 'Proposal stage failed validation';
                             await proposalController?.progress(diagnostic).then(progress =>
@@ -3213,6 +3262,13 @@ export class ChatBackend implements ChatService {
                             current.plan.contentHash !== stagedPlanHash)
                             throw new Error('Selected prompt plan changed during staging');
                     }
+                    if (directContinuation?.saved.direct?.roadmap) {
+                        const locked = directContinuation.saved.direct.roadmap;
+                        const current = await this.roadmapStore?.read<RoadmapGateIndex>(root);
+                        if (!current || current.projectId !== locked.projectId ||
+                            current.revision !== locked.revision)
+                            throw new Error('PROPOSAL_LOCKED_ROADMAP_CHANGED');
+                    }
                     return stageBasis();
                 };
                 proposalController = new IncrementalProposalController<import('@dope/chat').ChatDocumentationProposal |
@@ -3222,7 +3278,12 @@ export class ChatBackend implements ChatService {
                         ownerId: proposalOwnerId, worktreeId: basis.worktreeId,
                         sourceBasis: basis.sourceBasis,
                         domain: docsReview ? 'document' : directContinuation ? 'direct-prompt' : 'prompt' },
-                    authority, directContinuation ? undefined : docsReview ?
+                    authority, directContinuation ? new DirectPromptStack(root, directContinuation.identity.slug,
+                        directContinuation.identity.sourceVersion, 1,
+                        { head: directContinuation.identity.sourceHead,
+                            worktreeFingerprint: directContinuation.identity.sourceFingerprint },
+                        key, assistant.id, proposalOwnerId, request.leaseToken,
+                        () => directReadRefs().map(ref => ref.id)) : docsReview ?
                         new IncrementalDocumentReview(this.roadmapStore!, { root, chatId: key,
                             messageId: assistant.id, ownerId: proposalOwnerId, leaseToken: request.leaseToken,
                             objective: content, reviewIntent: reviewObjective, discovery: discovery!, pages: documentationPages,
@@ -3574,6 +3635,14 @@ export class ChatBackend implements ChatService {
                                     `Plan record sha256: ${saved.plan!.contentHash}; revision: ${saved.plan!.revision}. ` +
                                     'Review the derived plan before /prompt-write. No files were published or Work started.';
                             } else output = finishedPromptText(promptStage.stage, output, sourceRefs, content);
+                        }
+                        if (directContinuation && finishedPrompt) {
+                            await verifyDirectReadRefs();
+                            const proposal = finishedPrompt.candidate;
+                            promptActivity = { schemaVersion: 1, kind: 'prompt-stack-proposal',
+                                status: 'pending', refs: [...preview.refs, ...sourceRefs],
+                                proposalId: proposal.id, promptStackProposal: proposal };
+                            output = finishedPrompt.finalMessage;
                         }
                         let documentActivity: ChatPlanningActivity | undefined;
                         let revisionActivityToCommit: ChatPlanningActivity | undefined;

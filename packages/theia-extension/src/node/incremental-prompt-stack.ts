@@ -5,6 +5,8 @@ import { composeSavedPromptStack, isAssessmentWireframe, requestedPaths, verifyP
     type PlanRecord } from './prompt-authoring-stage';
 import { capturePromptSourceEvidence, createPromptStackProposal } from './prompt-stack-proposal';
 import type { ChatProjectGrounder } from './chat-project-grounder';
+import { importPhaseStack, phaseStackFolder } from '@dope/agent-core/lib/sequence';
+import type { DraftStack } from '@dope/agent-core/lib/phase-stack-composer';
 
 type Work = { kind: 'work'; id: string; title: string; objective: string; tier: 'T1' | 'T2';
     dependsOn?: string[]; workingSet: string[]; requirements?: string[]; constraints?: string[];
@@ -211,5 +213,144 @@ export class IncrementalPromptStack implements ProposalDomainHandler<ChatPromptS
             snapshot.identity.messageId, snapshot.identity.ownerId, snapshot.identity.leaseToken,
             composed.draft, composed.supportingFiles, this.prior.assessment.id,
             this.prior.plan.id, this.revision);
+    }
+}
+
+/** Direct files are model-authored bodies with only runner metadata supplied by Dope. */
+export class DirectPromptStack implements ProposalDomainHandler<ChatPromptStackProposal> {
+    constructor(private readonly root: string, private readonly folder: string,
+        private readonly sourceVersion: string, private readonly revision: number,
+        private readonly expectedSource: { head: string; worktreeFingerprint: string },
+        private readonly chatId: string, private readonly messageId: string,
+        private readonly ownerId: string, private readonly leaseToken: string,
+        private readonly readPaths: () => readonly string[]) {}
+
+    async validateStage(): Promise<void> { throw new Error('PROPOSAL_DIRECT_USE_STAGE_FILE'); }
+
+    async preview(snapshot: Readonly<ProposalSnapshot>): Promise<{ target: string; path: string;
+        original: null; proposed: string }[]> {
+        const groups = this.groups(snapshot, false);
+        return groups.map(group => ({ target: group.handle, path: `staging/${group.filename}`,
+            original: null, proposed: `Incomplete, noncanonical ${group.handle}\n\n${group.body}` }));
+    }
+
+    private groups(snapshot: Readonly<ProposalSnapshot>, complete: boolean) {
+        const grouped = new Map<string, { handle: string; title: string; kind: 'work' | 'manual-closeout';
+            chunks: string[]; done: boolean }>();
+        for (const stage of snapshot.stages) {
+            const prior = grouped.get(stage.target);
+            if (!stage.title || !stage.kind || prior && (prior.title !== stage.title || prior.kind !== stage.kind || prior.done))
+                throw new Error(`PROPOSAL_${stage.target}_STAGE: title, kind or chunk order changed`);
+            const group = prior ?? { handle: stage.target, title: stage.title, kind: stage.kind, chunks: [], done: false };
+            group.chunks.push(stage.content); group.done = stage.complete; grouped.set(stage.target, group);
+        }
+        return [...grouped.values()].map((group, index) => {
+            if (group.handle !== `P${index + 1}` || complete && !group.done)
+                throw new Error(`PROPOSAL_${group.handle}_STAGE: contiguous complete P numbers required`);
+            const slug = group.title.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/gu, '-')
+                .replace(/^-+|-+$/gu, '').slice(0, 64).replace(/-+$/u, '') || 'prompt';
+            return { ...group, filename: `${group.handle}-${slug}.txt`, body: group.chunks.join('') };
+        });
+    }
+
+    async validateComplete(snapshot: Readonly<ProposalSnapshot>): Promise<ChatPromptStackProposal> {
+        const groups = this.groups(snapshot, true);
+        if (groups.length < 2 || groups.length > 49 ||
+            groups.slice(0, -1).some(group => group.kind !== 'work') ||
+            groups.at(-1)?.kind !== 'manual-closeout')
+            throw new Error('PROPOSAL_CLOSEOUT: one terminal manual T3 closeout after 1–48 work files is required');
+        const { mode, phase } = phaseStackFolder(this.folder, this.sourceVersion);
+        const seen = new Set<string>();
+        const files = groups.map((group, index) => {
+            const label = group.handle;
+            if (seen.has(group.filename)) throw new Error(`PROPOSAL_${label}_TITLE: duplicate safe filename`);
+            seen.add(group.filename);
+            const body = group.body.trim();
+            const section = (heading: string) => new RegExp(`^${heading}\\s*$`, 'mi').test(body);
+            if (/^\s*(?:TASK:|MODEL \/ REASONING \/ USAGE|VERSIONING|- Browser required:|- Recommended configuration:)/gmi.test(body))
+                throw new Error(`PROPOSAL_${label}_METADATA: supply substantive body only; Dope adds runner fields`);
+            if (body.length < 160 || !section('SCOPE') || !section('ACCEPTANCE') || !section('VALIDATION') ||
+                group.kind === 'work' && !section('SOURCE BASIS'))
+                throw new Error(`PROPOSAL_${label}_SECTIONS: provide SOURCE BASIS, SCOPE, ACCEPTANCE and VALIDATION sections`);
+            if (!/^\s*-\s+\S.+$/mu.test(body.split(/^ACCEPTANCE\s*$/mi)[1] ?? ''))
+                throw new Error(`PROPOSAL_${label}_ACCEPTANCE: add observable acceptance bullets`);
+            if (!/\b(?:test|check|build|typecheck)\b/iu.test(body.split(/^VALIDATION\s*$/mi)[1] ?? ''))
+                throw new Error(`PROPOSAL_${label}_VALIDATION: name focused test or build commands`);
+            if (/\b(?:tests? (?:already )?pass(?:ed)?|implemented and verified|gate (?:is )?green)\b/iu.test(body))
+                throw new Error(`PROPOSAL_${label}_EVIDENCE: remove unobserved completion or PASS claims`);
+            const statedVersion = /\b(?:project|product) version[^\n]{0,24}?\b(\d+\.\d+\.\d+)\b/iu.exec(body)?.[1];
+            if (statedVersion && statedVersion !== this.sourceVersion)
+                throw new Error(`PROPOSAL_${label}_VERSION: stated ${statedVersion} contradicts source ${this.sourceVersion}`);
+            if (group.kind === 'work') {
+                if (!/^Source (?:evidence|uncertainty):\s*\S.+$/mi.test(body))
+                    throw new Error(`PROPOSAL_${label}_SOURCE_BASIS: cite a broker-read existing file or state explicit uncertainty`);
+                if (!/^Depends on:\s*(?:none|P[1-9]\d*(?:\s*,\s*P[1-9]\d*)*)\s*$/mi.test(body))
+                    throw new Error(`PROPOSAL_${label}_DEPENDENCIES: use Depends on: none or earlier P numbers`);
+                const depends = /^Depends on:\s*(.+)$/mi.exec(body)![1];
+                const numbers = depends === 'none' ? [] : [...depends.matchAll(/P(\d+)/gu)].map(match => Number(match[1]));
+                if (new Set(numbers).size !== numbers.length || numbers.some(number => number >= index + 1))
+                    throw new Error(`PROPOSAL_${label}_DEPENDENCIES: only distinct earlier work prompts may be dependencies`);
+                if (!/^Tier:\s*T[12]\s*$/mi.test(body))
+                    throw new Error(`PROPOSAL_${label}_ROLE: use Tier: T1 or Tier: T2`);
+                const minutes = /^Estimated minutes:\s*(\d+)\s*$/mi.exec(body)?.[1];
+                if (!minutes || Number(minutes) < 1 || Number(minutes) >
+                    (/^Tier:\s*T1\s*$/mi.test(body) ? 8 : 15))
+                    throw new Error(`PROPOSAL_${label}_EFFICIENCY: T1 needs a 1–8 minute estimate; T2 must stay within 15 minutes`);
+                if (/^Tier:\s*T2\s*$/mi.test(body) && !/\bintegration\b/iu.test(body))
+                    throw new Error(`PROPOSAL_${label}_VALIDATION: T2 requires an affected-system integration check`);
+            } else {
+                if (!section('MANUAL T3 CLOSEOUT') || !/\b(?:real browser|native|manual|owner)\b/iu.test(body))
+                    throw new Error(`PROPOSAL_${label}_CLOSEOUT: specify independent manual T3 evidence`);
+                const labels = ['Single responsibility', 'Runtime feasibility', 'Test precision',
+                    'Build precision', 'Evidence distribution', 'Command deduplication',
+                    'Model economy and deferral', 'Runnable and traceable contract',
+                    'UI Design Compliance', 'Human Usability'];
+                const gates = body.match(/^\s*(?:[1-9]|10)\.\s+.{20,}$/gmu) ?? [];
+                if (gates.length !== 10 || gates.some((gate, gateIndex) =>
+                    !new RegExp(`^\\s*${gateIndex + 1}\\.\\s*${labels[gateIndex]}:`, 'iu').test(gate)))
+                    throw new Error(`PROPOSAL_${label}_EFFICIENCY: include ten numbered, specific Prompt Efficiency Gate findings`);
+            }
+            if (group.kind === 'work' && /\b(?:UI|interface|frontend|browser layout)\b/iu.test(body) &&
+                !/ADR\s*0016/iu.test(body) || /\b(?:UI|interface|frontend|browser layout)\b/iu.test(body) &&
+                group.kind === 'work' &&
+                !/ADR\s*0037/iu.test(body))
+                throw new Error(`PROPOSAL_${label}_UI: cite ADR 0016 and ADR 0037 for UI work`);
+            const metadata = [`TASK: ${mode === 'phase' ? 'Phase' : 'Correction'} ${phase} / ${label} — ${group.title}`,
+                '', 'MODEL / REASONING / USAGE',
+                `- Recommended configuration: \`${group.kind === 'work' && /^Tier:\s*T1\s*$/mi.test(body) ?
+                    'GPT-6 Sol Medium' : 'GPT-6 Sol High'}\`.`,
+                `- Browser required: ${group.kind === 'manual-closeout' ? 'yes' : 'no'}.`, '', 'VERSIONING',
+                mode === 'phase' ? `The assigned project version is \`${this.sourceVersion}\`.` :
+                    `- Required unchanged project version: \`${this.sourceVersion}\`.`, ''].join('\n');
+            return { filename: group.filename, path: `docs/tasks/${this.folder}/${group.filename}`,
+                text: `${metadata}\n${body}\n` };
+        });
+        let imported;
+        try { imported = await importPhaseStack(this.folder,
+            files.map(({ filename, text }) => ({ filename, text })), `docs/tasks/${this.folder}`); }
+        catch (error) { throw new Error(`PROPOSAL_IMPORTER: ${String(error)}`); }
+        if (imported.mode === 'correction' && imported.unchangedVersion !== this.sourceVersion)
+            throw new Error('PROPOSAL_VERSION: prompt version differs from project source');
+        const source = await capturePromptSourceEvidence(this.root);
+        if (source.head !== this.expectedSource.head || source.packageVersion !== this.sourceVersion ||
+            source.worktreeFingerprint !== this.expectedSource.worktreeFingerprint)
+            throw new Error('PROPOSAL_SOURCE_CHANGED');
+        const readPaths = new Set(this.readPaths());
+        for (const group of groups) {
+            for (const line of group.body.split('\n')) {
+                const claim = /^Source evidence:\s*([^\s]+)\s*$/iu.exec(line);
+                if (claim && !readPaths.has(claim[1]))
+                    throw new Error(`PROPOSAL_${group.handle}_SOURCE_BASIS: ${claim[1]} needs a brokered read_file receipt`);
+            }
+        }
+        const draft: DraftStack = { folderName: this.folder, sourcePath: `docs/tasks/${this.folder}`,
+            files, diagnostics: [], manifest: [`# ${this.folder} — Direct Prompt Stack`, '',
+                `Source HEAD: ${source.head}`, `Source version: ${this.sourceVersion}`,
+                `Source worktree fingerprint: ${source.worktreeFingerprint}`, '',
+                ...files.map((file, index) => `- ${file.filename}: ${index === files.length - 1 ? 'manual T3 closeout' :
+                    /^Tier:\s*T2\s*$/mi.test(groups[index].body) ? 'T2 work' : 'T1 work'}`), '',
+                'Generated for review. Publication requires explicit owner Accept; Work requires a separate grant and Run.', ''].join('\n') };
+        return createPromptStackProposal(this.root, this.chatId, this.messageId, this.ownerId,
+            this.leaseToken, draft, [], undefined, undefined, this.revision, 'direct-prompt');
     }
 }

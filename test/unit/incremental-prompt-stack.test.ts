@@ -1,18 +1,19 @@
 import assert from 'node:assert/strict';
 import { createHash, randomUUID } from 'node:crypto';
 import { execFile } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import test from 'node:test';
+import { buildPlan } from '../../scripts/codex-phase-core.mjs';
 import { ChatRepository } from '../../packages/chat/lib/node/chat-repository.js';
 import { parsePlanningActivity } from '../../packages/chat/lib/index.js';
 import { discoverRoadmapTaskStacks } from '../../packages/agent-core/lib/node/roadmap-task-discovery.js';
 import { importPhaseStack } from '../../packages/agent-core/lib/sequence.js';
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { IncrementalProposalController } from '../../packages/theia-extension/lib/node/incremental-proposal-controller.js';
-import { IncrementalPromptStack } from '../../packages/theia-extension/lib/node/incremental-prompt-stack.js';
+import { DirectPromptStack, IncrementalPromptStack } from '../../packages/theia-extension/lib/node/incremental-prompt-stack.js';
 import { verifyPromptDraftSource } from '../../packages/theia-extension/lib/node/prompt-authoring-stage.js';
 import { PlanningStackPublication } from '../../packages/theia-extension/lib/node/planning-stack-publication.js';
 import { capturePromptSourceEvidence, validatePromptStackProposal } from '../../packages/theia-extension/lib/node/prompt-stack-proposal.js';
@@ -79,6 +80,98 @@ const closeout = { kind: 'closeout', title: 'Manual feature closeout',
     objective: 'Inspect the final feature in the real browser', manualReason: 'Human interaction needs observation',
     acceptanceCriteria: ['Observe all ten features in the real browser'], browserRequired: true,
     efficiencyAudit: Array.from({ length: 10 }, (_, index) => `Gate ${index + 1} checks distinct fixture responsibility ${index + 1} and verified source basis.`) };
+
+function directBody(index: number) {
+    return `SOURCE BASIS\nSource evidence: README.md\nThe verified source identifies the project. Future src/feature-${index}.ts and test/unit/feature-${index}.test.ts are proposed outputs.\n\nSCOPE\nTier: ${index === 3 ? 'T2' : 'T1'}\nEstimated minutes: ${index === 3 ? '12' : '7'}\nDepends on: ${index === 1 ? 'none' : `P${index - 1}`}\nImplement feature ${index} with a distinct checked behavior in the proposed file. Keep existing owner approval boundaries.\n\nACCEPTANCE\n- Feature ${index} handles the targeted input and preserves the previous result.\n\nVALIDATION\n- Run node --test test/unit/feature-${index}.test.ts after implementation.\n- Build the affected package after changing source.${index === 3 ? '\n- Run the affected-system integration checks across all changed components.' : ''}`;
+}
+const directGateLabels = ['Single responsibility', 'Runtime feasibility', 'Test precision',
+    'Build precision', 'Evidence distribution', 'Command deduplication',
+    'Model economy and deferral', 'Runnable and traceable contract',
+    'UI Design Compliance', 'Human Usability'];
+const directCloseout = `MANUAL T3 CLOSEOUT\nIndependently inspect the live browser and record the owner's decision on exact source.\n\nSCOPE\nReview all implemented feature prompts and publication authority.\n\nACCEPTANCE\n- Record observed behavior and any evidence gaps without awarding Green.\n\nVALIDATION\n- Check the exact built source in the real browser manually.\n\nPrompt Efficiency Gates\n${directGateLabels.map((label, index) => `${index + 1}. ${label}: Check specific responsibility, focused tests, build order and source evidence.`).join('\n')}`;
+
+test('direct staged files seal 1, 3 and 10 work prompts with exact importer bytes and guarded publication', async () => {
+    for (const count of [1, 3, 10]) {
+        const f = await fixture();
+        try {
+            const folder = `direct-fixture-${count}`;
+            const identity = { ...f.identity, messageId: randomUUID(), domain: 'direct-prompt' as const };
+            const handler = new DirectPromptStack(f.root, folder, '0.13.11', 1, f.basis,
+                f.identity.chatId, randomUUID(), 'owner', f.identity.leaseToken, () => ['README.md']);
+            const controller = new IncrementalProposalController(f.repo, identity, f.authority, handler);
+            await controller.begin();
+            for (let index = 1; index <= count; index++)
+                await controller.stageFile({ title: `Implement distinct feature ${index}`, body: directBody(index),
+                    kind: 'work', complete: true });
+            await controller.stageFile({ title: 'Manual final closeout', body: directCloseout,
+                kind: 'manual-closeout', complete: true });
+            const proposal = (await controller.finish({ finalMessage: 'Ready for owner review.' })).candidate;
+            validatePromptStackProposal(proposal);
+            assert.equal(parsePlanningActivity({ schemaVersion: 1, kind: 'prompt-stack-proposal',
+                status: 'pending', refs: [], proposalId: proposal.id, promptStackProposal: proposal })
+                .promptStackProposal?.digest, proposal.digest);
+            assert.equal(proposal.domain, 'direct-prompt');
+            assert.equal(proposal.files.length, count + 2);
+            assert.equal(proposal.files[0].path, `docs/tasks/${folder}/README.md`);
+            assert.ok(proposal.files.every(file => !/prompt-assessment|implementation-plan/u.test(file.path)));
+            const prompts = proposal.files.slice(1).map(file => ({ filename: file.path.split('/').pop()!, text: file.after }));
+            assert.equal((await importPhaseStack(folder, prompts)).entries.length, count + 1);
+            assert.equal(buildPlan(prompts, folder).prompts.length, count + 1);
+            assert.match(prompts[0].text, /Required unchanged project version: `0\.13\.11`/u);
+            const publisher = new PlanningStackPublication(async () => { throw new Error('Bridge unavailable'); });
+            await assert.rejects(readFile(join(f.root, 'docs/tasks', folder, 'README.md')), /ENOENT/u);
+            await assert.rejects(publisher.publishNative(f.root, { ...proposal, digest: '0'.repeat(64) }),
+                /bytes or identity changed/u);
+            if (count === 3) {
+                await writeFile(join(f.root, 'README.md'), '# Drifted source\n');
+                await assert.rejects(publisher.publishNative(f.root, proposal), /source changed|Git or source changed/iu);
+                await assert.rejects(readFile(join(f.root, 'docs/tasks', folder, 'README.md')), /ENOENT/u);
+                await writeFile(join(f.root, 'README.md'), '# Verified source\n');
+            }
+            if (count === 10) {
+                await symlink(join(f.root, 'README.md'), join(f.root, 'docs/tasks', folder));
+                await assert.rejects(publisher.publishNative(f.root, proposal), /collision/u);
+                await rm(join(f.root, 'docs/tasks', folder));
+            }
+            assert.equal((await publisher.publishNative(f.root, proposal)).status, 'published');
+            for (const file of proposal.files)
+                assert.equal(await readFile(join(f.root, file.path), 'utf8'), file.after);
+            assert.equal((await discoverRoadmapTaskStacks(f.root, 'docs/tasks',
+                { expectedPaths: [`docs/tasks/${folder}`] })).find(item => item.folderName === folder)?.diagnostic, undefined);
+        } finally { await f.dispose(); }
+    }
+});
+
+test('direct finish gives file-specific feedback and preserves noncanonical malformed candidates', async () => {
+    const f = await fixture();
+    try {
+        const bad = [
+            { body: directBody(1).replace('ACCEPTANCE', 'OBSERVATIONS'), code: /P1_SECTIONS/u },
+            { body: directBody(1).replace('Depends on: none', 'Depends on: P2'), code: /P1_DEPENDENCIES/u },
+            { body: directBody(1).replace('Source evidence: README.md', 'Source evidence: unread.ts'),
+                code: /P1_SOURCE_BASIS/u }
+        ];
+        for (const [index, invalid] of bad.entries()) {
+            const identity = { ...f.identity, messageId: randomUUID(), domain: 'direct-prompt' as const };
+            const handler = new DirectPromptStack(f.root, `direct-invalid-${index}`, '0.13.11', 1,
+                f.basis, f.identity.chatId, randomUUID(), 'owner', f.identity.leaseToken, () => ['README.md']);
+            const controller = new IncrementalProposalController(f.repo, identity, f.authority, handler);
+            await controller.begin();
+            await controller.stageFile({ title: 'Implement checked feature', body: invalid.body,
+                kind: 'work', complete: true });
+            await controller.stageFile({ title: 'Manual final closeout', body: directCloseout,
+                kind: 'manual-closeout', complete: true });
+            await assert.rejects(controller.finish({ finalMessage: 'Ready.' }), invalid.code);
+            const receipt = await controller.status();
+            assert.equal(receipt.state, 'staging');
+            await controller.replaceFile({ handle: 'P1', expectedRevision: receipt.revision,
+                expectedDigest: receipt.targets[0].digest!, body: directBody(1) });
+            const repaired = (await controller.finish({ finalMessage: 'Corrected file ready for review.' })).candidate;
+            assert.match(repaired.files[1].after, /Source evidence: README\.md/u);
+            await assert.rejects(readFile(join(f.root, 'docs/tasks', `direct-invalid-${index}`, 'README.md')), /ENOENT/u);
+        }
+    } finally { await f.dispose(); }
+});
 
 test('ten substantial staged prompts seal exact bytes and remain absent until native guarded publication', async () => {
     const f = await fixture();

@@ -170,7 +170,7 @@ export class PiModelBridge {
                 options.proposalTools ? ['list_files', 'read_file', 'search_paths', 'search_text',
                     'proposal_status', 'proposal_stage_document', 'proposal_stage_prompt', 'proposal_finish'] :
                 options.directProposalTools ? ['list_files', 'read_file', 'search_paths', 'search_text',
-                    'proposal_status', 'proposal_stage_file'] :
+                    'proposal_status', 'proposal_stage_file', 'proposal_replace_file', 'proposal_finish'] :
                 options.assessmentTools ? ['list_files', 'read_file', 'search_paths', 'search_text',
                     'assessment_stage', 'assessment_status', 'assessment_finish'] :
                 options.planTools ? ['list_files', 'read_file', 'search_paths', 'search_text',

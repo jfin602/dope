@@ -65,12 +65,13 @@ export function promptProposalDigest(proposal: Omit<ChatPromptStackProposal, 'di
 
 export async function createPromptStackProposal(root: string, chatId: string, messageId: string,
     ownerId: string, leaseToken: string, draft: DraftStack,
-    supportingFiles: { path: string; text: string }[], assessmentMessageId: string,
-    planMessageId: string, revision = 1): Promise<ChatPromptStackProposal> {
+    supportingFiles: { path: string; text: string }[], assessmentMessageId: string | undefined,
+    planMessageId: string | undefined, revision = 1, domain?: 'direct-prompt'): Promise<ChatPromptStackProposal> {
     phaseStackFolder(draft.folderName, (await capturePromptSourceEvidence(root)).packageVersion);
     if (await realpath(root) !== root ||
         draft.sourcePath !== `docs/tasks/${draft.folderName}` ||
-        supportingFiles.length !== 2 || draft.files.length < 2 || draft.files.length > 49)
+        supportingFiles.length !== (domain ? 0 : 2) || domain && (assessmentMessageId || planMessageId) ||
+        !domain && (!assessmentMessageId || !planMessageId) || draft.files.length < 2 || draft.files.length > 49)
         throw new Error('Unsafe prompt stack destination or incomplete draft');
     let tasks = root;
     for (const part of ['docs', 'tasks']) {
@@ -89,8 +90,9 @@ export async function createPromptStackProposal(root: string, chatId: string, me
         { path: `${draft.sourcePath}/README.md`, text: draft.manifest },
         ...draft.files.map(({ path, text }) => ({ path, text }))].map(file =>
         ({ path: file.path, after: file.text, afterHash: hash(file.text), before: null as null }));
-    if (files[0].path !== `${draft.sourcePath}/prompt-assessment.md` ||
-        files[1].path !== `${draft.sourcePath}/implementation-plan.md` ||
+    if ((domain ? files[0].path !== `${draft.sourcePath}/README.md` :
+        files[0].path !== `${draft.sourcePath}/prompt-assessment.md` ||
+        files[1].path !== `${draft.sourcePath}/implementation-plan.md`) ||
         new Set(files.map(file => file.path)).size !== files.length ||
         files.some(file => !file.path.startsWith(`${draft.sourcePath}/`) ||
             Buffer.byteLength(file.after, 'utf8') > 32_000))
@@ -99,7 +101,8 @@ export async function createPromptStackProposal(root: string, chatId: string, me
         id: randomUUID(), root, projectId: hash(root), ownerId, chatId, messageId,
         leaseDigest: hash(leaseToken), revision, folder: draft.folderName,
         sourceVersion: git.packageVersion, gitHead: git.head, worktreeId: git.worktreeFingerprint,
-        assessmentMessageId, planMessageId, createdAt: new Date().toISOString(), files };
+        ...(domain ? { domain } : { assessmentMessageId, planMessageId }),
+        createdAt: new Date().toISOString(), files };
     if (Buffer.byteLength(JSON.stringify(unsigned), 'utf8') > 384_000)
         throw new Error('Prompt stack exceeds saved proposal limit');
     return { ...unsigned, digest: promptProposalDigest(unsigned) };

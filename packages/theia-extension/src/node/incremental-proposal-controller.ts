@@ -343,6 +343,40 @@ export class IncrementalProposalController<T = unknown> {
             return { snapshot: next, result: receipt(next, this.limits) };
         });
     }
+    /** Copy-on-write repair of one completed direct file; every other staged byte stays fixed. */
+    replaceFile(value: { handle: string; expectedRevision: number; expectedDigest: string;
+        body: string }): Promise<ProposalReceipt> {
+        return this.transact(async snapshot => {
+            if (snapshot.identity.domain !== 'direct-prompt' || snapshot.state !== 'staging') return fail('DOMAIN');
+            if (!exact(value, ['handle', 'expectedRevision', 'expectedDigest', 'body']) ||
+                typeof value.handle !== 'string' || !/^P[1-9][0-9]*$/u.test(value.handle) ||
+                !Number.isSafeInteger(value.expectedRevision) || value.expectedRevision !== snapshot.revision ||
+                typeof value.expectedDigest !== 'string' || !/^[a-f0-9]{64}$/u.test(value.expectedDigest) ||
+                typeof value.body !== 'string' || !value.body.trim() ||
+                /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(value.body) ||
+                value.body.includes('\0') || Buffer.byteLength(value.body, 'utf8') < 80 ||
+                Buffer.byteLength(value.body, 'utf8') > this.limits.chunkBytes ||
+                Buffer.byteLength(JSON.stringify(value), 'utf8') > this.limits.payloadBytes)
+                return fail('REPLACE_ARGUMENTS');
+            const old = snapshot.stages.filter(stage => stage.target === value.handle);
+            if (!old.length || !old.at(-1)!.complete ||
+                sha256(old.map(stage => stage.content).join('')) !== value.expectedDigest)
+                return fail('REPLACE_STALE');
+            const bytes = Buffer.byteLength(value.body, 'utf8');
+            if (snapshot.stages.reduce((total, stage) => total + stage.byteLength, 0) -
+                old.reduce((total, stage) => total + stage.byteLength, 0) + bytes > this.limits.totalBytes)
+                return fail('BYTE_OR_FILE_LIMIT');
+            const replacement: StoredStage = { ...old[0], content: value.body, digest: sha256(value.body),
+                byteLength: bytes, complete: true, chunkIndex: 0,
+                idempotencyKey: `replace_${sha256(JSON.stringify(value)).slice(0, 64)}` };
+            const first = snapshot.stages.findIndex(stage => stage.target === value.handle);
+            const stages = snapshot.stages.filter(stage => stage.target !== value.handle);
+            stages.splice(first, 0, replacement);
+            const next: ProposalSnapshot = { ...snapshot, revision: snapshot.revision + 1,
+                stages: stages.map((stage, index) => ({ ...stage, sequence: index + 1 })) };
+            return { snapshot: next, result: receipt(next, this.limits) };
+        });
+    }
     async finish(value: unknown): Promise<ProposalHandoff<T>> {
         if (!exact(value, ['finalMessage']) || typeof (value as { finalMessage?: unknown }).finalMessage !== 'string')
             return fail('FINISH_ARGUMENTS');

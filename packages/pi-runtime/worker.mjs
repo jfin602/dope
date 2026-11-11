@@ -317,7 +317,10 @@ export const directProposalFileSchema = Type.Object({
 }, { additionalProperties: false });
 export const DIRECT_PROPOSAL_TOOLS = {
   ...Object.fromEntries(Object.entries(CHAT_TOOLS).filter(([name]) => name !== 'run_command')),
-  proposal_status: {}, proposal_stage_file: directProposalFileSchema
+  proposal_status: {}, proposal_stage_file: directProposalFileSchema,
+  proposal_replace_file: { handle: Type.String(), expectedRevision: Type.Integer(),
+    expectedDigest: Type.String(), body: Type.String() },
+  proposal_finish: { finalMessage: Type.String() }
 };
 export const ASSESSMENT_TOOLS = {
   ...Object.fromEntries(Object.entries(CHAT_TOOLS).filter(([name]) => name !== 'run_command')),
@@ -450,6 +453,7 @@ function chatTools() {
       name === 'proposal_stage_prompt' ?
         'Stage one typed work step (kind work), detailed section (kind section), or separate terminal manual closeout (kind closeout). Give each work step a stable target ID; sections use that same target. Dope owns stage order and composition. Set complete:true on the last call for each target. Finish after all requested work steps and one closeout. This tool cannot publish files.' :
       name === 'proposal_stage_file' ? 'Stage substantive prompt-file text. For the first chunk give title, body, kind and complete. For later chunks give the assigned P handle, the same title and kind. Set complete:true on the final chunk. Stage work files in execution order, then one terminal manual closeout. Dope owns paths and hashes. This cannot publish.' :
+      name === 'proposal_replace_file' ? 'Replace one completed unpublished direct file after a file-specific validation finding. Use its P handle, current proposal revision and exact digest from proposal_status. Submit a complete corrected body. Other files remain unchanged; this cannot publish.' :
       name === 'proposal_finish' ? 'Request validation and sealing of the staged candidate. The finalMessage is untrusted display prose, not an approval.' :
       name === 'assessment_status' ? 'Read the checked wireframe receipt and next action.' :
       name === 'assessment_stage' ? 'Submit one compact prompt-count and task-division wireframe. Work is an ordered array of 1–48 tasks; Dope derives count and step IDs. Omit dependsOn for independent tasks; otherwise use earlier one-based work-item numbers, such as [1] on item 2. Include a separate manual closeout. Factual source claims need exact quotes from brokered reads. Dope rejects empty, duplicate, unsupported or incoherent fields.' :
@@ -462,7 +466,7 @@ function chatTools() {
       name === 'plan_finish' ? 'Seal only a complete validated Plan. Final prose cannot replace this receipt.' :
       'Search eligible project source contents for a symbol or phrase. Protected entries are excluded.',
     parameters: name === 'proposal_stage_document' || name === 'proposal_stage_prompt' ||
-      name === 'proposal_stage_file' ?
+      name === 'proposal_stage_file' || name === 'proposal_replace_file' ?
       properties : Type.Object(properties, { additionalProperties: false }),
     async execute(_toolCallId, params, signal) {
       if (!chatToolsMode || signal?.aborted) throw new Error('Dope Chat tool unavailable');
@@ -497,7 +501,7 @@ function chatTools() {
         // need a larger checked payload, but never an unbounded transport frame.
         const resultLimit = name === 'proposal_status' ? 32_000 :
           name === 'proposal_stage_document' || name === 'proposal_stage_prompt' ||
-          name === 'proposal_stage_file' ||
+          name === 'proposal_stage_file' || name === 'proposal_replace_file' ||
           name === 'assessment_stage' ? 96_000 : 12_000;
         if (typeof result.output !== 'string' || Buffer.byteLength(result.output, 'utf8') > resultLimit)
           return { content: [{ type: 'text', text:

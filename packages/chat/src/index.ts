@@ -116,7 +116,7 @@ export interface ChatExecution {
         'dope_read' | 'dope_list' | 'dope_search_paths' | 'dope_search_text' | 'dope_command' |
         'roadmap_read' | 'roadmap_stage' | 'roadmap_cancel' | 'roadmap_phase' | 'roadmap_finish' |
         'proposal_status' | 'proposal_stage_document' | 'proposal_stage_prompt' |
-        'proposal_stage_file' | 'proposal_finish' |
+        'proposal_stage_file' | 'proposal_replace_file' | 'proposal_finish' |
         'assessment_status' | 'assessment_stage' | 'assessment_finish' |
         'plan_status' | 'plan_stage_step' | 'plan_correct_step' | 'plan_stage_closeout' |
         'plan_stage_efficiency' | 'plan_finish';
@@ -243,7 +243,8 @@ export interface ChatPromptStackProposal {
     id: string; digest: string; root: string; projectId: string; ownerId: string;
     chatId: string; messageId: string; leaseDigest: string; revision: number;
     folder: string; sourceVersion: string; gitHead: string; worktreeId: string;
-    assessmentMessageId: string; planMessageId: string; createdAt: string;
+    /** Direct stacks have no Assessment/Plan records; absent fields preserve legacy snapshots. */
+    domain?: 'direct-prompt'; assessmentMessageId?: string; planMessageId?: string; createdAt: string;
     files: { path: string; after: string; afterHash: string; before: null }[];
 }
 export type ChatMessage = ChatUserMessage | ChatAssistantMessage;
@@ -658,7 +659,7 @@ function parseExecution(value: unknown): ChatExecution {
                 'dope_read', 'dope_list', 'dope_search_paths', 'dope_search_text', 'dope_command',
                 'roadmap_read', 'roadmap_stage', 'roadmap_cancel', 'roadmap_phase', 'roadmap_finish',
                 'proposal_status', 'proposal_stage_document', 'proposal_stage_prompt',
-                'proposal_stage_file', 'proposal_finish',
+                'proposal_stage_file', 'proposal_replace_file', 'proposal_finish',
                 'assessment_status', 'assessment_stage', 'assessment_finish',
                 'plan_status', 'plan_stage_step', 'plan_correct_step', 'plan_stage_closeout',
                 'plan_stage_efficiency', 'plan_finish'] as const,
@@ -1084,18 +1085,21 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
             throw new Error('Invalid saved prompt stack proposal');
         const p = record(v.promptStackProposal, ['id', 'digest', 'root', 'projectId', 'ownerId', 'chatId',
             'messageId', 'leaseDigest', 'revision', 'folder', 'sourceVersion', 'gitHead', 'worktreeId',
-            'assessmentMessageId', 'planMessageId', 'createdAt', 'files'],
+            'domain', 'assessmentMessageId', 'planMessageId', 'createdAt', 'files'],
             ['id', 'digest', 'root', 'projectId', 'ownerId', 'chatId', 'messageId', 'leaseDigest',
-                'revision', 'folder', 'sourceVersion', 'gitHead', 'worktreeId',
-                'assessmentMessageId', 'planMessageId', 'createdAt', 'files']);
+                'revision', 'folder', 'sourceVersion', 'gitHead', 'worktreeId', 'createdAt', 'files']);
         const hash = (x: unknown) => {
             const s = string(x, 'prompt stack hash');
             if (!/^[a-f0-9]{64}$/u.test(s)) throw new Error('Invalid prompt stack hash');
             return s;
         };
         const folder = string(p.folder, 'prompt stack folder');
-        if (!/^[cp][a-z0-9-]{0,99}$/u.test(folder) || !Array.isArray(p.files) ||
-            p.files.length < 5 || p.files.length > 52 || !Number.isSafeInteger(p.revision) ||
+        if (!(p.domain === 'direct-prompt' ?
+            /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(folder) && folder.length >= 3 && folder.length <= 32 :
+            /^[cp][a-z0-9-]{0,99}$/u.test(folder)) ||
+            !Array.isArray(p.files) ||
+            p.files.length < (p.domain === 'direct-prompt' ? 3 : 5) || p.files.length > 52 ||
+            p.domain !== undefined && p.domain !== 'direct-prompt' || !Number.isSafeInteger(p.revision) ||
             (p.revision as number) < 1 || !/^[a-f0-9]{40,64}$/u.test(String(p.gitHead)) ||
             !/^\d+\.\d+\.\d+$/u.test(String(p.sourceVersion)) || p.id !== v.proposalId)
             throw new Error('Invalid prompt stack identity');
@@ -1109,9 +1113,12 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
             return { path, after, afterHash: hash(f.afterHash), before: null as null };
         });
         if (new Set(files.map(file => file.path)).size !== files.length ||
-            files[0].path !== `docs/tasks/${folder}/prompt-assessment.md` ||
-            files[1].path !== `docs/tasks/${folder}/implementation-plan.md` ||
-            files[2].path !== `docs/tasks/${folder}/README.md`)
+            (p.domain === 'direct-prompt' ? files[0].path !== `docs/tasks/${folder}/README.md` ||
+                p.assessmentMessageId !== undefined || p.planMessageId !== undefined :
+                files[0].path !== `docs/tasks/${folder}/prompt-assessment.md` ||
+                files[1].path !== `docs/tasks/${folder}/implementation-plan.md` ||
+                files[2].path !== `docs/tasks/${folder}/README.md` ||
+                p.assessmentMessageId === undefined || p.planMessageId === undefined))
             throw new Error('Invalid prompt stack file order');
         promptStackProposal = { id: identifier(p.id), digest: hash(p.digest),
             root: string(p.root, 'prompt stack root'), projectId: hash(p.projectId),
@@ -1119,8 +1126,9 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
             messageId: identifier(p.messageId), leaseDigest: hash(p.leaseDigest),
             revision: p.revision as number, folder, sourceVersion: string(p.sourceVersion, 'source version'),
             gitHead: string(p.gitHead, 'Git head'), worktreeId: hash(p.worktreeId),
-            assessmentMessageId: identifier(p.assessmentMessageId),
-            planMessageId: identifier(p.planMessageId), createdAt: time(p.createdAt), files };
+            ...(p.domain === 'direct-prompt' ? { domain: 'direct-prompt' as const } :
+                { assessmentMessageId: identifier(p.assessmentMessageId),
+                    planMessageId: identifier(p.planMessageId) }), createdAt: time(p.createdAt), files };
     }
     if (v.documentationDiscovery !== undefined) {
         if (kind !== 'documentation-proposal') throw new Error('Invalid documentation discovery');
