@@ -1,11 +1,11 @@
 TASK: Correction 13 / P3 — Complete Direct Stack Validation and Guarded Publication
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol High.
+- Recommended configuration: `GPT-6 Sol High`.
 - Browser required: no.
 
 VERSIONING
-- Required unchanged project version: 0.13.11.
+- Required unchanged project version: `0.13.11`.
 - No manifest, dependency, lockfile or package-version changes.
 
 PREFLIGHT

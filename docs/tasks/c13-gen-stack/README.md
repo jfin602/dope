@@ -15,7 +15,7 @@ Replace mandatory /prompt-ass → /prompt-plan → /prompt-write for **new** pro
 | [P3](P3-stack-validation-and-publication.txt) | T1 | no | Importer/grammar validation and guarded proposal/publisher |
 | [P4](P4-native-progress-and-revision.txt) | T1 | no | Progressive native file previews, targeted Revise and card UX |
 | [P5](P5-headless-integration.txt) | T2 | no | Real worker/broker end-to-end, authority, large-stack tests |
-| [P6](P6-manual-live-qualification.txt) | T3 | **yes, manual** | Independent real GPT-OSS connected-browser stack generation |
+| [P6](P6-manual-live-closeout.txt) | T3 | **yes, manual** | Independent real GPT-OSS connected-browser stack generation |
 
 P1–P5 are runner work; P6 is **separately initiated manual**. Do not use --closeout to auto-run P6. After inspecting actual HEAD/owner dirty state, validate with npm run codex:phase:validate -- c13-gen-stack; a separate explicit owner Run may use npm run codex:phase -- c13-gen-stack for P1–P5. Runner owns checkpoints/commits; agents must not self-commit.
 

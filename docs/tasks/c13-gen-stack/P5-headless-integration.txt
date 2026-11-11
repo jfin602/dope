@@ -1,11 +1,11 @@
 TASK: Correction 13 / P5 — Deterministic Direct Stack Integration, Security and Scale
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol High.
+- Recommended configuration: `GPT-6 Sol High`.
 - Browser required: no.
 
 VERSIONING
-- Required unchanged project version: 0.13.11.
+- Required unchanged project version: `0.13.11`.
 - No manifest, dependency, lockfile or version changes.
 
 PREFLIGHT

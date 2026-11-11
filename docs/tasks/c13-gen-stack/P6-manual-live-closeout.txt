@@ -1,11 +1,11 @@
-TASK: Correction 13 / P6 — Independent Real GPT-OSS Direct Stack Generation and Review
+TASK: Correction 13 / P6 — Independent Real GPT-OSS Direct Stack Generation Closeout
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol High.
+- Recommended configuration: `GPT-6 Sol High`.
 - Browser required: yes.
 
 VERSIONING
-- Required unchanged project version: 0.13.11.
+- Required unchanged project version: `0.13.11`.
 - Manual T3 closeout; no manifest, dependency, lockfile or version changes.
 
 PREFLIGHT

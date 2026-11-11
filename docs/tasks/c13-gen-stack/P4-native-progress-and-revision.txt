@@ -1,11 +1,11 @@
 TASK: Correction 13 / P4 — Progressive Native Draft Review and File-Specific Revision
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol Medium; use High if a protected owner/lease boundary requires architectural changes.
+- Recommended configuration: `GPT-6 Sol Medium`.
 - Browser required: no.
 
 VERSIONING
-- Required unchanged project version: 0.13.11.
+- Required unchanged project version: `0.13.11`.
 - No manifest, dependency, lockfile or version changes.
 
 PREFLIGHT

@@ -1,11 +1,11 @@
 TASK: Correction 13 / P2 — Bounded File-Oriented Prompt Staging and Durable Continuation
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol High.
+- Recommended configuration: `GPT-6 Sol High`.
 - Browser required: no.
 
 VERSIONING
-- Required unchanged project version: 0.13.11.
+- Required unchanged project version: `0.13.11`.
 - No dependency, manifest, lockfile or version changes.
 
 PREFLIGHT

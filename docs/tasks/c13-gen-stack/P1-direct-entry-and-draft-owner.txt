@@ -1,11 +1,11 @@
 TASK: Correction 13 / P1 — Trusted Direct Stack Entry and Draft Ownership
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol High.
+- Recommended configuration: `GPT-6 Sol High`.
 - Browser required: no.
 
 VERSIONING
-- Required unchanged project version: 0.13.11.
+- Required unchanged project version: `0.13.11`.
 - No manifest, dependency, lockfile or package-version changes.
 
 PREFLIGHT
