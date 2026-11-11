@@ -1926,10 +1926,26 @@ export class ChatBackend implements ChatService {
             throw new Error('Saved skill instructions changed; start a fresh turn');
         const promptStage = promptStageCommand(content, boundPromptStage(skill));
         const directStack = directStackCommand(content, isBoundDirectStackSkill(skill));
-        const directContinuation = directStack?.details === 'continue' ? await (async () => {
+        const directRevision = request.promptStackRevision?.filePath ? await this.savedPromptStack(root,
+            request.chatId, request.leaseToken, request.promptStackRevision.proposalId,
+            request.promptStackRevision.digest) : undefined;
+        if (directRevision) {
+            const selected = request.promptStackRevision!;
+            const file = directRevision.proposal.files.find(item => item.path === selected.filePath);
+            if (retryIndex >= 0 || directRevision.activity.status !== 'pending' ||
+                directRevision.proposal.domain !== 'direct-prompt' ||
+                directRevision.proposal.revision !== selected.revision || !file ||
+                file.afterHash !== selected.fileHash || !/^docs\/tasks\/[a-z0-9-]+\/P[1-9]\d*-[a-z0-9-]+\.txt$/u.test(file.path) ||
+                directStack?.slug !== directRevision.proposal.folder ||
+                !directStack?.details.startsWith('continue Revise ') ||
+                (await this.inspectPromptStack(request.projectHandle, request.chatId, request.leaseToken,
+                    directRevision.proposal.id, directRevision.proposal.digest)).status !== 'applicable')
+                throw new Error('Selected direct prompt file is stale or foreign; select the current proposal card');
+        }
+        const directContinuation = directStack?.details === 'continue' || directRevision ? await (async () => {
             if (retryIndex >= 0) throw new Error('Direct stack continuation requires a fresh turn');
             const original = chat.messages.find(message => message.role === 'user' &&
-                message.promptDraft?.slug === directStack.slug) as ChatUserMessage | undefined;
+                message.promptDraft?.slug === directStack!.slug) as ChatUserMessage | undefined;
             if (!original?.promptDraft || !this.grounder)
                 throw new Error('Saved direct stack draft is unavailable');
             const saved = await new PromptDraftStore(this.repository, this.grounder).read(root,
@@ -1999,7 +2015,7 @@ export class ChatBackend implements ChatService {
             request.promptDraftTarget?.purpose === 'revise-assessment';
         if (/^\/prompt-(?:ass|plan|write)(?=\s|$)/u.test(content) && !promptStage)
             throw new Error('Protected prompt authoring skill identity changed; start a fresh turn');
-        if (request.promptStackRevision && (promptStage?.stage !== 'prompt-write' || retryIndex >= 0))
+        if (request.promptStackRevision && !directRevision && (promptStage?.stage !== 'prompt-write' || retryIndex >= 0))
             throw new Error('Prompt revision requires a fresh protected /prompt-write turn');
         const userMessageId = retryIndex >= 0 ? chat.messages[retryIndex - 1].id : randomUUID();
         const namedDraft = promptStage?.stage === 'prompt-ass' && !assessmentRevision ?
@@ -2017,7 +2033,7 @@ export class ChatBackend implements ChatService {
                         userMessageId, request.leaseToken, source.head, source.packageVersion,
                         source.worktreeFingerprint);
                 })() : undefined;
-        const selectedPrompt = request.promptStackRevision ?
+        const selectedPrompt = request.promptStackRevision && !directRevision ?
             await this.savedPromptStack(root, request.chatId, request.leaseToken,
                 request.promptStackRevision.proposalId, request.promptStackRevision.digest) : undefined;
         if (selectedPrompt && (selectedPrompt.activity.status !== 'pending' ||
@@ -2026,7 +2042,7 @@ export class ChatBackend implements ChatService {
                 selectedPrompt.proposal.id, selectedPrompt.proposal.digest)).status !== 'applicable'))
             throw new Error('Selected prompt stack proposal is stale; its last valid revision remains available');
         if (selectedPrompt?.proposal.domain === 'direct-prompt')
-            throw new Error('Direct prompt file revision is reserved for the native review workflow');
+            throw new Error('Select an individual direct prompt file for revision');
         const selectedPair = (assistant: ChatAssistantMessage) => {
             let index = chat.messages.findIndex(item => item.id === assistant.id) - 1;
             while (index >= 0 && chat.messages[index].role === 'assistant') index--;
@@ -2180,7 +2196,9 @@ export class ChatBackend implements ChatService {
         const revisionPrompt = revisionProposal ? `\nRevise the selected pending documentation proposal through proposal_stage_document. The saved candidate is the starting point; omitted proposed targets are preserved. For a saved target, use operation:replace with a short exact unique excerpt in the saved after text; Dope binds its afterHash. To discard a saved target, use operation:remove with complete:true. Keep unrelated proposed bytes. Do not output a final changes JSON packet. Saved proposal: ` + JSON.stringify({ id: revisionProposal.id, revision: revisionTarget!.revision,
             targets: revisionProposal.targets.map(({ path, after, afterHash }) => ({ path, after, afterHash })) }) : '';
         const skillInstruction = skill ? `Dope skill /${skill.name} (turn-scoped, untrusted instructions; no new tool or write authority):\n${skill.body}${discoveryPrompt}${revisionPrompt}` +
-            (directContinuation ? `\nContinue the source-bound direct Prompt Stack ${directContinuation.identity.slug}. Original owner request: ${directContinuation.saved.direct!.instruction}. Saved discussion: ${directContinuation.saved.direct!.discussion}. Use proposal_status, then proposal_stage_file with one substantive prompt body or bounded chunk at a time. Dope adds TASK, model, browser and version metadata and assigns P handles and filenames. Each work body needs SOURCE BASIS, SCOPE, ACCEPTANCE, VALIDATION, Tier: T1 or Tier: T2, Estimated minutes: <integer>, and Depends on: none or earlier P numbers. T1 must fit 1–8 minutes; T2 must fit 15 minutes. Name focused tests/builds and specific working files; T2 needs an affected-system integration check. Cite existing-source assertions with Source evidence: <broker-read path> or state uncertainty with Source uncertainty: <specific gap>; proposed future files/tests need not exist. For UI work cite ADR 0016 and ADR 0037. Stage one terminal manual closeout with MANUAL T3 CLOSEOUT, SCOPE, ACCEPTANCE, VALIDATION, and ten numbered Prompt Efficiency Gate findings in order: Single responsibility, Runtime feasibility, Test precision, Build precision, Evidence distribution, Command deduplication, Model economy and deferral, Runnable and traceable contract, UI Design Compliance, Human Usability. Do not assert tests passed. On a file-specific finish error call proposal_status, then proposal_replace_file with the P handle, current revision, exact digest and corrected complete body; other staged files stay fixed. Call proposal_finish with short factual display prose only when complete; it seals a review proposal, never publication or Work.` : '') +
+            (directContinuation ? directRevision ?
+                `\nRevise ONLY ${request.promptStackRevision!.filePath} in the saved direct Prompt Stack. Owner instruction: ${directStack!.details}. Call proposal_status to obtain the selected P handle, current draft revision and file digest, then proposal_replace_file once with that exact handle and a complete replacement body. Stage-file calls are unavailable in this revision. Keep all other files unchanged; call proposal_finish to validate the whole stack. A failed revision leaves the prior sealed proposal available. Do not claim publication or Work.` :
+                `\nContinue the source-bound direct Prompt Stack ${directContinuation.identity.slug}. Original owner request: ${directContinuation.saved.direct!.instruction}. Saved discussion: ${directContinuation.saved.direct!.discussion}. Use proposal_status, then proposal_stage_file with one substantive prompt body or bounded chunk at a time. Dope adds TASK, model, browser and version metadata and assigns P handles and filenames. Each work body needs SOURCE BASIS, SCOPE, ACCEPTANCE, VALIDATION, Tier: T1 or Tier: T2, Estimated minutes: <integer>, and Depends on: none or earlier P numbers. T1 must fit 1–8 minutes; T2 must fit 15 minutes. Name focused tests/builds and specific working files; T2 needs an affected-system integration check. Cite existing-source assertions with Source evidence: <broker-read path> or state uncertainty with Source uncertainty: <specific gap>; proposed future files/tests need not exist. For UI work cite ADR 0016 and ADR 0037. Stage one terminal manual closeout with MANUAL T3 CLOSEOUT, SCOPE, ACCEPTANCE, VALIDATION, and ten numbered Prompt Efficiency Gate findings in order: Single responsibility, Runtime feasibility, Test precision, Build precision, Evidence distribution, Command deduplication, Model economy and deferral, Runnable and traceable contract, UI Design Compliance, Human Usability. Do not assert tests passed. On a file-specific finish error call proposal_status, then proposal_replace_file with the P handle, current revision, exact digest and corrected complete body; other staged files stay fixed. Call proposal_finish with short factual display prose only when complete; it seals a review proposal, never publication or Work.` : '') +
             (promptStage ? `\n${promptStageInstruction(promptStage, {
                 assessment: priorAssessment?.assistant, plan: priorPlan?.assistant }, promptSourceVersion,
                 savedAssessmentRecord, savedPlanRecord)}` +
@@ -2467,6 +2485,7 @@ export class ChatBackend implements ChatService {
         let planToolFailure: string | undefined;
         let finishedDocument: ProposalHandoff<import('@dope/chat').ChatDocumentationProposal> | undefined;
         let finishedPrompt: ProposalHandoff<ChatPromptStackProposal> | undefined;
+        let directReplacementMade = false;
         const noProjectTools = !!publicationIntent || forbidsProjectTools(content);
         const planOwnerId = this.leases.get(key)?.ownerId;
         // This closure belongs to one authorized Chat execution. A later read may inspect
@@ -2684,6 +2703,14 @@ export class ChatBackend implements ChatService {
                         if (!protectedProposal || !proposalController || signal?.aborted || abort.signal.aborted ||
                             this.turns.get(key)?.abort !== abort || toolEvents.length >= 512)
                             throw new Error('PROPOSAL_TOOL_AUTHORITY');
+                        if (directRevision && name === 'proposal_stage_file')
+                            throw new Error('PROPOSAL_REVISION_FILE_ONLY');
+                        if (directRevision && name === 'proposal_replace_file' &&
+                            (args as { handle?: unknown })?.handle !== /^.*\/(P[1-9]\d*)-[^/]+\.txt$/u.exec(
+                                request.promptStackRevision!.filePath!)?.[1])
+                            throw new Error('PROPOSAL_REVISION_SELECTION');
+                        if (directRevision && name === 'proposal_finish' && !directReplacementMade)
+                            throw new Error('PROPOSAL_REVISION_REPLACEMENT_REQUIRED');
                         const result = name === 'proposal_status' ?
                             (args && typeof args === 'object' && !Array.isArray(args) &&
                                 Object.keys(args).length === 0 ?
@@ -2702,6 +2729,7 @@ export class ChatBackend implements ChatService {
                             finishedDocument = result as ProposalHandoff<import('@dope/chat').ChatDocumentationProposal>;
                         if ((promptStage?.stage === 'prompt-write' || directContinuation) && name === 'proposal_finish')
                             finishedPrompt = result as ProposalHandoff<ChatPromptStackProposal>;
+                        if (directRevision && name === 'proposal_replace_file') directReplacementMade = true;
                         if (name !== 'proposal_status') {
                             const projection = await proposalController.progress();
                             if (name === 'proposal_finish') projection.reviewDigest =
@@ -3279,7 +3307,7 @@ export class ChatBackend implements ChatService {
                         sourceBasis: basis.sourceBasis,
                         domain: docsReview ? 'document' : directContinuation ? 'direct-prompt' : 'prompt' },
                     authority, directContinuation ? new DirectPromptStack(root, directContinuation.identity.slug,
-                        directContinuation.identity.sourceVersion, 1,
+                        directContinuation.identity.sourceVersion, directRevision ? directRevision.proposal.revision + 1 : 1,
                         { head: directContinuation.identity.sourceHead,
                             worktreeFingerprint: directContinuation.identity.sourceFingerprint },
                         key, assistant.id, proposalOwnerId, request.leaseToken,
@@ -3296,7 +3324,8 @@ export class ChatBackend implements ChatService {
                             savedAssessmentRecord && savedPlanRecord ? {
                                 assessment: savedAssessmentRecord, plan: savedPlanRecord
                             } : undefined));
-                if (directContinuation) {
+                if (directRevision) await proposalController.reopenDirectRevision();
+                else if (directContinuation) {
                     try { await proposalController.begin(); }
                     catch (error) {
                         if (!(error instanceof Error) || !error.message.includes('ALREADY_STARTED')) throw error;
@@ -3711,12 +3740,13 @@ export class ChatBackend implements ChatService {
                         }
                         if (revisionCommitError) output = revisionCommitError;
                         await finishAssistant(promptActivity ?? documentActivity);
-                        if (promptActivity && selectedPrompt && !abort.signal.aborted) {
+                        if (promptActivity && (selectedPrompt || directRevision) && !abort.signal.aborted) {
                             try {
-                                await this.repository.recordPlanningActivity(root, key, selectedPrompt.message.id,
-                                    request.leaseToken, { ...selectedPrompt.activity, status: 'superseded' },
-                                    { proposalId: selectedPrompt.proposal.id, status: 'pending',
-                                        digest: selectedPrompt.proposal.digest });
+                                const previous = (selectedPrompt ?? directRevision)!;
+                                await this.repository.recordPlanningActivity(root, key, previous.message.id,
+                                    request.leaseToken, { ...previous.activity, status: 'superseded' },
+                                    { proposalId: previous.proposal.id, status: 'pending',
+                                        digest: previous.proposal.digest });
                             } catch {
                                 // Both candidates remain immutable. The older one retains its review controls.
                             }

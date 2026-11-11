@@ -44,7 +44,8 @@ export function promptStackSnapshot(proposal: ChatPromptStackProposal, path: str
 export function stagedProposalSnapshot(progress: ChatProposalProgress, path: string): ProposalTabSnapshot {
     const target = progress.targets.find(item => item.path === path);
     const format = nativeDocumentFormat('file', path);
-    if (!target || !format || progress.state === 'ready-for-review')
+    if (!target || !format || progress.state === 'ready-for-review' ||
+        progress.domain === 'direct-prompt' && target.truncated)
         throw new Error('Provisional proposal preview unavailable');
     return { identity: { root: progress.root, worktreeId: progress.worktreeId,
         ownerId: progress.ownerId, proposalId: progress.proposalId,

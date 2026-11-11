@@ -63,7 +63,8 @@ export interface ChatTurnRequest { projectHandle: string; chatId: ChatId; leaseT
     content?: string; retryMessageId?: string; context?: ChatContextSelection[];
     /** Card-selected pending candidate. Resolved against the current saved Chat, never trusted as proposal bytes. */
     documentationRevision?: { proposalId: string; revision: number; digest: string };
-    promptStackRevision?: { proposalId: string; revision: number; digest: string };
+    promptStackRevision?: { proposalId: string; revision: number; digest: string; filePath?: string;
+        fileHash?: string };
     /** Inert UI selection; the backend resolves it against the saved owner and sealed stage. */
     promptDraftTarget?: { draftId: string; ownerUserMessageId: string; stageMessageId: string;
         stage: 'assessment' | 'plan'; stageRevision: number; projectId: string;

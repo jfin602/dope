@@ -78,7 +78,8 @@ export class ChatPanelController {
     promptDraftChip?: NonNullable<import('@dope/chat/lib/service').ChatTurnRequest['promptDraftTarget']>;
     documentationRevision?: { proposalId: string; revision: number; digest: string };
     previousDocumentationDraft?: string;
-    promptStackRevision?: { proposalId: string; revision: number; digest: string };
+    promptStackRevision?: { proposalId: string; revision: number; digest: string; filePath?: string;
+        fileHash?: string };
     previousPromptStackDraft?: string;
     private autoRoadmapPrefix = false;
     context: ChatContextSelection[] = [];
@@ -633,8 +634,11 @@ export class ChatPanelController {
             this.changed(); return false;
         }
         if (!retryMessageId && this.promptStackRevision &&
-            !/^\/prompt-write(?=\s|$)/u.test(this.draft)) {
-            this.error = 'Selected prompt proposals require /prompt-write at the start.';
+            !(this.promptStackRevision.filePath ? this.draft.startsWith(
+                `/gen-stack ${this.currentPromptStackProposal(this.promptStackRevision.proposalId,
+                    this.promptStackRevision.digest)?.folder} continue Revise ${this.promptStackRevision.filePath}: `) :
+                /^\/prompt-write(?=\s|$)/u.test(this.draft))) {
+            this.error = 'Selected prompt proposal command changed. Select the current card again.';
             this.changed(); return false;
         }
         if (!retryMessageId && this.promptDraftChip) {
@@ -935,10 +939,14 @@ export class ChatPanelController {
     }
     setDraft(value: string): void {
         if (this.autoRoadmapPrefix && !/^\/roadmap(?=\s|$)/.test(value)) this.autoRoadmapPrefix = false;
+        const fileRevisionPrefix = this.promptStackRevision?.filePath ?
+            `/gen-stack ${this.currentPromptStackProposal(this.promptStackRevision.proposalId,
+                this.promptStackRevision.digest)?.folder} continue Revise ${this.promptStackRevision.filePath}: ` : undefined;
         this.draft = this.documentationRevision && !/^\/docs-review(?=\s|$)/u.test(value) ?
             `/docs-review ${value.trimStart()}` :
-            this.promptStackRevision && !/^\/prompt-write(?=\s|$)/u.test(value) ?
-                `/prompt-write ${value.trimStart()}` :
+            this.promptStackRevision && !(fileRevisionPrefix ? value.startsWith(fileRevisionPrefix) :
+                /^\/prompt-write(?=\s|$)/u.test(value)) ?
+                `${fileRevisionPrefix ?? '/prompt-write '}${value.trimStart()}` :
                 value;
     }
     preparePromptDraft(stage: 'assessment' | 'plan'): boolean {
@@ -1002,13 +1010,17 @@ export class ChatPanelController {
         this.changed();
         return true;
     }
-    preparePromptStackRevision(proposalId: string, digest: string): boolean {
+    preparePromptStackRevision(proposalId: string, digest: string, filePath?: string): boolean {
         const proposal = this.currentPromptStackProposal(proposalId, digest);
         if (!proposal || !this.canDecidePromptStack(proposalId, digest)) return false;
+        const selectedFile = filePath && proposal.files.find(file => file.path === filePath);
+        if (filePath && (proposal.domain !== 'direct-prompt' || !selectedFile ||
+            !/\/P[1-9]\d*-[a-z0-9-]+\.txt$/u.test(filePath))) return false;
         if (this.draft.trim() && !this.promptStackRevision && this.previousPromptStackDraft === undefined)
             this.previousPromptStackDraft = this.draft;
-        this.promptStackRevision = { proposalId, revision: proposal.revision, digest };
-        this.draft = '/prompt-write ';
+        this.promptStackRevision = { proposalId, revision: proposal.revision, digest,
+            ...(selectedFile ? { filePath: selectedFile.path, fileHash: selectedFile.afterHash } : {}) };
+        this.draft = selectedFile ? `/gen-stack ${proposal.folder} continue Revise ${selectedFile.path}: ` : '/prompt-write ';
         this.changed();
         return true;
     }

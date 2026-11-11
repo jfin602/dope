@@ -722,15 +722,18 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         card.dataset.status = progress.state;
         card.setAttribute('aria-label', `${progress.domain === 'document' ? 'Documentation' : 'Prompt Stack'} staging progress`);
         const title = document.createElement('strong');
-        title.textContent = `${progress.domain === 'document' ? 'Documentation' : 'Prompt Stack'} Proposal · ` +
+        title.textContent = `${progress.domain === 'document' ? 'Documentation' : 'Prompt Stack'} Draft · ` +
             `${progress.state === 'staging' ? 'Incomplete · no approval' : progress.state}`;
         const count = document.createElement('p');
         count.textContent = `${progress.targets.filter(target => target.complete).length}/${progress.targets.length} staged files complete · review unavailable until finish`;
+        const next = document.createElement('p');
+        next.setAttribute('role', 'status');
+        next.textContent = progress.nextAction ?? 'Complete staging before review.';
         const heading = document.createElement('div');
         heading.className = 'dope-chat-documentation-file-heading';
         heading.append(count);
         const root = this.controller.workspace;
-        const viewable = progress.targets.filter(target => !!target.proposed);
+        const viewable = progress.targets.filter(target => !!target.proposed && !target.truncated);
         const canOpen = !!root && decodeURIComponent(new URL(root).pathname) === progress.root &&
             !!this.openStagedReview && viewable.length > 0;
         const open = (paths: string[]) => {
@@ -745,13 +748,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const files = document.createElement('div');
         files.className = 'dope-chat-documentation-files';
         for (const [index, target] of progress.targets.entries()) {
-            const link = this.button(`${index + 1}. ${target.path} · ${target.complete ? 'staged' : 'receiving'} · ` +
+            const link = this.button(`${index + 1}. ${target.title ? `${target.title} · ` : ''}${target.path} · ${target.complete ? 'staged' : 'receiving'} · ` +
                 `${target.chunks} chunk${target.chunks === 1 ? '' : 's'}${target.truncated ? ' · preview truncated' : ''}`,
-                () => open([target.path]), !canOpen || !target.proposed);
+                () => open([target.path]), !canOpen || !target.proposed || target.truncated);
             link.title = target.path;
             files.append(link);
         }
-        card.append(title, heading, files);
+        card.append(title, heading, files, next);
         if (progress.diagnostic || ['failed', 'cancelled', 'interrupted', 'stopped-incomplete'].includes(message.execution.status)) {
             const diagnostic = document.createElement('p');
             diagnostic.setAttribute('role', 'status');
@@ -775,9 +778,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             title.textContent = `Prompt Stack Proposal · ${activity.status === 'pending' ? 'Pending · no write' :
                 activity.status === 'applied' ? 'Published' : activity.status}`;
             const basis = document.createElement('p');
-            basis.textContent = `${proposal.folder} · revision ${proposal.revision} · ${proposal.files.length} files · version ${proposal.sourceVersion} · source ${proposal.gitHead.slice(0, 8)}`;
+            basis.textContent = `${proposal.folder} · revision ${proposal.revision} · ${proposal.files.length} files · version ${proposal.sourceVersion} · source ${proposal.gitHead.slice(0, 8)} · digest ${proposal.digest.slice(0, 12)}`;
             const summary = document.createElement('p');
-            summary.textContent = `${proposal.files.length - 4} implementation/integration prompts · one final manual closeout · Work remains unstarted`;
+            summary.textContent = `${proposal.files.filter(file => /\/P[1-9]\d*-/.test(file.path)).length - 1} implementation/integration prompts · one final manual closeout · Work remains unstarted`;
             card.append(title, basis, summary);
             const heading = document.createElement('div');
             heading.className = 'dope-chat-documentation-file-heading';
@@ -804,6 +807,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 const link = this.button(file.path, () => openFiles([file.path]), !canOpen);
                 link.title = file.path;
                 files.append(link);
+                if (activity.status === 'pending' && proposal.domain === 'direct-prompt' && /\/P[1-9]\d*-/.test(file.path)) {
+                    const revise = this.button(`Revise ${file.path.split('/').at(-1)}`, () => {
+                        if (this.controller.preparePromptStackRevision(proposal.id, proposal.digest, file.path))
+                            queueMicrotask(() => this.content.querySelector<HTMLTextAreaElement>('.dope-chat-composer textarea')?.focus());
+                    }, !this.controller.canDecidePromptStack(proposal.id, proposal.digest));
+                    files.append(revise);
+                }
             }
             card.append(files);
             if (activity.diagnostic) {
@@ -819,7 +829,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 card.append(this.button('Reject',
                     () => void this.controller.dismissPromptStackProposal(proposal.id, proposal.digest),
                     !this.controller.canDecidePromptStack(proposal.id, proposal.digest)));
-                card.append(this.button('Revise Proposal', () => {
+                if (proposal.domain !== 'direct-prompt') card.append(this.button('Revise Proposal', () => {
                     if (this.controller.preparePromptStackRevision(proposal.id, proposal.digest))
                         queueMicrotask(() => this.content.querySelector<HTMLTextAreaElement>('.dope-chat-composer textarea')?.focus());
                 }, !this.controller.canDecidePromptStack(proposal.id, proposal.digest)));

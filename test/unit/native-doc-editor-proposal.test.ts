@@ -107,6 +107,8 @@ test('provisional tab identity stays separate from sealed and wrong-proposal res
         { ...progress, revision: 3 }, 'docs/readme.md').identity));
     assert.throws(() => stagedProposalSnapshot(progress, 'docs/other.md'));
     assert.throws(() => stagedProposalSnapshot({ ...progress, state: 'ready-for-review' }, 'docs/readme.md'));
+    assert.throws(() => stagedProposalSnapshot({ ...progress, domain: 'direct-prompt' }, 'docs/readme.md'),
+        /unavailable/u, 'clipped direct files cannot be opened as exact bytes');
     assert.match(source, /readOnly: true, autosaveable: false/);
     assert.match(source, /openStaged\(progress: ChatProposalProgress/);
     assert.doesNotMatch(source, /withScheme\('file'\)/);

@@ -168,8 +168,9 @@ export interface ChatProposalProgress {
     root: string; worktreeId: string; ownerId: string; revision: number;
     state: 'staging' | 'ready-for-review' | 'cancelled' | 'stale' | 'blocked';
     targets: { target: string; path: string; chunks: number; bytes: number; complete: boolean;
-        original: string | null; proposed: string; truncated: boolean }[];
-    diagnostic?: string; reviewDigest?: string;
+        original: string | null; proposed: string; truncated: boolean;
+        title?: string; kind?: 'work' | 'manual-closeout' }[];
+    diagnostic?: string; reviewDigest?: string; nextAction?: string;
 }
 export interface ChatLockedRoadmapPlan {
     schemaVersion: 1;
@@ -776,17 +777,18 @@ export function parseChatMessage(value: unknown): ChatMessage {
 }
 export function parseProposalProgress(value: unknown): ChatProposalProgress {
     const v = record(value, ['schemaVersion', 'domain', 'proposalId', 'root', 'worktreeId', 'ownerId',
-        'revision', 'state', 'targets', 'diagnostic', 'reviewDigest'], ['schemaVersion', 'domain', 'proposalId', 'root',
+        'revision', 'state', 'targets', 'diagnostic', 'reviewDigest', 'nextAction'], ['schemaVersion', 'domain', 'proposalId', 'root',
         'worktreeId', 'ownerId', 'revision', 'state', 'targets']);
     if (v.schemaVersion !== 1 || !Number.isSafeInteger(v.revision) || (v.revision as number) < 0 ||
         !Array.isArray(v.targets) || v.targets.length > 64 ||
         v.diagnostic !== undefined && (typeof v.diagnostic !== 'string' || v.diagnostic.length > 300) ||
+        v.nextAction !== undefined && (typeof v.nextAction !== 'string' || v.nextAction.length > 300) ||
         v.reviewDigest !== undefined && (v.state !== 'ready-for-review' ||
             typeof v.reviewDigest !== 'string' || !/^[a-f0-9]{64}$/u.test(v.reviewDigest)))
         throw new Error('Invalid proposal progress');
     const targets = v.targets.map(raw => {
         const target = record(raw, ['target', 'path', 'chunks', 'bytes', 'complete', 'original',
-            'proposed', 'truncated'], ['target', 'path', 'chunks', 'bytes', 'complete', 'original',
+            'proposed', 'truncated', 'title', 'kind'], ['target', 'path', 'chunks', 'bytes', 'complete', 'original',
             'proposed', 'truncated']);
         if (typeof target.target !== 'string' || target.target.length > 240 ||
             typeof target.path !== 'string' || target.path.length > 300 ||
@@ -797,7 +799,10 @@ export function parseProposalProgress(value: unknown): ChatProposalProgress {
             typeof target.complete !== 'boolean' || typeof target.proposed !== 'string' ||
             target.proposed.length > 8192 || target.original !== null &&
                 (typeof target.original !== 'string' || target.original.length > 8192) ||
-            typeof target.truncated !== 'boolean') throw new Error('Invalid proposal progress target');
+            typeof target.truncated !== 'boolean' ||
+            target.title !== undefined && (typeof target.title !== 'string' || target.title.length > 120) ||
+            target.kind !== undefined && target.kind !== 'work' && target.kind !== 'manual-closeout')
+            throw new Error('Invalid proposal progress target');
         return target as unknown as ChatProposalProgress['targets'][number];
     });
     return { schemaVersion: 1, domain: choice(v.domain, ['document', 'prompt', 'direct-prompt'] as const, 'proposal domain'),
@@ -806,6 +811,7 @@ export function parseProposalProgress(value: unknown): ChatProposalProgress {
         revision: v.revision as number,
         state: choice(v.state, ['staging', 'ready-for-review', 'cancelled', 'stale', 'blocked'] as const, 'proposal state'),
         targets, ...(v.diagnostic ? { diagnostic: v.diagnostic as string } : {}),
+        ...(v.nextAction ? { nextAction: v.nextAction as string } : {}),
         ...(v.reviewDigest ? { reviewDigest: v.reviewDigest as string } : {}) };
 }
 export function parseChatLockedRoadmapPlan(value: unknown): ChatLockedRoadmapPlan {

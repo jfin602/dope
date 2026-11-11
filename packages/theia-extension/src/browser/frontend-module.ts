@@ -737,7 +737,8 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 if (!current() || roots.length !== 1 || roots[0].resource.toString() !== uri ||
                     decodeURIComponent(new URL(uri).pathname) !== progress.root ||
                     !paths.length || paths.length > progress.targets.length ||
-                    paths.some((path, index) => !progress.targets.some(target => target.path === path && !!target.proposed) ||
+                    paths.some((path, index) => !progress.targets.some(target => target.path === path &&
+                        !!target.proposed && !target.truncated) ||
                         paths.indexOf(path) !== index))
                     throw new Error('Exact provisional files are unavailable for this project');
                 const tabs = context.container.get(ProposalDocumentTabs);

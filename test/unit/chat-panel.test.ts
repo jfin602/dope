@@ -40,6 +40,29 @@ test('Revise Proposal selects one pending card in the composer and preserves an 
     assert.equal(controller.prepareDocumentationRevision('proposal', 'stale'), false);
 });
 
+test('direct Prompt Stack file revision selects checked bytes without sending', () => {
+    let changes = 0;
+    const controller = new ChatPanelController(() => { throw new Error('unused'); }, () => { changes++; });
+    const file = { path: 'docs/tasks/direct-task/P1-implement.txt', afterHash: 'a'.repeat(64), after: 'body', before: null };
+    const proposal = { id: 'proposal', digest: 'b'.repeat(64), chatId: 'chat', root: '/project',
+        messageId: 'answer', revision: 2, domain: 'direct-prompt', folder: 'direct-task', files: [file] };
+    const chat = { id: 'chat', messages: [{ role: 'assistant', id: 'answer', planningActivity: {
+        kind: 'prompt-stack-proposal', status: 'pending', proposalId: 'proposal', promptStackProposal: proposal } }] };
+    Object.assign(controller, { workspace: 'file:///project', chatId: 'chat', snapshot: { chats: [chat] },
+        draft: 'My unsent notes', lease: { workspace: 'file:///project', chatId: 'chat' } });
+    assert.equal(controller.preparePromptStackRevision('proposal', proposal.digest, file.path), true);
+    assert.deepEqual(controller.promptStackRevision, { proposalId: 'proposal', revision: 2,
+        digest: proposal.digest, filePath: file.path, fileHash: file.afterHash });
+    assert.equal(controller.draft, `/gen-stack direct-task continue Revise ${file.path}: `);
+    assert.equal(controller.previousPromptStackDraft, 'My unsent notes');
+    assert.equal(changes, 1, 'prefill does not auto-submit');
+    controller.setDraft('Keep the same behavior with clearer validation.');
+    assert.match(controller.draft, /^\/gen-stack direct-task continue Revise docs\/tasks\/direct-task\/P1-implement\.txt:/);
+    assert.equal(controller.preparePromptStackRevision('proposal', 'stale', file.path), false);
+    assert.equal(controller.preparePromptStackRevision('proposal', proposal.digest,
+        'docs/tasks/direct-task/P2-foreign.txt'), false);
+});
+
 test('Revise wireframe prefills a protected same-draft chip without sending', async () => {
     const identity = { schemaVersion: 1, id: 'draft', revision: 1, slug: 'safe-task',
         projectId: 'project', chatId: 'chat', userMessageId: 'owner', leaseDigest: 'lease',

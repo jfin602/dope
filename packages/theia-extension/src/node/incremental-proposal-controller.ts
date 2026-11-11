@@ -145,7 +145,7 @@ export class IncrementalProposalController<T = unknown> {
                     return { snapshot: committed,
                         result: { error: 'STALE_SOURCE' } as const };
                 }
-                if (Date.now() - snapshot.createdAt > this.limits.elapsedMs) {
+                if (snapshot.state !== 'ready-for-review' && Date.now() - snapshot.createdAt > this.limits.elapsedMs) {
                     committed = { ...snapshot, state: 'blocked' as const };
                     return { snapshot: committed,
                         result: { error: 'ELAPSED_LIMIT' } as const };
@@ -179,6 +179,16 @@ export class IncrementalProposalController<T = unknown> {
         if (this.identity.domain !== 'direct-prompt') return fail('DOMAIN');
         return this.status();
     }
+    /** The sealed candidate remains in saved Chat while its draft gets a checked copy-on-write revision. */
+    async reopenDirectRevision(): Promise<ProposalReceipt> {
+        if (this.identity.domain !== 'direct-prompt') return fail('DOMAIN');
+        return this.transact(async snapshot => {
+            if (snapshot.state !== 'ready-for-review') return fail('REVISION_STATE');
+            const next: ProposalSnapshot = { ...snapshot, state: 'staging', revision: snapshot.revision + 1,
+                createdAt: Date.now(), calls: 0, finalMessage: undefined };
+            return { snapshot: next, result: receipt(next, this.limits) };
+        });
+    }
     async progress(diagnostic?: string): Promise<ChatProposalProgress> {
         const snapshot = this.currentSnapshot;
         if (!snapshot) return fail('NOT_STARTED');
@@ -188,13 +198,17 @@ export class IncrementalProposalController<T = unknown> {
         catch { previewError = true; }
         const byTarget = new Map(previews.map(item => [item.target, item]));
         const clipped = (value: string) => value.length > 8192 ? value.slice(0, 8192) : value;
+        const currentReceipt = receipt(snapshot, this.limits);
         return { schemaVersion: 1, domain: snapshot.identity.domain, proposalId: snapshot.id,
             root: snapshot.identity.root, worktreeId: snapshot.identity.worktreeId,
             ownerId: snapshot.identity.ownerId, revision: snapshot.revision, state: snapshot.state,
-            targets: receipt(snapshot, this.limits).targets.map(item => {
+            nextAction: currentReceipt.nextAction.slice(0, 300),
+            targets: currentReceipt.targets.map(item => {
                 const preview = byTarget.get(item.target);
                 return { target: item.target, chunks: item.chunks, bytes: item.bytes,
-                    complete: item.complete, path: preview?.path ?? (snapshot.identity.domain === 'document' ?
+                    complete: item.complete, ...(item.title ? { title: item.title } : {}),
+                    ...(item.kind ? { kind: item.kind } : {}),
+                    path: preview?.path ?? (snapshot.identity.domain === 'document' ?
                     item.target : `staging/${item.filename ?? `${item.target}.txt`}`),
                     original: preview?.original === undefined || preview.original === null ? null : clipped(preview.original),
                     proposed: clipped(preview?.proposed ?? ''),

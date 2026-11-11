@@ -100,9 +100,17 @@ test('direct staged files seal 1, 3 and 10 work prompts with exact importer byte
                 f.identity.chatId, randomUUID(), 'owner', f.identity.leaseToken, () => ['README.md']);
             const controller = new IncrementalProposalController(f.repo, identity, f.authority, handler);
             await controller.begin();
-            for (let index = 1; index <= count; index++)
+            for (let index = 1; index <= count; index++) {
                 await controller.stageFile({ title: `Implement distinct feature ${index}`, body: directBody(index),
                     kind: 'work', complete: true });
+                if (index === 1) {
+                    const progress = await controller.progress();
+                    assert.equal(progress.targets[0].proposed, directBody(1));
+                    assert.equal(progress.targets[0].title, 'Implement distinct feature 1');
+                    assert.equal(progress.targets[0].complete, true);
+                    assert.match(progress.nextAction!, /terminal manual closeout/u);
+                }
+            }
             await controller.stageFile({ title: 'Manual final closeout', body: directCloseout,
                 kind: 'manual-closeout', complete: true });
             const proposal = (await controller.finish({ finalMessage: 'Ready for owner review.' })).candidate;

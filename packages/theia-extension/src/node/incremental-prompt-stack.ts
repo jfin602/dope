@@ -231,7 +231,7 @@ export class DirectPromptStack implements ProposalDomainHandler<ChatPromptStackP
         original: null; proposed: string }[]> {
         const groups = this.groups(snapshot, false);
         return groups.map(group => ({ target: group.handle, path: `staging/${group.filename}`,
-            original: null, proposed: `Incomplete, noncanonical ${group.handle}\n\n${group.body}` }));
+            original: null, proposed: group.body }));
     }
 
     private groups(snapshot: Readonly<ProposalSnapshot>, complete: boolean) {

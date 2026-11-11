@@ -192,6 +192,43 @@ test('direct prompt files survive restart with exact chunks, assigned handles an
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('sealed direct draft reopens for one checked file replacement without writing project files', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-direct-revision-'));
+  const repo = new ChatRepository(), chatId = randomUUID(), messageId = randomUUID();
+  const canonical = join(root, 'P1-first.txt');
+  try {
+    await repo.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+    const lease = await repo.claim(root, chatId, 'panel');
+    if (!lease.acquired) throw new Error('missing lease');
+    const identity = { root, chatId, messageId, leaseToken: lease.token, ownerId: 'panel',
+      worktreeId: 'source', sourceBasis: 'basis', domain: 'direct-prompt' as const };
+    const handler = { validateStage: async () => {}, validateComplete: async (snapshot: {
+      stages: { target: string; content: string }[] }) => snapshot.stages.map(stage => stage.content) };
+    const controller = new IncrementalProposalController(repo, identity,
+      async () => ({ worktreeId: 'source', sourceBasis: 'basis' }), handler);
+    await controller.begin();
+    const before = 'Original body '.repeat(12), other = 'Manual closeout '.repeat(9);
+    await controller.stageFile({ title: 'First', body: before, kind: 'work', complete: true });
+    await controller.stageFile({ title: 'Closeout', body: other, kind: 'manual-closeout', complete: true });
+    const sealed = await controller.finish({ finalMessage: 'Ready' });
+    assert.deepEqual(sealed.candidate, [before, other]);
+    const receipt = await controller.reopenDirectRevision();
+    assert.equal(receipt.state, 'staging');
+    await assert.rejects(controller.reopenDirectRevision(), /REVISION_STATE/);
+    await assert.rejects(controller.replaceFile({ handle: 'P2', expectedRevision: receipt.revision,
+      expectedDigest: hash(before), body: 'Changed closeout '.repeat(9) }), /REPLACE_STALE/);
+    const changed = 'Replacement body '.repeat(12);
+    const replacement = await controller.replaceFile({ handle: 'P1', expectedRevision: receipt.revision,
+      expectedDigest: hash(before), body: changed });
+    assert.equal(replacement.targets[1].digest, hash(other));
+    assert.notEqual(replacement.targets[0].digest, hash(before));
+    const next = await controller.finish({ finalMessage: 'Revised' });
+    assert.deepEqual(next.candidate, [changed, other]);
+    assert.deepEqual(sealed.candidate, [before, other]);
+    await assert.rejects(readFile(canonical), /ENOENT/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('direct staging accepts long bounded files and rejects file and total ceilings without changing accepted bytes', async () => {
   const root = await mkdtemp(join(tmpdir(), 'dope-direct-limits-'));
   const repo = new ChatRepository(), chatId = randomUUID();
