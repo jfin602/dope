@@ -1,0 +1,36 @@
+TASK: Correction 13 / P5 — Deterministic Direct Stack Integration, Security and Scale
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: 0.13.11.
+- No manifest, dependency, lockfile or version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0057, docs/planning/p13/direct-prompt-stack-generation-contract.md, docs/tasks/c13-gen-stack/{prompt-assessment,implementation-plan}.md and P1–P4 actual results. Reconcile local HEAD, dirty owner changes, compiled lib freshness, exact tests and historical c13-ass-fix P5-D3 NOT GREEN. Preserve source/evidence; no reset/stash/clean/self-commit.
+
+GOAL — T2
+Prove ONE native /gen-stack request can reach complete executable Prompt Stack Proposal and guarded publication through actual bundled Pi worker, protected Chat broker, noncanonical file controller, importer/composer, proposal card state and distinct publisher. This is the single combined headless gate, not proof of real GPT-OSS reliability.
+
+REAL-WORKER POSITIVE PATH
+Use deterministic OpenAI-compatible provider, actual Pi worker/broker, fresh disposable project and original saved Chat request:
+1. Explicit trusted /gen-stack <slug> binds owner/project/source and starts direct draft with NO Assessment/Plan records.
+2. Brokered source read; model stages substantive work prompt files and separate manual closeout using bounded file/chunk tools. Dope assigns P numbers and filenames, emits progress and retains completed bytes outside model context.
+3. One complete validated stack with truthful README/manifest, no dummy assessment/plan, exact runner grammar, dependencies, focused tests, T1/T2/T3 and applicable efficiency; successful finish creates one native reviewable proposal/digest.
+4. Verify zero canonical files/Work discovery before approval. Explicit guarded Accept in disposable fixture publishes exact reviewed bytes and enables Work discovery without grant/Run/Gate award.
+5. Repeat with substantial ten-work-prompt + manual closeout case and a multi-chunk long prompt, not a monolithic JSON packet.
+6. Targeted revision of one file retains unchanged file bytes, creates new digest and preserves prior good candidate if revised file is rejected.
+
+NEGATIVE / RECOVERY MATRIX
+Test quoted slash inertness, unsafe/reserved/duplicate slug, foreign Chat/project/owner/lease, wrong/expired revision, source/worktree/version drift, symlink/path traversal, existing target collision, malformed chunk, out-of-order/duplicate/conflicting replay, missing final closeout, incomplete file, bad runner metadata, unsupported existing-source claim vs future file, invalid dependency, budget ceiling, cancel/restart/resume, failed finish, stale proposal Accept, unsafe publication retry and owner dirty source. Preserve old accepted/executed prompt snapshots, historical drafts and legacy routes during transition. No hidden fallback to old chain for /gen-stack, no duplicate writer, no Docs applied History or Work/Gate effect.
+
+FOCUSED VALIDATION
+Inspect actual affected suites: prompt-chain-headless, protected-assessment-worker only where shared, pi-runtime, chat-backend, incremental-proposal-controller, incremental-prompt-stack, phase-stack-composer, prompt-stack-proposal, planning-stack-publication, Chat presentation/native tabs. Extend focused real-worker cases and directly affected tests; build changed packages in dependency order ONCE before compiled-lib tests; run one consolidated affected matrix and git diff --check. Avoid repeated npm test/check and unrelated Electron packaging.
+
+QUALIFICATION REPORT
+Write docs/tasks/c13-gen-stack/qualification/p5-headless-direct-stack.md with exact HEAD/dirty basis, worker/backend hashes, actual staged file titles/count, source reads, final bytes/digest, guarded Accept/Work discovery, positive/negative outcomes, test/build commands, and live-model evidence gaps. Classify PASS/PARTIAL/NOT GREEN/BLOCKED; do not infer P6 from scripted calls.
+
+STOP
+P5 is headless T2 only. Do not start P6, retire legacy, self-commit, run Work, award Roadmap status or change product version. Material incomplete authority paths must remain NOT GREEN rather than skipped.

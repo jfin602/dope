@@ -1,3 +1,5 @@
+> **2026-11-11 HISTORICAL THREE-STAGE CONTRACT / SUPERSEDED FOR NEW STACKS:** The forward owner-approved design is [ADR 0057](../../decisions/0057-direct-prompt-stack-generation.md) and [direct generation contract](direct-prompt-stack-generation-contract.md): /gen-stack <slug> stages actual prompt files directly, without mandatory Assessment/Plan records. The text below preserves the former named-chain contract and is **not** an additional prerequisite or fallback. Existing routes stay active only during qualification; remove them after real-model valid-stack/publication PASS and separate owner-approved cleanup. Historical drafts and evidence remain intact; 0.13.11 unchanged.
+
 # Named Prompt Authoring Chain — Proposed Contract
 
 **State:** Owner-approved documentation for a future correction, 2026-11-08. Authority follows approved ADR 0056. **No current shipping behavior or GREEN claim.** Version stays `0.13.11`.

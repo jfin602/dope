@@ -1,6 +1,8 @@
+> **2026-11-11 DIRECT PROMPT STACK DOMAIN / DOCS ONLY:** [ADR 0057](../../decisions/0057-direct-prompt-stack-generation.md) and [direct generation contract](direct-prompt-stack-generation-contract.md) supersede mandatory Assessment/Plan predecessors for new prompt stacks. Keep the shared controller and independent Docs /docs-review protocol. Legacy active prompt routes remain until independent real GPT-OSS stack and guarded publication qualification plus separate owner-approved cleanup. Historical R3B remains untouched; no implementation or version change by docs.
+
 # Incremental Proposal Generation — Shared Controller Contract
 
-**Decision authority:** [ADR 0055](../../decisions/0055-incremental-proposal-generation.md), approved and documented on `main` on 2026-11-08. **Status:** forward documentation design for a separate post-R3B implementation; not current product behavior or technical qualification. **Applies to:** native protected `/docs-review` and `/prompt-write <folder>`.
+**Decision authority:** [ADR 0055](../../decisions/0055-incremental-proposal-generation.md), approved and documented on `main` on 2026-11-08. **Status:** forward documentation design for a separate post-R3B implementation; not current product behavior or technical qualification. **Applies to:** native protected /docs-review and future direct /gen-stack; historical /prompt-write remains documented below as a dated predecessor.
 
 ## Goal and non-goals
 
@@ -14,7 +16,7 @@ The existing ChatBackend/protected skill dispatcher, project handle, owner lease
 
 - `proposalId`, session revision, originating `chatId`/user/assistant turn, skill and owner/lease.
 - Project root, worktree identity, source/version and (when linked) accepted locked Roadmap Phase/Gate/Criterion/revision.
-- Exact selected assessment and plan IDs for `/prompt-write`; relevant actually-read source hashes and page coverage for Docs.
+- For direct /gen-stack: original trusted owner request and optional reviewed outline, not mandatory Assessment/Plan IDs; relevant actually-read source hashes and page coverage for Docs.
 - Ordered intended targets or explicit bounded discovery scope, stage sequence, content/checksums, resource budgets, lifecycle state and timestamp.
 - A distinct **domain authority**: docs application or prompt-stack publication. Session/controller is only a staging authority.
 
@@ -43,15 +45,15 @@ For a new document, permit `create`/chunk append with explicit ordered offsets o
 
 A finish-time target audit must check every requested create/update, required cross-file consistency, source inspection coverage and any declared omissions, safe exact paths, total size and live source/version basis. The session can report an unsupported request as blocked rather than silently omitting required changes. The Docs application owner alone can later apply the exact sealed target set and create applied-only History.
 
-## Prompt-stack stage mechanics
+## Direct prompt-stack stage mechanics (ADR 0057 forward amendment)
 
-The selected reviewed `/prompt-ass` supplies only the work-prompt **count/task-division wireframe**; the selected completed `/prompt-plan` supplies the full source-grounded sequence, acceptance, T1/T2/T3 and efficiency requirements. This controller supports **Prompt Write** assembly and review, not exhaustive Assessment authoring or a second model-invented Plan. Preserve task IDs/count/boundaries unless the owner explicitly reviews an upstream revision.
+For new /gen-stack, the owner selects a safe immutable slug and starts one protected draft directly from saved Chat and relevant source; no mandatory sealed /prompt-ass or /prompt-plan. The model stages substantive file text or bounded chunks, not PlanRecord replicas, hashes, internal IDs or a giant final JSON. Dope owns stable file handles, contiguous P1–Pn filenames, safe target paths, stage sequence, source/version basis, exact bytes and digest. The shared proposal controller remains the only staging lifecycle owner.
 
-For `/prompt-write`, retain the saved selected `/prompt-ass` and `/prompt-plan` basis, including observed source/test identities. Emit small per-step structures: stable plan-step ID, bounded scope, implementation goal, dependencies, working files/tests, tier/model/browser/manual flags, acceptance, minimal validation and optional specific content sections. The model may construct detailed sections incrementally; Dope can render common boilerplate and required grammar through the **existing deterministic composer/importer** without requiring a single JSON outline for the entire stack.
+Provide a compact status tool, a file/chunk staging tool, checked file-specific copy-on-write revision and a finish operation with short untrusted finalMessage. Each stage returns a bounded authoritative receipt and persists noncanonical bytes outside growing model context. No arbitrary four-work-item cap; qualify ten-plus work prompts with one terminal manual T3 closeout. Reject unsafe, stale, duplicate/conflicting, out-of-order or oversized stages with actionable errors.
 
-Support dependency-compatible ordering and bounded **ten-or-more-prompt** stacks, including substantial prompt bodies, without a four-work-item architectural cap. Bound each prompt, total session bytes, stage count, context and call budget explicitly; exceeding a bound produces a recoverable, truthful limitation, not truncation or partial authorization. Keep requirements from `docs/workflow.md`: prompt efficiency audit of the complete stack, small T1 responsibilities, explicit T2/T3, appropriate build/test precision and correct model/manual flags.
+At finish, assemble exact runnable files with the existing importer/composer, validating runner grammar, correct metadata, dependencies, meaningful acceptance, T1/T2/T3, applicable Prompt Efficiency Gate, source/version and one final manual closeout. Do not fabricate prompt-assessment.md or implementation-plan.md; generate truthful README/manifest and genuine owner-requested supporting documents only. Existing-source claims require grounded evidence, while future files/tests proposed by the prompt need not exist or have been read in that turn. A complete model final message alone cannot seal or approve.
 
-On finish, Dope compiles exact contiguous `P1`–`Pn` files, exactly one **final manual closeout**, assessment/plan and manifest/README as applicable. Validate all grammar and dependency edges, T1/T2/T3/evidence allocation, no placeholder acceptance text, required test working sets and source/version basis. Finish must not create canonical `docs/tasks/` files or publish them to Work. The existing distinct publisher, after explicit Accept, publishes exact verified bytes and enables Work discovery without grant/Run.
+Only the distinct existing guarded prompt publisher may write exact reviewed files after explicit owner Accept. Preserve native Theia tabs/Open All, copy-on-write revision, source/owner/lease/collision/symlink protections, no automatic Work Run/grant and no Roadmap award. The older Plan-linked /prompt-write behavior is historical/transitional and must be retired only after successful independent real-model qualification and separately authorized cleanup.
 
 ## Incremental context and progress
 
@@ -75,7 +77,7 @@ The final message may describe intent and what was staged but may not be authori
 ## Review, revision and publish boundary
 
 - Docs: `Accept` invokes existing source-bound docs create/update application; `Reject` has zero canonical effects; `Revise` stages copy-on-write edits against the selected saved candidate, retaining the last valid one until the new complete digest seals. Preserve applied-only History and no user-facing `/docs-apply`.
-- Prompt stacks: `Accept` invokes the distinct guarded native prompt-stack publisher and verifies Work discovery, not Work execution; `Reject` discards only the pending candidate; `Revise` returns to `/prompt-write` with selected candidate, earlier assessment/plan and owner instructions, then stages changed content without copying all unchanged text through the model.
+- Prompt stacks: Accept invokes the distinct guarded native prompt-stack publisher and verifies Work discovery, not Work execution; Reject discards only the pending candidate; Revise returns to /gen-stack with checked selected proposal/file handle and owner instructions, then stages changed content without re-sending unchanged files. The earlier /prompt-write revision route remains historical during transition.
 - Both: recheck project, owner, worktree, Chat, lease/digest, paths/symlinks/traversal, source hashes, locked Roadmap revision where applicable, target collisions and exact bytes at approval. Never overwrite dirty owner source or accepted/executed prompt snapshots. Journal actual effects/recovery idempotently. Never convert proposal tabs to normal editable real-file tabs.
 
 ## Resource and acceptance requirements

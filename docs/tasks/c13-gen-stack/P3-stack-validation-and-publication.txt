@@ -1,0 +1,33 @@
+TASK: Correction 13 / P3 — Complete Direct Stack Validation and Guarded Publication
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: 0.13.11.
+- No manifest, dependency, lockfile or package-version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADRs 0055, 0056 and 0057, docs/planning/p13/direct-prompt-stack-generation-contract.md, docs/tasks/c13-gen-stack/implementation-plan.md. Inspect actual P1/P2 source and tests, HEAD/dirty work, existing importer/composer/proposal/publisher. Preserve owner changes and executed snapshots; no reset/stash/clean or self-commit.
+
+GOAL — T1
+Turn P2's staged substantive file text into one complete runner-compatible Prompt Stack Proposal, validated at the file/stack boundary and published ONLY through existing guarded owner Accept. Remove the NEW direct domain's dependence on selected Assessment/Plan records and fictitious supporting files, without weakening the publisher.
+
+SOURCE BOUNDARY
+Inspect packages/agent-core/src/phase-stack-composer.ts and sequence importer, packages/theia-extension/src/node/incremental-prompt-stack.ts, prompt-stack-proposal.ts, planning-stack-publication.ts, incremental-proposal-controller.ts, chat-backend.ts, and actual tests. Reuse one existing prompt-stack proposal/publisher and native file schema. Do not create a second publisher, Docs writer or unrestricted filesystem API.
+
+REQUIREMENTS
+- From completed staged files, Dope deterministically assigns safe filenames and contiguous P1–Pn numbers, with exactly one final manual T3 closeout. Model content remains substantive; Dope may add only mechanical runner metadata, never fabricate source facts, acceptance or test PASS.
+- Validate exact importer grammar, required TASK/MODEL/REASONING/USAGE/Browser required/VERSIONING, correct unchanged product version, T1/T2 work roles, dependency-compatible order, meaningful implementation/acceptance and focused tests/builds, Prompt Efficiency Gates (including ADR 0016/0037 for UI), and terminal manual closeout. Reject missing/contradictory content with actionable file/section feedback; retain noncanonical candidate for targeted repair.
+- Distinguish actual existing-source assertions needing brokered evidence or explicit uncertainty from proposed future files/tests that cannot yet be read. Do not require a Plan step's workingSet and validationTargets to be read in the same model turn; no PlanRecord is generated. Source/version/owner/lease integrity stays strict.
+- Produce truthful README/manifest based on actual files and source basis. Do NOT fabricate prompt-assessment.md or implementation-plan.md. Adapt importer/proposal/publisher's direct-domain supporting-file assumptions instead of passing empty dummy records. Existing historical native proposal format and previously published stacks remain readable; no silent migration.
+- stack_finish/proposal_finish must seal one exact file list and Dope-owned digest only when complete and current. Model finalMessage is bounded display prose, never approval. No canonical files or Work discovery before explicit Accept.
+- Accept rechecks owner/project/Chat/lease, source/worktree/version and optional locked Roadmap basis, digest, paths/symlinks/traversal, existing-folder collisions, exact bytes, and journaling/restart recovery. Reject/Revise never mutate canonical files. Approved publication enables existing Work discovery without grant/Run, applied Docs History or Roadmap award.
+- Preserve existing Docs proposal path and legacy accepted/executed prompt snapshot semantics. P4 owns native review controls; P5 owns full integration and malicious negatives.
+
+FOCUSED VALIDATION
+Extend composer/importer, incremental-prompt-stack, prompt-stack-proposal, planning-stack-publication and Chat broker tests as needed. Verify 1 work + closeout, 3 work + closeout, 10 work + closeout, correct grammar/README, no dummy docs, exact digest, malformed sections, missing closeout, invalid dependencies, future-vs-existing paths, source drift, collision, no pre-Accept writes and exact guarded Accept in disposable fixture. Run smallest changed-package builds, focused tests, git diff --check. Do not repeatedly run broad full suites.
+
+EXIT
+Report exact source/commands, PASS/PARTIAL/BLOCKED, proposal bytes and authority evidence. T1 <=8-minute target (10 soft/15 hard) unless source security needs more; do not weaken checks. STOP; no P4, live browser, self-commit, Work Run, Gate/Phase award or version change.

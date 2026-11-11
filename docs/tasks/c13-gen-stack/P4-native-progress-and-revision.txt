@@ -1,0 +1,32 @@
+TASK: Correction 13 / P4 — Progressive Native Draft Review and File-Specific Revision
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol Medium; use High if a protected owner/lease boundary requires architectural changes.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: 0.13.11.
+- No manifest, dependency, lockfile or version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0057, ADR 0054, ADR 0016, ADR 0037, docs/planning/p13/direct-prompt-stack-generation-contract.md, docs/tasks/c13-gen-stack/implementation-plan.md. Inspect P1–P3 actual source, current ChatPanel and proposal card/native Theia review, HEAD/dirty work. Preserve owner edits, historical drafts and qualification; no reset/stash/clean/self-commit.
+
+GOAL — T1
+Make direct /gen-stack feel like file authoring: progressively show accepted draft files, open exact read-only bytes in existing native Theia tabs, revise ONE file without restarting all authoring, and offer one actionable final Prompt Stack Proposal. No duplicate Documents workspace or approval service.
+
+SOURCE BOUNDARY
+Inspect packages/theia-extension/src/browser/chat-panel-widget.ts and related Chat presentation, existing native editor virtual tabs and file links/Open All, packages/chat/src/index.ts, chat-backend.ts, incremental-proposal-controller.ts and proposal review actions. Reuse current Chat card, proposal state, existing native Theia editor and distinct guarded prompt publisher. Do not create another Chat view, modal editor or filesystem writer.
+
+REQUIREMENTS
+- One stable draft/card identity. During staging show truthful accepted files with titles/order, in-progress file and current next action. Provisional files are clearly incomplete/read-only; Accept is disabled until the whole candidate seals. No misleading model prose-as-progress.
+- File links/Open All open exact staged noncanonical bytes in native tabs, not writable canonical files. Show Source/Diff/Formatted only where actually supported, no duplicate file explorer. Preserve narrow-pane, focus, keyboard, touch, contrast and semantic tokens per ADR 0016/0037.
+- Ready proposal shows safe target, P1–Pn, final manual closeout, source/version, digest, file links/Open All and Accept/Reject/Revise Proposal. Final natural message appears once above card; reload must not duplicate it.
+- Add targeted Revise file action: prefill existing Chat composer with selected proposal and checked file handle/revision, allow natural instructions, never auto-submit. A copy-on-write replacement changes only selected draft file unless dependencies/whole-stack consistency demand explicit additional review. Prior complete candidate remains valid during failed revision; revalidate whole stack and generate new digest on success.
+- Reject discards only candidate; Accept still uses existing guarded publisher with fresh authority/source checks. Source/owner/lease drift visibly blocks. Preserve historical old-chain card renderability without offering stale publication actions; no hidden new route through legacy tools.
+- Never mutate actual project source, run Work, create Docs applied History or award Roadmap progress by preview/revision.
+
+FOCUSED VALIDATION
+Extend directly affected Chat presentation/card/native editor tests. Verify progressive accepted/incomplete/ready/blocked states, Open All order, exact read-only bytes, targeted revision, failed revision retaining previous digest, no auto-send, cancel/reload, stale/foreign selection, keyboard/narrow/theme behavior and no pre-Accept writes. If UI change cannot be proven headless, record it for P6 instead of claiming visual PASS. Build changed packages only as needed; run focused tests and git diff --check.
+
+EXIT
+Report exact source/tests, PASS/PARTIAL/BLOCKED and browser-only gaps. T1 <=8-minute target (10 soft/15 hard) without compromising security. STOP; P5 owns integration and P6 manual browser. No self-commit, live inference, publication, Work, Gate or version change.

@@ -1,0 +1,32 @@
+TASK: Correction 13 / P2 — Bounded File-Oriented Prompt Staging and Durable Continuation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: 0.13.11.
+- No dependency, manifest, lockfile or version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADRs 0055 and 0057, docs/planning/p13/direct-prompt-stack-generation-contract.md, docs/tasks/c13-gen-stack/implementation-plan.md. Inspect P1 actual source and tests, local HEAD/dirty work, existing incremental proposal controller, Pi worker and draft persistence. Preserve owner edits and historical evidence; do not reset/stash/clean or self-commit.
+
+GOAL — T1
+Allow the selected local model to stage substantive prompt-file content directly in small protected tool calls. Dope owns stable draft file handles, P numbering, path allocation, bounded chunk ordering and durable progress. No mandatory Assessment/Plan or giant model-authored JSON.
+
+SOURCE BOUNDARY
+Inspect packages/theia-extension/src/node/incremental-proposal-controller.ts, incremental-prompt-stack.ts, chat-backend.ts, prompt-stack-proposal.ts, packages/pi-runtime/worker.mjs, packages/chat/src/index.ts and directly affected tests. Reuse the existing controller/persistence/Chat tool broker; add one direct prompt-file domain, not a second controller, writer, agent or public write_file.
+
+REQUIREMENTS
+- Model-facing API is minimal: trusted stack_status, stack_stage_file (title, substantive body/chunk, kind work or terminal manual closeout, optional assigned handle for unfinished chunk), and finish handoff to P3. Tool names may adapt to current code but keep one authoritative route. Dope supplies file ID, safe slug/filename, contiguous P number, stage sequence, hashes and owner/source identity. Model cannot choose canonical paths or mint authority.
+- One file at a time in execution order; accept a complete small file or bounded multi-chunk file. Preserve exact UTF-8 text, chunk order and completion receipt. One distinct terminal manual closeout; reject any work after it. Do not force model to duplicate PlanRecord IDs, source hashes, tier audit objects or count.
+- Persist accepted chunks atomically as noncanonical state outside Docs discovery, Git dirty/source fingerprint and Work stack discovery. Return bounded status with completed file handles/titles, current unfinished target, next action, budgets and errors, not full prior file bodies.
+- Source reads remain brokered/permissioned; list/search are not file reads. Avoid requiring reads of every proposed future file/test. Existing-source factual claims must remain truthful and source-grounded; finish-time validation belongs to P3.
+- Bound payload/chunk/file/total bytes, file/stage/tool counts and elapsed time. Exact idempotent replay returns receipt; conflicting or out-of-order replay rejects without changing prior accepted chunks. On cancellation/provider failure/restart retain verified completed files; resume only with matching owner/project/lease/source/revision. Wrong/foreign/stale sessions block safely.
+- Preserve previous complete proposal during targeted revision; P4 owns the UI for revision, P3 owns final validation. Do not publish, Run Work or create fake assessment/plan documents during staging.
+
+FOCUSED VALIDATION
+Use incremental-proposal-controller, incremental-prompt-stack, pi-runtime/worker, Chat broker and store tests where touched. Exercise one-file, multi-file, long chunked file, terminal closeout, duplicate and conflicting replay, out-of-order, interruption/restart, budget ceiling, wrong project/owner/lease, source drift, and no canonical write. Build changed packages in dependency order only as needed; run focused tests and git diff --check.
+
+EXIT
+Report actual tool contracts, accepted-state receipts, source/test commands and P3 handoff. T1 <=8-minute target (10 soft/15 hard), no unsafe shortcuts. STOP; no P3, live inference, self-commit, canonical publication, Work, Gate or version effect.

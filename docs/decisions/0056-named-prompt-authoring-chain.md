@@ -1,3 +1,5 @@
+> **2026-11-11 FORWARD SUPERSESSION / HISTORICAL ADR:** [ADR 0057](0057-direct-prompt-stack-generation.md) replaces this ADR's **mandatory three-stage authoring requirement** for new prompt stacks with direct /gen-stack file authoring. This document remains the dated historical decision and description of existing legacy drafts; it is NOT a future entry requirement. Retain active old routes until the new path passes independent real GPT-OSS and guarded publication qualification, then remove them through a separate owner-approved cleanup. See [c13-gen-stack](../tasks/c13-gen-stack/README.md). No product implementation or retroactive qualification by this amendment.
+
 # ADR 0056 — Named, Persistent Prompt Authoring Chain
 
 **Status: OWNER-APPROVED DOCUMENTATION, NOT IMPLEMENTED.** Date: 2026-11-08. **Product version:** unchanged `0.13.11`. This ADR does not authorize source implementation, runner execution, publication, Work, or Roadmap qualification.

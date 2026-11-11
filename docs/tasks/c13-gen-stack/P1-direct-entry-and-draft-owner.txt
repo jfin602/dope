@@ -1,0 +1,32 @@
+TASK: Correction 13 / P1 — Trusted Direct Stack Entry and Draft Ownership
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: no.
+
+VERSIONING
+- Required unchanged project version: 0.13.11.
+- No manifest, dependency, lockfile or package-version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0057, docs/planning/p13/direct-prompt-stack-generation-contract.md, docs/tasks/c13-gen-stack/{prompt-assessment,implementation-plan}.md and the current relevant Chat/proposal source. Inspect local HEAD/dirty owner work and historical P5-D3 NOT GREEN. Preserve owner edits, accepted/executed prompt snapshots and evidence; do not reset/stash/clean or self-commit. Runner owns checkpoints.
+
+GOAL — T1
+Add a trusted, explicit /gen-stack <owner-slug> <task details> entry that starts ONE durable, project/owner/Chat/source-bound noncanonical Prompt Stack draft directly from the user request and saved conversation, without requiring a sealed /prompt-ass or /prompt-plan. This task owns entry and identity only; P2 owns model file staging.
+
+SOURCE BOUNDARY
+Inspect packages/theia-extension/src/node/chat-skills.ts, chat-backend.ts, prompt-authoring-stage.ts, prompt-draft-store.ts, incremental-proposal-controller.ts, packages/chat/src/index.ts and actual slash-command/Chat tests. Reuse existing protected skill registration, selected Pi worker, ChatRepository/proposal owner and lease/source guards. Do not add another Chat window, agent, filesystem writer or global draft database.
+
+REQUIREMENTS
+- Recognize only send-time trusted /gen-stack, never quoted examples, previous model text, pasted code blocks or chip labels. Selection prefills composer and never auto-submits.
+- Require owner-selected safe lowercase ASCII hyphenated slug, 3–32 chars; reject empty/unsafe/reserved/path-like/duplicate slugs and existing canonical folder collisions. Derive eventual docs/tasks/<slug>/ only inside Dope.
+- Bind opaque draft ID, originating Chat/turn, user instruction and bounded relevant prior discussion, root/worktree/source/version, owner/lease and optional locked Roadmap revision. Do not replace the user's substantive task with a generic summary.
+- Initialize a durable noncanonical direct-generation session through existing Chat/proposal transaction owner; source and authority preconditions apply to every future stage. Do not require AssessmentRecord, PlanRecord, checked Assessment/Plan chips or artificial supporting docs.
+- State can be initializing/staging/blocked/stale; no Accept/publish before a complete sealed proposal. Explicitly distinguish direct candidate from historical three-stage drafts. Preserve existing legacy commands and historical read-only records during qualification; no hidden fallback to them for /gen-stack.
+- Existing Docs review, Work grants/Runs and Roadmap authorities remain untouched. If integration requires P2 tools, expose a truthful pending status, not a fabricated complete candidate.
+
+FOCUSED VALIDATION
+Extend only directly affected slash skill/Chat/backend/draft tests. Check fresh valid entry, saved conversation binding, quote-only inertness, wrong project/owner/lease, duplicate slug, existing folder, stale source, restart/blocked state, no Plan dependency, no canonical files and no Work/Gate effect. Build changed compiled packages only as needed, run focused tests and git diff --check.
+
+EXIT
+Report exact source, tests, PASS/PARTIAL/BLOCKED and P2 handoff. T1 target <=8 minutes with focused validation (10 soft/15 hard); do not compromise safety to fit. STOP after P1; no P2, model inference, self-commit, publisher, Work, Roadmap award or version change.

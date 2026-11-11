@@ -1,0 +1,42 @@
+TASK: Correction 13 / P6 — Independent Real GPT-OSS Direct Stack Generation and Review
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: 0.13.11.
+- Manual T3 closeout; no manifest, dependency, lockfile or version changes.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0057, docs/planning/p13/direct-prompt-stack-generation-contract.md, docs/tasks/c13-gen-stack/{prompt-assessment,implementation-plan}.md and P1–P5 actual evidence. Reconcile local HEAD/dirty work, compiled/served frontend/backend/worker hashes, model readiness and connected Codex browser. Preserve historical c13-ass-fix/P5-D3 NOT GREEN and all owner work; do not reset/stash/clean/self-commit. If P5 has material authority/source/publisher NOT GREEN, stop BLOCKED.
+
+MODEL LOCK
+Use the owner-selected actually loaded LM Studio GPT-OSS 20B MXFP4, normally context 16,384, parallel 1, Managed context, Auto/Low reasoning, generation Ask and commands Ask. Verify loaded_instances, selected connection and actual saved execution model; requested temperature=1/top_p=1 where observable. Distinguish requested from engine-effective values. Record available RAM/swap/disk. Do not load/change model, context, sampling, parallelism, global LM Studio or policies without owner action. Stop BLOCKED if unavailable or unsafe.
+
+GOAL — T3
+Independently demonstrate the new /gen-stack produces complete, task-specific, executable prompt files in a real connected browser without /prompt-ass or /prompt-plan, followed by native review, targeted revision, guarded owner-approved publication and Work discovery. Scripted headless PASS is insufficient.
+
+FRESH FIXTURES AND JOURNEY
+Use fresh tracked-clean disposable JavaScript/TypeScript projects, original source/tests/docs and recorded hashes. No prior .dope draft, no canonical task folder, no reused stopped Chat. Verify exact built/served source. Prefer two bounded cases to test useful reliability without an artificial ten-prompt live stress test:
+A. Small slug-helper separator correction with existing implementation, test and docs; request a compact stack with one or two work prompts plus manual closeout.
+B. A meaningfully multi-boundary feature (e.g. Chat activity persistence + UI status + tests), with owner-requested three coherent work prompts plus manual closeout and real relevant source files. Keep fixture small enough for 16K context.
+
+For EACH case:
+1. Discuss task naturally in saved Chat; optionally refine outline without sealing Assessment/Plan.
+2. Submit ONE explicit /gen-stack <fresh-slug> <instructions> using selected real model. Observe actual brokered reads and model-facing file/chunk calls, Dope-assigned filenames/IDs, progress receipts and any actionable errors. No hidden manual synthesis of tool calls or duplicate command.
+3. Verify each prompt's substantive specificity: requested feature, preservation, actual code/tests, dependencies, T1/T2, bounded validation and concrete acceptance. Verify one terminal manual T3 closeout. Reject generic boilerplate masquerading as a valid task-specific stack.
+4. Require successful finish receipt and one native Prompt Stack Proposal with exact file bytes/digest and truthful README, no fabricated assessment/plan docs, no canonical writes before Accept. Check file links, Open All and read-only native Theia previews.
+5. In a reviewable candidate, request ONE targeted file revision through checked card/composer; verify unchanged other files, source/revision/digest and prior candidate preservation on failure. Verify reload persists state, no duplicate card, keyboard/narrow behavior where observable.
+6. For guarded publication, request explicit owner approval of the disposable candidate. Only on actual Accept verify exact reviewed bytes and Work discovery; never auto Run/grant Work or award Roadmap progress. If owner approval is unavailable, mark publication NOT EXERCISED and do not claim full retirement readiness.
+
+FAILURE POLICY
+A recoverable tool rejection may be corrected inside the same authorized model turn; record actual feedback and receipt. On material provider/worker/source/authority failure, failed seal, model claiming nonexistent stages, unsafe write or repeated non-progress, stop that case, preserve evidence, and do not automatically start another correction run. Do not change model settings or replay the old three-stage workflow. Keep the stopped fixture/Chat available.
+
+REPORT AND RETIREMENT GATE
+Write docs/tasks/c13-gen-stack/qualification/p6-manual-live-direct-stack.md with exact HEAD/served hashes, fixture bytes, model settings, original request, brokered reads, stage sequence, actual file contents/digest, native preview/revision, owner Accept and exact publication if authorized, Work discovery, timing, failures and unknowns. Mark each case PASS/PARTIAL/NOT GREEN/BLOCKED/NOT EXERCISED separately.
+
+A scoped full PASS requires complete real-model task-specific stacks with correct grammar/manual closeout, native review and targeted revision, source/authority integrity, and no unauthorized side effects. **Legacy retirement requires additionally observed owner-approved disposable publication/Work discovery and explicit subsequent owner acceptance of the evidence.** P6 itself must NOT remove old commands or controllers. If any essential case fails, overall NOT GREEN and no retirement. Historical P5-D3 and other reports remain unchanged.
+
+STOP
+Manual P6 only; normal runner stops before it. No --closeout shortcut, no automatic P7/repair, legacy cleanup, self-commit, Work Run, Roadmap Gate/Phase GREEN or version change. Owner decides next action from truthful evidence.
