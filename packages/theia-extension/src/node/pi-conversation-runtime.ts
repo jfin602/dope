@@ -243,6 +243,7 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
                 ...(request.projectTools.roadmapTools ? { roadmapTools: true } : {}),
                 ...(request.projectTools.roadmapGeneration ? { roadmapGeneration: true } : {}),
                 ...(request.projectTools.proposalTools ? { proposalTools: true } : {}),
+                ...(request.projectTools.directProposalTools ? { directProposalTools: true } : {}),
                 ...(request.projectTools.assessmentTools ? { assessmentTools: true } : {}),
                 ...(request.projectTools.planTools ? { planTools: true } : {}) } : {}),
                 operationPolicy: request.projectTools?.operationPolicy,

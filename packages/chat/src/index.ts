@@ -115,7 +115,8 @@ export interface ChatExecution {
     toolEvents?: { name: 'read_file' | 'list_files' | 'search_paths' | 'search_text' | 'run_command' |
         'dope_read' | 'dope_list' | 'dope_search_paths' | 'dope_search_text' | 'dope_command' |
         'roadmap_read' | 'roadmap_stage' | 'roadmap_cancel' | 'roadmap_phase' | 'roadmap_finish' |
-        'proposal_status' | 'proposal_stage_document' | 'proposal_stage_prompt' | 'proposal_finish' |
+        'proposal_status' | 'proposal_stage_document' | 'proposal_stage_prompt' |
+        'proposal_stage_file' | 'proposal_finish' |
         'assessment_status' | 'assessment_stage' | 'assessment_finish' |
         'plan_status' | 'plan_stage_step' | 'plan_correct_step' | 'plan_stage_closeout' |
         'plan_stage_efficiency' | 'plan_finish';
@@ -163,7 +164,7 @@ export interface ChatAssistantMessage {
     lockedRoadmapPlan?: ChatLockedRoadmapPlan; // Inert evidence, never an approval or proposal.
 }
 export interface ChatProposalProgress {
-    schemaVersion: 1; domain: 'document' | 'prompt'; proposalId: string;
+    schemaVersion: 1; domain: 'document' | 'prompt' | 'direct-prompt'; proposalId: string;
     root: string; worktreeId: string; ownerId: string; revision: number;
     state: 'staging' | 'ready-for-review' | 'cancelled' | 'stale' | 'blocked';
     targets: { target: string; path: string; chunks: number; bytes: number; complete: boolean;
@@ -656,7 +657,8 @@ function parseExecution(value: unknown): ChatExecution {
             return { name: choice(event.name, ['read_file', 'list_files', 'search_paths', 'search_text', 'run_command',
                 'dope_read', 'dope_list', 'dope_search_paths', 'dope_search_text', 'dope_command',
                 'roadmap_read', 'roadmap_stage', 'roadmap_cancel', 'roadmap_phase', 'roadmap_finish',
-                'proposal_status', 'proposal_stage_document', 'proposal_stage_prompt', 'proposal_finish',
+                'proposal_status', 'proposal_stage_document', 'proposal_stage_prompt',
+                'proposal_stage_file', 'proposal_finish',
                 'assessment_status', 'assessment_stage', 'assessment_finish',
                 'plan_status', 'plan_stage_step', 'plan_correct_step', 'plan_stage_closeout',
                 'plan_stage_efficiency', 'plan_finish'] as const,
@@ -797,7 +799,7 @@ export function parseProposalProgress(value: unknown): ChatProposalProgress {
             typeof target.truncated !== 'boolean') throw new Error('Invalid proposal progress target');
         return target as unknown as ChatProposalProgress['targets'][number];
     });
-    return { schemaVersion: 1, domain: choice(v.domain, ['document', 'prompt'] as const, 'proposal domain'),
+    return { schemaVersion: 1, domain: choice(v.domain, ['document', 'prompt', 'direct-prompt'] as const, 'proposal domain'),
         proposalId: identifier(v.proposalId), root: string(v.root, 'proposal root'),
         worktreeId: string(v.worktreeId, 'proposal worktree'), ownerId: string(v.ownerId, 'proposal owner'),
         revision: v.revision as number,

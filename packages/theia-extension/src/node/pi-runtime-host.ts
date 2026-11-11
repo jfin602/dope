@@ -103,7 +103,7 @@ const boundedCount = (value: unknown): value is number =>
 const offeredToolNames = new Set(['read_file', 'list_files', 'search_paths', 'search_text',
     'run_command', 'edit_file', 'read_command_output', 'roadmap_read', 'roadmap_stage',
     'roadmap_cancel', 'roadmap_phase', 'roadmap_finish', 'proposal_status',
-    'proposal_stage_document', 'proposal_stage_prompt', 'proposal_finish',
+    'proposal_stage_document', 'proposal_stage_prompt', 'proposal_stage_file', 'proposal_finish',
     'assessment_status', 'assessment_stage', 'assessment_finish',
     'plan_status', 'plan_stage_step', 'plan_correct_step', 'plan_stage_closeout',
     'plan_stage_efficiency', 'plan_finish']);
@@ -193,10 +193,10 @@ export class PiRuntimeHost {
     openChatToolsSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string,
         thinkingLevel?: string, roadmapTools = false, roadmapGeneration = false, proposalTools = false,
         assessmentTools = false, operationPolicy?: NonNullable<ConversationRequest['projectTools']>['operationPolicy'],
-        planTools = false):
+        planTools = false, directProposalTools = false):
         Promise<{ version: string; tools: string[]; resources: string }> {
         return this.request({ type: 'open', mode: 'chat-tools', model, cwd, roadmapTools, roadmapGeneration,
-            proposalTools, assessmentTools, planTools,
+            proposalTools, assessmentTools, planTools, directProposalTools,
             ...(operationPolicy ? { operationPolicy } : {}),
             ...(credential ? { credential } : {}), thinkingLevel });
     }

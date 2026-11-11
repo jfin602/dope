@@ -138,3 +138,86 @@ test('broker-owned stage order serializes calls and rejects conflicting transpor
     assert.equal((await controller.finish({ finalMessage: 'Ready.' })).candidate, 'candidate');
   } finally { await rm(root, { recursive: true, force: true }); }
 });
+
+test('direct prompt files survive restart with exact chunks, assigned handles and terminal closeout', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-direct-files-'));
+  const repo = new ChatRepository(), chatId = randomUUID(), messageId = randomUUID();
+  const canonical = join(root, 'P1-implement.txt');
+  try {
+    await repo.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+    const lease = await repo.claim(root, chatId, 'panel');
+    if (!lease.acquired) throw new Error('missing lease');
+    const identity = { root, chatId, messageId, leaseToken: lease.token, ownerId: 'panel',
+      worktreeId: 'source-a', sourceBasis: 'head:version:source-a', domain: 'direct-prompt' as const };
+    let basis = identity.sourceBasis;
+    const authority = async () => ({ worktreeId: 'source-a', sourceBasis: basis });
+    const controller = new IncrementalProposalController(repo, identity, authority);
+    await controller.begin();
+    const first = { title: 'Implement Unicode labels', body: 'A'.repeat(100), kind: 'work' as const,
+      complete: false };
+    const one = await controller.stageFile(first, 1);
+    assert.equal(one.targets[0].target, 'P1');
+    assert.equal(one.targets[0].filename, 'P1-implement-unicode-labels.txt');
+    assert.equal(one.targets[0].digest, hash(first.body));
+    assert.deepEqual(one.incompleteTargets, ['P1']);
+    const reopened = new IncrementalProposalController(new ChatRepository(), identity, authority);
+    assert.equal((await reopened.resume()).revision, 1);
+    assert.equal((await reopened.stageFile(first, 1)).revision, 1);
+    await assert.rejects(reopened.stageFile({ ...first, body: 'B'.repeat(100) }, 1), /REPLAY_CONFLICT/);
+    await assert.rejects(reopened.stageFile({ ...first, body: 'B'.repeat(100) }, 2), /CHUNK_ORDER/);
+    await assert.rejects(reopened.stageFile({ ...first, handle: 'P2' }, 2), /CHUNK_ORDER/);
+    await assert.rejects(reopened.stageFile({ ...first, handle: 'P1', body: 'B'.repeat(16_001) }, 2),
+      /STAGE_ARGUMENTS/);
+    const second = { ...first, handle: 'P1', body: '🎯'.repeat(30), complete: true };
+    assert.equal((await reopened.stageFile(second, 2)).targets[0].digest, hash(first.body + second.body));
+    const next = await reopened.stageFile({ title: 'Verify labels', body: 'C'.repeat(100),
+      kind: 'work', complete: true }, 3);
+    assert.deepEqual(next.completedTargets, ['P1', 'P2']);
+    await assert.rejects(reopened.stageFile({ title: 'Manual closeout', body: 'D'.repeat(100),
+      kind: 'manual-closeout', complete: false }, 4), /CLOSEOUT_ORDER/);
+    const closeout = await reopened.stageFile({ title: 'Manual closeout', body: 'D'.repeat(100),
+      kind: 'manual-closeout', complete: true }, 4);
+    assert.equal(closeout.targets.at(-1)?.target, 'P3');
+    assert.equal(closeout.finishPermitted, true);
+    await assert.rejects(reopened.stageFile({ title: 'More work', body: 'E'.repeat(100),
+      kind: 'work', complete: true }, 5), /TERMINAL_CLOSEOUT/);
+    assert.equal((await reopened.progress()).targets[0].proposed, '');
+    await assert.rejects(readFile(canonical), /ENOENT/);
+    await reopened.stop();
+    assert.equal((await reopened.resume()).state, 'staging');
+    const wrongOwner = new IncrementalProposalController(repo, { ...identity, ownerId: 'foreign' }, authority);
+    await assert.rejects(wrongOwner.resume(), /FOREIGN_SESSION/);
+    basis = 'changed';
+    await assert.rejects(reopened.resume(), /STALE_SOURCE/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('direct staging accepts long bounded files and rejects file and total ceilings without changing accepted bytes', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dope-direct-limits-'));
+  const repo = new ChatRepository(), chatId = randomUUID();
+  try {
+    await repo.mutate(root, 0, { type: 'create-chat', id: chatId, folderPath: '' });
+    const lease = await repo.claim(root, chatId, 'panel');
+    if (!lease.acquired) throw new Error('missing lease');
+    const identity = { root, chatId, messageId: randomUUID(), leaseToken: lease.token,
+      ownerId: 'panel', worktreeId: 'worktree', sourceBasis: 'basis', domain: 'direct-prompt' as const };
+    const limits = { payloadBytes: 20_000, chunkBytes: 16_000, fileBytes: 120_000,
+      totalBytes: 120_000, files: 64, stages: 256, calls: 512, elapsedMs: 60_000 };
+    const controller = new IncrementalProposalController(repo, identity,
+      async () => ({ worktreeId: 'worktree', sourceBasis: 'basis' }), undefined, limits);
+    await controller.begin();
+    const parts = Array.from({ length: 9 }, (_, index) => String(index).repeat(12_000));
+    for (const [index, body] of parts.entries()) {
+      const status = await controller.stageFile({ title: 'Long implementation', body,
+        kind: 'work', ...(index ? { handle: 'P1' } : {}), complete: index === 8 }, index + 1);
+      assert.equal(status.targets[0].chunks, index + 1);
+    }
+    const before = await controller.status();
+    assert.equal(before.targets[0].bytes, 108_000);
+    await assert.rejects(controller.stageFile({ title: 'Overflow', body: 'X'.repeat(16_000),
+      kind: 'work', complete: true }, 20), /BYTE_OR_FILE_LIMIT/);
+    assert.equal((await controller.status()).targets[0].digest, hash(parts.join('')));
+    await assert.rejects(controller.stageFile({ title: 'Outside', body: 'Y'.repeat(100),
+      kind: 'work', handle: '../P2', complete: true }, 21), /STAGE_ARGUMENTS/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});

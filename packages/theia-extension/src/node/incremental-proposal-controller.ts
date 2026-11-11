@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { ChatRepository } from '@dope/chat/lib/node';
 import type { ChatProposalProgress } from '@dope/chat';
 
-export type ProposalDomain = 'document' | 'prompt';
+export type ProposalDomain = 'document' | 'prompt' | 'direct-prompt';
 export interface ProposalIdentity {
     root: string; chatId: string; messageId: string; leaseToken: string; ownerId: string;
     worktreeId: string; sourceBasis: string; domain: ProposalDomain;
@@ -20,7 +20,7 @@ export interface ProposalStage {
     version: 1; sequence: number; expectedRevision: number; idempotencyKey: string;
     target: string; chunkIndex: number; content: string; digest: string; complete: boolean;
 }
-interface StoredStage extends ProposalStage { byteLength: number }
+interface StoredStage extends ProposalStage { byteLength: number; title?: string; kind?: 'work' | 'manual-closeout' }
 export interface ProposalSnapshot {
     schemaVersion: 1; id: string; identity: ProposalIdentity; createdAt: number;
     revision: number; calls: number; state: 'staging' | 'ready-for-review' | 'cancelled' | 'stale' | 'blocked';
@@ -28,7 +28,8 @@ export interface ProposalSnapshot {
 }
 export interface ProposalReceipt {
     proposalId: string; revision: number; nextSequence: number; state: ProposalSnapshot['state'];
-    targets: { target: string; chunks: number; bytes: number; complete: boolean }[];
+    targets: { target: string; chunks: number; bytes: number; complete: boolean;
+        title?: string; kind?: 'work' | 'manual-closeout'; digest?: string; filename?: string }[];
     remaining: { stages: number; calls: number; bytes: number; elapsedMs: number };
     purpose: ProposalDomain; completedTargets: string[]; incompleteTargets: string[];
     nextAction: string; finishPermitted: boolean;
@@ -69,11 +70,22 @@ function checkedStage(value: unknown, limits: ProposalLimits): ProposalStage {
     return value as ProposalStage;
 }
 function receipt(snapshot: ProposalSnapshot, limits: ProposalLimits): ProposalReceipt {
-    const targets = new Map<string, { target: string; chunks: number; bytes: number; complete: boolean }>();
+    const targets = new Map<string, ProposalReceipt['targets'][number]>();
     for (const stage of snapshot.stages) {
         const value = targets.get(stage.target) ?? { target: stage.target, chunks: 0, bytes: 0, complete: false };
         value.chunks++; value.bytes += stage.byteLength; value.complete = stage.complete;
+        if (stage.title) value.title = stage.title;
+        if (stage.kind) value.kind = stage.kind;
         targets.set(stage.target, value);
+    }
+    for (const value of targets.values()) {
+        value.digest = sha256(snapshot.stages.filter(stage => stage.target === value.target)
+            .map(stage => stage.content).join(''));
+        if (snapshot.identity.domain === 'direct-prompt' && value.title) {
+            const slug = value.title.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/gu, '-')
+                .replace(/^-+|-+$/gu, '').slice(0, 64).replace(/-+$/u, '') || 'prompt';
+            value.filename = `${value.target}-${slug}.txt`;
+        }
     }
     const ordered = [...targets.values()];
     return { proposalId: snapshot.id, revision: snapshot.revision,
@@ -84,11 +96,16 @@ function receipt(snapshot: ProposalSnapshot, limits: ProposalLimits): ProposalRe
         purpose: snapshot.identity.domain, completedTargets: ordered.filter(item => item.complete).map(item => item.target),
         incompleteTargets: ordered.filter(item => !item.complete).map(item => item.target),
         finishPermitted: snapshot.state === 'staging' && ordered.length > 0 && ordered.every(item => item.complete) &&
-            (snapshot.identity.domain === 'document' || targets.has('closeout')),
+            (snapshot.identity.domain === 'document' || targets.has('closeout') ||
+                snapshot.identity.domain === 'direct-prompt' && ordered.at(-1)?.kind === 'manual-closeout'),
         nextAction: !ordered.length ? 'Stage the first requested target.' :
             ordered.some(item => !item.complete) ? 'Complete the unfinished target.' :
+            snapshot.identity.domain === 'direct-prompt' && !ordered.some(item => item.kind === 'manual-closeout') ?
+                'Stage the terminal manual closeout after the work files.' :
             snapshot.identity.domain === 'prompt' && !targets.has('closeout') ?
                 'Stage the separate terminal manual closeout.' :
+            snapshot.identity.domain === 'direct-prompt' ?
+                'Staging complete; hand off the verified draft to P3 validation.' :
                 'If all requested targets are staged, call proposal_finish with a short factual finalMessage.' };
 }
 /** A turn-scoped broker owns the identity; model tools never receive a begin or approval token. */
@@ -111,6 +128,16 @@ export class IncrementalProposalController<T = unknown> {
                 const snapshot = raw as ProposalSnapshot | undefined;
                 if (!snapshot || snapshot.schemaVersion !== 1 ||
                     JSON.stringify(snapshot.identity) !== JSON.stringify(this.identity)) return fail('FOREIGN_SESSION');
+                if (snapshot.identity.domain === 'direct-prompt' &&
+                    (!Array.isArray(snapshot.stages) || !Number.isSafeInteger(snapshot.revision) ||
+                        snapshot.revision < snapshot.stages.length ||
+                        snapshot.stages.some((stage, index) => typeof stage.content !== 'string' ||
+                            stage.sequence !== index + 1 ||
+                            stage.digest !== sha256(stage.content) ||
+                            stage.byteLength !== Buffer.byteLength(stage.content, 'utf8') ||
+                            typeof stage.title !== 'string' ||
+                            !['work', 'manual-closeout'].includes(stage.kind ?? ''))))
+                    return fail('CORRUPT_STATE');
                 if (snapshot.state === 'cancelled' || snapshot.state === 'stale') return fail('TERMINAL');
                 if (current.worktreeId !== snapshot.identity.worktreeId ||
                     current.sourceBasis !== snapshot.identity.sourceBasis) {
@@ -147,6 +174,11 @@ export class IncrementalProposalController<T = unknown> {
             });
         return result;
     }
+    /** Reopen only an exact saved direct session after a worker interruption. */
+    async resume(): Promise<ProposalReceipt> {
+        if (this.identity.domain !== 'direct-prompt') return fail('DOMAIN');
+        return this.status();
+    }
     async progress(diagnostic?: string): Promise<ChatProposalProgress> {
         const snapshot = this.currentSnapshot;
         if (!snapshot) return fail('NOT_STARTED');
@@ -161,8 +193,9 @@ export class IncrementalProposalController<T = unknown> {
             ownerId: snapshot.identity.ownerId, revision: snapshot.revision, state: snapshot.state,
             targets: receipt(snapshot, this.limits).targets.map(item => {
                 const preview = byTarget.get(item.target);
-                return { ...item, path: preview?.path ?? (snapshot.identity.domain === 'document' ?
-                    item.target : `staging/${item.target}.txt`),
+                return { target: item.target, chunks: item.chunks, bytes: item.bytes,
+                    complete: item.complete, path: preview?.path ?? (snapshot.identity.domain === 'document' ?
+                    item.target : `staging/${item.filename ?? `${item.target}.txt`}`),
                     original: preview?.original === undefined || preview.original === null ? null : clipped(preview.original),
                     proposed: clipped(preview?.proposed ?? ''),
                     truncated: previewError || !!preview && (preview.proposed.length > 8192 ||
@@ -184,6 +217,7 @@ export class IncrementalProposalController<T = unknown> {
     stage(value: unknown, domain: ProposalDomain): Promise<ProposalReceipt> {
         return this.transact(async snapshot => {
             if (snapshot.state !== 'staging' || domain !== snapshot.identity.domain) return fail('DOMAIN');
+            if (domain === 'direct-prompt') return fail('DOMAIN');
             const stage = checkedStage(value, this.limits);
             const old = snapshot.stages.find(item => item.idempotencyKey === stage.idempotencyKey ||
                 item.sequence === stage.sequence);
@@ -216,6 +250,7 @@ export class IncrementalProposalController<T = unknown> {
         callId?: number): Promise<ProposalReceipt> {
         return this.transact(async snapshot => {
             if (snapshot.state !== 'staging' || domain !== snapshot.identity.domain) return fail('DOMAIN');
+            if (domain === 'direct-prompt') return fail('DOMAIN');
             if (!value || typeof value.target !== 'string' || typeof value.content !== 'string' ||
                 typeof value.complete !== 'boolean') return fail('STAGE_ARGUMENTS');
             if (value.target.length > 240 || !/^[a-zA-Z0-9_.-]+(?:\/[a-zA-Z0-9_.-]+)*$/.test(value.target) ||
@@ -253,6 +288,61 @@ export class IncrementalProposalController<T = unknown> {
             return { snapshot: next, result: receipt(next, this.limits) };
         });
     }
+    /** Direct model API: the broker allocates every handle, sequence, filename and hash. */
+    stageFile(value: { title: string; body: string; kind: 'work' | 'manual-closeout';
+        handle?: string; complete: boolean }, callId?: number): Promise<ProposalReceipt> {
+        return this.transact(async snapshot => {
+            if (snapshot.identity.domain !== 'direct-prompt' || snapshot.state !== 'staging') return fail('DOMAIN');
+            if (!value || !exact(value, value.handle === undefined ?
+                ['title', 'body', 'kind', 'complete'] : ['title', 'body', 'kind', 'handle', 'complete']) ||
+                typeof value.title !== 'string' || !value.title.trim() || value.title.length > 120 ||
+                /[\p{Cc}\p{Cf}]/u.test(value.title) ||
+                typeof value.body !== 'string' || !value.body.trim() ||
+                /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u.test(value.body) ||
+                value.body.includes('\0') || Buffer.byteLength(value.body, 'utf8') > this.limits.chunkBytes ||
+                !['work', 'manual-closeout'].includes(value.kind) || typeof value.complete !== 'boolean' ||
+                Buffer.byteLength(value.body, 'utf8') < 80 ||
+                (value.handle !== undefined && (typeof value.handle !== 'string' || !/^P[1-9][0-9]*$/u.test(value.handle))) ||
+                Buffer.byteLength(JSON.stringify(value), 'utf8') > this.limits.payloadBytes)
+                return fail('STAGE_ARGUMENTS');
+            const fingerprint = sha256(JSON.stringify(value));
+            const key = Number.isSafeInteger(callId) && (callId as number) > 0 ? `pi_call_${callId}` :
+                `stage_${fingerprint.slice(0, 64)}`;
+            const previous = snapshot.stages.find(stage => stage.idempotencyKey === key ||
+                sha256(JSON.stringify({ title: stage.title, body: stage.content, kind: stage.kind,
+                    ...(stage.chunkIndex ? { handle: stage.target } : {}), complete: stage.complete })) === fingerprint);
+            if (previous) {
+                if (previous.digest !== sha256(value.body) || previous.title !== value.title ||
+                    previous.kind !== value.kind || previous.complete !== value.complete ||
+                    (value.handle !== undefined && previous.target !== value.handle) ||
+                    (value.handle === undefined && previous.chunkIndex !== 0)) return fail('REPLAY_CONFLICT');
+                return { snapshot, result: receipt(snapshot, this.limits) };
+            }
+            const existing = receipt(snapshot, this.limits).targets;
+            const unfinished = existing.find(item => !item.complete);
+            if (existing.some(item => item.kind === 'manual-closeout')) return fail('TERMINAL_CLOSEOUT');
+            if (unfinished && value.handle !== unfinished.target) return fail('CHUNK_ORDER');
+            if (!unfinished && value.handle !== undefined) return fail('CHUNK_ORDER');
+            if (unfinished && (value.title !== unfinished.title || value.kind !== unfinished.kind))
+                return fail('CHUNK_ORDER');
+            if (value.kind === 'manual-closeout' && (!existing.length || !value.complete))
+                return fail('CLOSEOUT_ORDER');
+            if (snapshot.stages.length >= this.limits.stages || existing.length >= this.limits.files && !unfinished)
+                return fail('STAGE_LIMIT');
+            const bytes = Buffer.byteLength(value.body, 'utf8');
+            if (bytes + (unfinished?.bytes ?? 0) > this.limits.fileBytes ||
+                snapshot.stages.reduce((sum, stage) => sum + stage.byteLength, 0) + bytes > this.limits.totalBytes)
+                return fail('BYTE_OR_FILE_LIMIT');
+            const target = unfinished?.target ?? `P${existing.length + 1}`;
+            const stage: StoredStage = { version: 1, sequence: snapshot.stages.length + 1,
+                expectedRevision: snapshot.revision, idempotencyKey: key, target,
+                chunkIndex: unfinished?.chunks ?? 0, content: value.body, digest: sha256(value.body),
+                complete: value.complete, byteLength: bytes, title: value.title, kind: value.kind };
+            const next: ProposalSnapshot = { ...snapshot, revision: snapshot.revision + 1,
+                stages: [...snapshot.stages, stage] };
+            return { snapshot: next, result: receipt(next, this.limits) };
+        });
+    }
     async finish(value: unknown): Promise<ProposalHandoff<T>> {
         if (!exact(value, ['finalMessage']) || typeof (value as { finalMessage?: unknown }).finalMessage !== 'string')
             return fail('FINISH_ARGUMENTS');
@@ -261,7 +351,9 @@ export class IncrementalProposalController<T = unknown> {
             return fail('FINISH_ARGUMENTS');
         return this.transact(async snapshot => {
             if (snapshot.state !== 'staging') return fail('ALREADY_FINISHED');
-            if (!snapshot.stages.length || receipt(snapshot, this.limits).targets.some(item => !item.complete))
+            if (!snapshot.stages.length || receipt(snapshot, this.limits).targets.some(item => !item.complete) ||
+                snapshot.identity.domain === 'direct-prompt' &&
+                receipt(snapshot, this.limits).targets.at(-1)?.kind !== 'manual-closeout')
                 return fail('INCOMPLETE');
             if (!this.handler) return fail('DOMAIN_NOT_SUPPORTED');
             const candidate = await this.handler.validateComplete(snapshot);
@@ -284,7 +376,7 @@ export class IncrementalProposalController<T = unknown> {
                 const snapshot = raw as ProposalSnapshot | undefined;
                 if (!snapshot || JSON.stringify(snapshot.identity) !== JSON.stringify(this.identity))
                     return fail('FOREIGN_SESSION');
-                const next = snapshot.state === 'staging' ?
+                const next = snapshot.state === 'staging' && snapshot.identity.domain !== 'direct-prompt' ?
                     { ...snapshot, state: 'cancelled' as const, revision: snapshot.revision + 1 } : snapshot;
                 return { snapshot: next, result: next };
             });

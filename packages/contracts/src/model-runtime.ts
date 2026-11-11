@@ -88,11 +88,12 @@ export interface ConversationRequest {
     signal?: AbortSignal;
     /** Backend-only authority for eligible local Pi project discovery. Never serialized to a provider. */
     projectTools?: { root: string; roadmapTools?: boolean; roadmapGeneration?: boolean; proposalTools?: boolean;
+        directProposalTools?: boolean;
         assessmentTools?: boolean; planTools?: boolean;
         operationPolicy?: { commandId: string; modelId: string; snapshot: {
             schemaVersion: 1; mode: 'managed' | 'unmanaged';
             operation: 'chat' | 'investigation' | 'docs-review' | 'prompt-ass' | 'prompt-plan' |
-                'prompt-write' | 'phase-roadmap' | 'roadmap-edit';
+                'prompt-write' | 'gen-stack' | 'phase-roadmap' | 'roadmap-edit';
             model: { contextWindowTokens?: number; maxInputTokens?: number; maxOutputTokens?: number;
                 reasoningSupported: boolean; reasoningEnabled: boolean };
             discretionary: null | { inputCompositionTokens: number; modelOutputTokens: number;

@@ -24,11 +24,27 @@ test('direct stack entry saves one source-bound noncanonical draft without a Pla
         'commit', '-qm', 'Fixture']);
     const repository = new ChatRepository(), grounder = new ChatProjectGrounder({} as never);
     let modelCalls = 0;
-    const models = { list: async () => ({ connections: [{ id: 'local', ready: true, providerId: 'local',
-        models: [{ id: 'q4', usable: true }] }] }),
-    async *generate() { modelCalls++; yield { type: 'complete', text: 'Unexpected' }; } };
+    const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
+        providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
+            capabilities: { conversationalText: true,
+            streaming: true, contextWindowTokens: 16384, maxInputTokens: 16384 } }] }] }),
+    async *generate(_selection: unknown, request: {
+        projectTools?: { execute: (name: string, args: unknown) => Promise<string> } }) {
+        modelCalls++;
+        assert.ok(request.projectTools);
+        const status = JSON.parse(await request.projectTools.execute('proposal_status', {}));
+        assert.equal(status.purpose, 'direct-prompt');
+        const staged = JSON.parse(await request.projectTools.execute('proposal_stage_file', {
+            title: 'Implement separator behavior', body: 'A'.repeat(100), kind: 'work', complete: true }));
+        assert.equal(staged.targets[0].target, 'P1');
+        assert.equal(staged.targets[0].filename, 'P1-implement-separator-behavior.txt');
+        yield { type: 'complete', text: 'Staging paused before completion.', actualModelId: 'q4',
+            usage: { tokenMeasurement: 'unavailable' as const } };
+    } };
+    const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'saved Chat context' }],
+        refs: [], diagnostics: [], usedTokens: 10, budgetTokens: 16384 }) };
     const backend = new ChatBackend(repository, { notifyChatEvent() {} }, models as never,
-        undefined, undefined, grounder);
+        composer as never, undefined, grounder);
     try {
         const { projectHandle } = await backend.attach(pathToFileURL(root).href), chatId = id();
         await backend.mutate({ projectHandle, expectedRevision: 0,
@@ -51,6 +67,7 @@ test('direct stack entry saves one source-bound noncanonical draft without a Pla
         const submit = (content: string) => backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' }, content });
         await assert.rejects(submit('> /gen-stack direct-task Do work'));
+        modelCalls = 0;
         await submit('/gen-stack direct-task Fix repeated separators and update tests');
         const saved = (await backend.get(projectHandle, chatId))!;
         const user = saved.messages.find(message => message.role === 'user' && message.promptDraft);
@@ -64,6 +81,12 @@ test('direct stack entry saves one source-bound noncanonical draft without a Pla
         assert.equal(stored.assessment, undefined);
         assert.equal(stored.plan, undefined);
         assert.equal(modelCalls, 0);
+        await submit('/gen-stack direct-task continue');
+        assert.equal(modelCalls, 1);
+        const afterStaging = (await backend.get(projectHandle, chatId))!;
+        const latest = afterStaging.messages.at(-1);
+        assert.equal(latest?.role === 'assistant' && latest.proposalProgress?.domain, 'direct-prompt');
+        assert.equal(latest?.role === 'assistant' && latest.proposalProgress?.targets[0]?.complete, true);
         const receipt = saved.messages.at(-1);
         assert.equal(receipt?.role === 'assistant' && receipt.execution.actualModel, undefined);
         assert.equal(receipt?.role === 'assistant' && receipt.execution.finishReason,

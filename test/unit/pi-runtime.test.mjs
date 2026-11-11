@@ -5,7 +5,8 @@ import { mkdtemp, mkdir, writeFile, access, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { dispatch, beforeNativeCompaction, nativeCompactionOutcome, frameStreamEvent, frameTurnResult,
-  ROADMAP_ACTION_FIELDS, roadmapActionSchema, PROPOSAL_TOOLS, ASSESSMENT_TOOLS,
+  ROADMAP_ACTION_FIELDS, roadmapActionSchema, PROPOSAL_TOOLS, DIRECT_PROPOSAL_TOOLS,
+  ASSESSMENT_TOOLS,
   PLAN_TOOLS } from '../../packages/pi-runtime/worker.mjs';
 
 test('incremental assessment advertises top-level object tools without command or write access', () => {
@@ -549,6 +550,24 @@ test('protected proposal session advertises bounded typed tools without command 
     const opened = await dispatch({ type: 'open', mode: 'chat-tools', proposalTools: true, cwd, model });
     assert.deepEqual(opened.tools.sort(), ['list_files', 'proposal_finish', 'proposal_stage_document',
       'proposal_stage_prompt', 'proposal_status', 'read_file', 'search_paths', 'search_text']);
+  } finally {
+    await dispatch({ type: 'close' });
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('direct prompt staging exposes only bounded file and status operations', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-direct-tools-'));
+  try {
+    const opened = await dispatch({ type: 'open', mode: 'chat-tools', directProposalTools: true, cwd, model });
+    assert.deepEqual(opened.tools.sort(), ['list_files', 'proposal_stage_file', 'proposal_status',
+      'read_file', 'search_paths', 'search_text']);
+    const file = DIRECT_PROPOSAL_TOOLS.proposal_stage_file;
+    assert.equal(file.type, 'object');
+    assert.deepEqual([...file.required].sort(), ['title', 'body', 'kind', 'complete'].sort());
+    assert.equal(file.additionalProperties, false);
+    for (const field of ['path', 'sequence', 'digest', 'ownerId', 'sourceHash'])
+      assert.equal(field in file.properties, false);
   } finally {
     await dispatch({ type: 'close' });
     await rm(cwd, { recursive: true, force: true });

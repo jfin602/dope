@@ -48,7 +48,8 @@ export class PiModelBridge {
 
     async bind(selection: PiLocalSelection, host: Pick<PiRuntimeHost, 'openNoToolSession' | 'openWorkSession' | 'openChatToolsSession'>,
         cwd: string, options: { tools?: boolean; chatTools?: boolean; roadmapTools?: boolean;
-            roadmapGeneration?: boolean; proposalTools?: boolean; assessmentTools?: boolean; planTools?: boolean;
+            roadmapGeneration?: boolean; proposalTools?: boolean; directProposalTools?: boolean;
+            assessmentTools?: boolean; planTools?: boolean;
             operationPolicy?: NonNullable<ConversationRequest['projectTools']>['operationPolicy'];
             reasoningMode?: string; workProcessAvailable?: boolean } = {}): Promise<PiLocalBinding> {
         if (!selection.connectionId?.trim() || !selection.modelId?.trim())
@@ -145,6 +146,9 @@ export class PiModelBridge {
             options.chatTools && options.proposalTools ?
             await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, false, true,
                 false, options.operationPolicy) :
+            options.chatTools && options.directProposalTools ?
+            await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, false, false,
+                false, options.operationPolicy, false, true) :
             options.chatTools && options.assessmentTools ?
             await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, false, false, true,
                 options.operationPolicy) :
@@ -165,6 +169,8 @@ export class PiModelBridge {
                 ['roadmap_finish', 'roadmap_phase'] :
                 options.proposalTools ? ['list_files', 'read_file', 'search_paths', 'search_text',
                     'proposal_status', 'proposal_stage_document', 'proposal_stage_prompt', 'proposal_finish'] :
+                options.directProposalTools ? ['list_files', 'read_file', 'search_paths', 'search_text',
+                    'proposal_status', 'proposal_stage_file'] :
                 options.assessmentTools ? ['list_files', 'read_file', 'search_paths', 'search_text',
                     'assessment_stage', 'assessment_status', 'assessment_finish'] :
                 options.planTools ? ['list_files', 'read_file', 'search_paths', 'search_text',
