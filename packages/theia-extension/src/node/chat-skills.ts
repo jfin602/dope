@@ -38,7 +38,7 @@ const builtins: ChatSkill[] = [{ id: 'builtin:explain', name: 'explain',
     enabled: true, provenance: 'builtin', version: 3 },
 { id: 'builtin:gen-stack', name: 'gen-stack', title: 'Generate prompt stack',
     description: 'Start a direct, unpublished Prompt Stack draft from this request and saved Chat.',
-    body: 'Use /gen-stack <slug> <task details>. Dope records the original request and bounded saved discussion under the current project, Chat, owner lease and source. File staging is pending until the direct stack tools are available. Do not claim a proposal, publication, Work Run or Roadmap award.',
+    body: 'Use /gen-stack <slug> <task details>. Dope records the original request and bounded saved discussion under the current project, Chat, owner lease and source, then offers bounded file staging in this turn. A failed turn may be resumed with /gen-stack <slug> continue. Call proposal_finish only for a complete stack; do not claim publication, Work Run or Roadmap award.',
     enabled: true, provenance: 'builtin', version: 1 },
 ];
 let serial = Promise.resolve();

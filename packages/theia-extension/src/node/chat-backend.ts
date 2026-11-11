@@ -1942,7 +1942,7 @@ export class ChatBackend implements ChatService {
                     directRevision.proposal.id, directRevision.proposal.digest)).status !== 'applicable')
                 throw new Error('Selected direct prompt file is stale or foreign; select the current proposal card');
         }
-        const directContinuation = directStack?.details === 'continue' || directRevision ? await (async () => {
+        let directContinuation = directStack?.details === 'continue' || directRevision ? await (async () => {
             if (retryIndex >= 0) throw new Error('Direct stack continuation requires a fresh turn');
             const original = chat.messages.find(message => message.role === 'user' &&
                 message.promptDraft?.slug === directStack!.slug) as ChatUserMessage | undefined;
@@ -1958,7 +1958,8 @@ export class ChatBackend implements ChatService {
         })() : undefined;
         if (/^\/gen-stack(?=\s|$)/u.test(content) && !directStack)
             throw new Error('Protected direct stack skill identity changed; start a fresh turn');
-        if (directStack && !directContinuation) {
+        const directInitial = !!directStack && !directContinuation;
+        if (directInitial) {
             if (retryIndex >= 0 || request.promptDraftTarget || request.promptStackRevision ||
                 request.documentationRevision || request.bridgeProposal || request.planningSteps)
                 throw new Error('Direct stack entry requires a fresh standalone Chat command');
@@ -1997,19 +1998,8 @@ export class ChatBackend implements ChatService {
                     discussion: directStackDiscussion(chat), ownerId, worktreeId: source.worktreeFingerprint,
                     model: { connectionId: choice.connectionId, modelId: choice.modelId },
                     ...(roadmap ? { roadmap } : {}) });
-            const now = new Date().toISOString();
-            const assistant: ChatAssistantMessage = { schemaVersion: 1, id: randomUUID(), role: 'assistant',
-                createdAt: now, content: '', execution: { schemaVersion: 1, id: randomUUID(),
-                    status: 'pending', outputLimitPolicy: chat.settings.outputLimitPolicy,
-                    selectedModel: choice, resolutionSource: request.selectedModel ? 'explicit-turn' :
-                        chat.settings.modelPolicy.type === 'exact' ? 'chat-exact-default' : 'role-policy', startedAt: now } };
-            await this.repository.mutate(root, (await this.repository.read(root)).revision,
-                { type: 'begin-assistant', chatId: request.chatId, message: assistant }, request.leaseToken);
-            await this.repository.mutate(root, (await this.repository.read(root)).revision,
-                { type: 'finish-assistant', chatId: request.chatId, messageId: assistant.id, outcome: 'complete',
-                    content: `Direct Prompt Stack draft ${directStack.slug} is saved. Send /gen-stack ${directStack.slug} continue to stage files with the selected local model. There is no complete proposal to Accept or publish. No project files or Work were changed.`,
-                    finishReason: 'direct-stack-initialized' }, request.leaseToken);
-            return { refs: [], diagnostics: [], usedTokens: 0, budgetTokens: 0 };
+            directContinuation = { identity, saved: await new PromptDraftStore(this.repository,
+                this.grounder).read(root, identity, request.leaseToken) };
         }
         const assessmentRevision = promptStage?.stage === 'prompt-ass' &&
             request.promptDraftTarget?.purpose === 'revise-assessment';
@@ -2017,7 +2007,8 @@ export class ChatBackend implements ChatService {
             throw new Error('Protected prompt authoring skill identity changed; start a fresh turn');
         if (request.promptStackRevision && !directRevision && (promptStage?.stage !== 'prompt-write' || retryIndex >= 0))
             throw new Error('Prompt revision requires a fresh protected /prompt-write turn');
-        const userMessageId = retryIndex >= 0 ? chat.messages[retryIndex - 1].id : randomUUID();
+        const userMessageId = directInitial ? directContinuation!.identity.userMessageId :
+            retryIndex >= 0 ? chat.messages[retryIndex - 1].id : randomUUID();
         const namedDraft = promptStage?.stage === 'prompt-ass' && !assessmentRevision ?
             retryIndex >= 0 ? await (async () => {
                 const draft = verifyPromptDraftIdentity(
@@ -2242,8 +2233,10 @@ export class ChatBackend implements ChatService {
             'Each action must use a supported Roadmap action type and exact selected checkpoint ID where required. The complete sequence is one atomic preview requiring human approval. If any step is ambiguous, ask a concrete question in a no-action message instead. Never claim an edit was applied.' } : undefined);
         const requestHard: AIRoleHardConstraints = { ...chatHard,
             minimumKnownContextTokens: Math.ceil(Buffer.byteLength(content, 'utf8') / 3) + 5 };
-        const following = !request.selectedModel && chat.settings.modelPolicy.type === 'follow-interactive';
-        let selectedModel = request.selectedModel ?? (chat.settings.modelPolicy.type === 'exact' ? chat.settings.modelPolicy.model : undefined);
+        const following = !request.selectedModel && !directContinuation &&
+            chat.settings.modelPolicy.type === 'follow-interactive';
+        let selectedModel = request.selectedModel ?? (directContinuation?.saved.direct?.model ??
+            (chat.settings.modelPolicy.type === 'exact' ? chat.settings.modelPolicy.model : undefined));
         if (following) {
             if (!this.routing) throw new Error('Interactive role routing unavailable');
             const proposed = await this.routing.resolve('interactive',
@@ -2261,6 +2254,9 @@ export class ChatBackend implements ChatService {
             selectedModel = eligible.resolution.selectedTarget;
         }
         if (!selectedModel) throw new Error('Select an exact model or configure Interactive in AI Center → Roles');
+        if (directContinuation && (selectedModel.connectionId !== directContinuation.saved.direct?.model.connectionId ||
+            selectedModel.modelId !== directContinuation.saved.direct.model.modelId))
+            throw new Error('Direct stack selected model changed');
         const connection = (await this.models.list()).connections.find(item => item.id === selectedModel.connectionId);
         const model = connection?.ready && connection.models.find(item => item.id === selectedModel.modelId && item.usable);
         if (!connection || !model) throw new ModelRuntimeFailure('Selected model is unavailable; manage AI connections in AI Center', 'model-unavailable');
@@ -3227,7 +3223,7 @@ export class ChatBackend implements ChatService {
             } } : undefined;
         try {
             if (this.pendingCancel.get(key) === request.leaseToken) abort.abort();
-            if (!request.retryMessageId) {
+            if (!request.retryMessageId && !directInitial) {
                 if (!request.content?.trim()) throw new Error('Enter a message before sending');
                 const user: ChatUserMessage = { schemaVersion: 1, id: userMessageId, role: 'user',
                     createdAt: new Date().toISOString(), content: request.content.trim(), contextRefs: preview.refs,

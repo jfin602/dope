@@ -13,8 +13,9 @@ import { ModelRuntimeFailure } from '../../packages/contracts/lib/model-runtime.
 import { PiConversationFailure } from '../../packages/theia-extension/lib/node/pi-conversation-runtime.js';
 import { trustedOperationForTurn } from '../../packages/theia-extension/lib/node/operation-context-policy.js';
 import { PromptDraftStore } from '../../packages/theia-extension/lib/node/prompt-draft-store.js';
+import { discoverRoadmapTaskStacks } from '../../packages/agent-core/lib/node/roadmap-task-discovery.js';
 
-test('direct stack entry saves one source-bound noncanonical draft without a Plan or model call', async () => {
+test('one direct stack command seals a protected proposal without Assessment or Plan', async () => {
     const temporary = await folder(), root = join(temporary, 'project');
     await mkdir(root);
     await writeFile(join(root, 'package.json'), '{"name":"fixture","version":"0.13.11"}\n');
@@ -34,11 +35,19 @@ test('direct stack entry saves one source-bound noncanonical draft without a Pla
         assert.ok(request.projectTools);
         const status = JSON.parse(await request.projectTools.execute('proposal_status', {}));
         assert.equal(status.purpose, 'direct-prompt');
+        await request.projectTools.execute('read_file', { path: 'package.json' });
         const staged = JSON.parse(await request.projectTools.execute('proposal_stage_file', {
-            title: 'Implement separator behavior', body: 'A'.repeat(100), kind: 'work', complete: true }));
+            title: 'Implement separator behavior', kind: 'work', complete: true,
+            body: `SOURCE BASIS\nSource evidence: package.json\nThe fixture package identifies the current project. Future src/labels.js and test/labels.test.js are proposed outputs.\n\nSCOPE\nTier: T1\nEstimated minutes: 7\nDepends on: none\nImplement repeated separator collapse in src/labels.js while retaining non-string rejection.\n\nACCEPTANCE\n- Repeated separators produce one hyphen and existing word conversion remains stable.\n\nVALIDATION\n- Run node --test test/labels.test.js after implementation.\n- Build only the changed package.` }));
         assert.equal(staged.targets[0].target, 'P1');
         assert.equal(staged.targets[0].filename, 'P1-implement-separator-behavior.txt');
-        yield { type: 'complete', text: 'Staging paused before completion.', actualModelId: 'q4',
+        await request.projectTools.execute('proposal_stage_file', { title: 'Manual separator closeout',
+            kind: 'manual-closeout', complete: true,
+            body: `MANUAL T3 CLOSEOUT\nIndependently inspect exact source and the owner's decision.\n\nSCOPE\nReview separator behavior and publication authority in the real browser.\n\nACCEPTANCE\n- Record observed behavior and evidence gaps without awarding Green.\n\nVALIDATION\n- Check the exact built source manually in the real browser.\n\nPrompt Efficiency Gates\n${['Single responsibility', 'Runtime feasibility', 'Test precision', 'Build precision', 'Evidence distribution', 'Command deduplication', 'Model economy and deferral', 'Runnable and traceable contract', 'UI Design Compliance', 'Human Usability'].map((label, index) => `${index + 1}. ${label}: Check separator behavior, focused tests, build order and source evidence.`).join('\n')}` });
+        const finished = JSON.parse(await request.projectTools.execute('proposal_finish',
+            { finalMessage: 'Complete stack ready for review.' }));
+        assert.equal(finished.state, 'ready-for-review');
+        yield { type: 'complete', text: 'Complete stack ready for review.', actualModelId: 'q4',
             usage: { tokenMeasurement: 'unavailable' as const } };
     } };
     const composer = { compose: async () => ({ messages: [{ role: 'user', content: 'saved Chat context' }],
@@ -80,23 +89,31 @@ test('direct stack entry saves one source-bound noncanonical draft without a Pla
         assert.match(stored.direct!.discussion, /separator tests too/);
         assert.equal(stored.assessment, undefined);
         assert.equal(stored.plan, undefined);
-        assert.equal(modelCalls, 0);
-        await submit('/gen-stack direct-task continue');
         assert.equal(modelCalls, 1);
         const afterStaging = (await backend.get(projectHandle, chatId))!;
         const latest = afterStaging.messages.at(-1);
         assert.equal(latest?.role === 'assistant' && latest.proposalProgress?.domain, 'direct-prompt');
-        assert.equal(latest?.role === 'assistant' && latest.proposalProgress?.targets[0]?.complete, true);
-        const receipt = saved.messages.at(-1);
-        assert.equal(receipt?.role === 'assistant' && receipt.execution.actualModel, undefined);
-        assert.equal(receipt?.role === 'assistant' && receipt.execution.finishReason,
-            'direct-stack-initialized');
+        assert.equal(latest?.role === 'assistant' && latest.proposalProgress?.state, 'ready-for-review');
+        assert.equal(saved.messages.filter(message => message.role === 'user' &&
+            message.content.startsWith('/gen-stack direct-task')).length, 1);
+        const proposal = latest?.role === 'assistant' ? latest.planningActivity?.promptStackProposal : undefined;
+        assert.ok(proposal);
+        assert.equal(proposal.files.length, 3);
         assert.equal(saved.messages.filter(message => message.role === 'assistant' &&
-            message.planningActivity?.kind === 'prompt-stack-proposal').length, 0);
+            message.planningActivity?.kind === 'prompt-stack-proposal').length, 1);
         await assert.rejects(submit('/gen-stack direct-task Do it again'), /already exists/);
         await mkdir(join(root, 'docs', 'tasks', 'existing-task'), { recursive: true });
         await assert.rejects(submit('/gen-stack existing-task Do work'), /already exists/);
         await assert.rejects(readFile(join(root, 'docs', 'tasks', 'direct-task', 'README.md')), /ENOENT/);
+        assert.equal((await discoverRoadmapTaskStacks(root)).some(item => item.folderName === 'direct-task'), false);
+        await assert.rejects(backend.publishPromptStack(projectHandle, chatId, lease.token,
+            proposal.id, '0'.repeat(64)), /Exact saved prompt proposal unavailable/);
+        const published = await backend.publishPromptStack(projectHandle, chatId, lease.token,
+            proposal.id, proposal.digest);
+        assert.equal(published.status, 'published');
+        for (const file of proposal.files)
+            assert.equal(await readFile(join(root, file.path), 'utf8'), file.after);
+        assert.equal((await discoverRoadmapTaskStacks(root)).find(item => item.folderName === 'direct-task')?.prompts.length, 2);
         await writeFile(join(root, 'source.txt'), 'new source\n');
         await assert.rejects(new PromptDraftStore(repository, grounder).read(root, identity, lease.token),
             /source changed/i);

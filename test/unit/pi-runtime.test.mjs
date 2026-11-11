@@ -560,7 +560,8 @@ test('direct prompt staging exposes only bounded file and status operations', as
   const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-direct-tools-'));
   try {
     const opened = await dispatch({ type: 'open', mode: 'chat-tools', directProposalTools: true, cwd, model });
-    assert.deepEqual(opened.tools.sort(), ['list_files', 'proposal_stage_file', 'proposal_status',
+    assert.deepEqual(opened.tools.sort(), ['list_files', 'proposal_finish', 'proposal_replace_file',
+      'proposal_stage_file', 'proposal_status',
       'read_file', 'search_paths', 'search_text']);
     const file = DIRECT_PROPOSAL_TOOLS.proposal_stage_file;
     assert.equal(file.type, 'object');
