@@ -12,7 +12,10 @@ export interface MCPServer {
     lifecycle: MCPServerLifecycle;
     configStatus: MCPServerConfigStatus;
     /** P1-qualified descriptor has no arguments; future argument forms need a separate secret-safe contract. */
-    config: { transport: 'stdio'; command: string; args: [] };
+    config: { transport: 'stdio'; command: string; args: [];
+        /** Optional trusted launch boundary. Older records remain catalog-only until reviewed. */
+        launch?: { mode: 'isolated-loopback-bridge'; installRoot: string; bridgePort: number;
+            environment: { bridgeUrl: string; bridgeToken: string; projectRoot: string } } };
     credential?: { source: 'secure'; account: string };
 }
 export interface MCPServerRegistrySnapshot {
@@ -52,6 +55,13 @@ function command(value: unknown): string {
         result.split('/').includes('.') || result.endsWith('/')) throw new Error('Invalid MCP executable path');
     return result;
 }
+function environmentName(value: unknown): string {
+    if (typeof value !== 'string' || !/^[A-Z][A-Z0-9_]{1,63}$/.test(value) ||
+        /^(?:LD_|DYLD_|PYTHON|NODE_|DOPE_)/.test(value) ||
+        ['PATH', 'HOME', 'TMPDIR', 'IFS', 'ENV', 'BASH_ENV', 'SHELLOPTS', 'BASHOPTS', 'CDPATH'].includes(value))
+        throw new Error('Invalid MCP environment name');
+    return value;
+}
 export function parseMCPServer(value: unknown): MCPServer {
     const item = object(value, ['version', 'id', 'registrationRevision', 'name', 'lifecycle', 'configStatus', 'config', 'credential']);
     if (item.version !== MCP_SERVER_REGISTRY_VERSION) throw new Error('Unsupported MCP server version');
@@ -63,19 +73,33 @@ export function parseMCPServer(value: unknown): MCPServer {
     if (item.lifecycle !== 'installed' && item.lifecycle !== 'disabled') throw new Error('Invalid MCP lifecycle');
     if (item.configStatus !== 'configured' && item.configStatus !== 'needs-credential')
         throw new Error('Invalid MCP configuration status');
-    const config = object(item.config, ['transport', 'command', 'args']);
+    const config = object(item.config, ['transport', 'command', 'args', 'launch']);
     if (config.transport !== 'stdio') throw new Error('Unsupported MCP transport');
     if (!Array.isArray(config.args) || config.args.length !== 0)
         throw new Error('Invalid MCP arguments');
+    const launch = config.launch === undefined ? undefined :
+        object(config.launch, ['mode', 'installRoot', 'bridgePort', 'environment']);
+    if (launch && (launch.mode !== 'isolated-loopback-bridge' ||
+        !Number.isSafeInteger(launch.bridgePort) || (launch.bridgePort as number) < 1024 ||
+        (launch.bridgePort as number) > 65535)) throw new Error('Invalid MCP isolated launch');
+    const installRoot = launch ? command(launch.installRoot) : undefined;
+    const environment = launch ? object(launch.environment, ['bridgeUrl', 'bridgeToken', 'projectRoot']) : undefined;
+    const names = environment ? [environmentName(environment.bridgeUrl),
+        environmentName(environment.bridgeToken), environmentName(environment.projectRoot)] : [];
+    if (new Set(names).size !== names.length) throw new Error('Duplicate MCP environment name');
     const credential = item.credential === undefined ? undefined : object(item.credential, ['source', 'account']);
     if (credential && (credential.source !== 'secure' || credential.account !== serverId))
         throw new Error('Invalid MCP credential reference');
     if (item.configStatus === 'needs-credential' && !credential)
         throw new Error('Missing MCP credential reference');
+    if (launch && !credential) throw new Error('Isolated bridge requires a secure credential reference');
     return { version: MCP_SERVER_REGISTRY_VERSION, id: serverId,
         registrationRevision: item.registrationRevision as number, name,
         lifecycle: item.lifecycle, configStatus: item.configStatus,
-        config: { transport: 'stdio', command: command(config.command), args: [] },
+        config: { transport: 'stdio', command: command(config.command), args: [],
+            ...(launch ? { launch: { mode: 'isolated-loopback-bridge' as const,
+                installRoot: installRoot!, bridgePort: launch.bridgePort as number,
+                environment: { bridgeUrl: names[0], bridgeToken: names[1], projectRoot: names[2] } } } : {}) },
         ...(credential ? { credential: { source: 'secure', account: serverId } } : {}) };
 }
 export function parseMCPServerRegistrySnapshot(value: unknown): MCPServerRegistrySnapshot {

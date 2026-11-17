@@ -29,6 +29,8 @@ import { MCPServerRegistryBackend } from './mcp-server-registry-backend';
 import { mcpServerRegistryServicePath, type MCPServerRegistryClient } from '@dope/contracts/lib/mcp-server-registry-service';
 import { MCPProjectPreferencesStore } from './mcp-project-preferences-store';
 import { MCPProjectActivationBackend } from './mcp-project-activation-backend';
+import { WorkspaceServer } from '@theia/workspace/lib/common/workspace-protocol';
+import { fileURLToPath } from 'node:url';
 import { mcpProjectActivationServicePath, type MCPProjectActivationClient } from '@dope/contracts/lib/mcp-project-activation-service';
 import { AIRolePolicyStore } from './ai-role-policy-store';
 import { AIRoleRoutingService } from './ai-role-routing';
@@ -378,7 +380,12 @@ export default new ContainerModule(bind => {
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<MCPProjectActivationClient>(
         mcpProjectActivationServicePath, client => {
             const backend = new MCPProjectActivationBackend(context.container.get(MCPProjectPreferencesStore),
-                context.container.get(MCPServerRegistryStore), client);
+                context.container.get(MCPServerRegistryStore), client, async () => {
+                    const uri = await context.container.get<WorkspaceServer>(WorkspaceServer)
+                        .getMostRecentlyUsedWorkspace();
+                    if (!uri || !uri.startsWith('file://')) return undefined;
+                    try { return fileURLToPath(uri); } catch { return undefined; }
+                });
             client.onDidCloseConnection(() => backend.dispose());
             return backend;
         })).inSingletonScope();

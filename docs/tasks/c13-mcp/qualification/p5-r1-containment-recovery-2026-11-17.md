@@ -1,0 +1,31 @@
+# P5-R1 — MCP launch and containment recovery
+
+**Date:** 2026-11-17. **Verdict:** **BLOCKED / partial feasibility evidence**, not a P5 completion receipt. **Basis:** Dope `4339b09d3177e01194fbd88adbd718badd321b5f`, clean before this report; version `0.13.11`. The failed P5 run at `.codex-runs/c13-mcp/2026-11-17T20-22-08-189Z/` made no code changes. P1–P4 are committed. No live Godot MCP server, addon, scene, or mutating MCP tool was started or called in this recovery.
+
+## Why the original P5 stopped
+
+The [P1 audit](p1-audit.md) verifies the hybridindie `godot-editor-mcp 2026.11.04b2` stdio server and its 29 basic MCP tools. Its separate WebSocket bridge listens on the configured `127.0.0.1:9081`; that is how the editor addon connects, not the MCP client transport. P1 explicitly left server containment unproven. The original P5 prompt requires *feasible containment at entry*, so a no-change stop was consistent with that gate. `packages/ai/src/mcp-server-registry.ts` currently permits only an absolute stdio executable with empty arguments; it has no trusted working directory, environment binding, bridge port, or project-root launch contract. P3 stores only enablement, not launch settings. P4's form accepts only the executable path. The existing local tool sandbox rejects socket creation and must remain unchanged.
+
+## Controlled feasibility probes (outside the repository)
+
+The host is Linux 7.3 x86-64 with `/usr/bin/unshare`, `/usr/bin/bwrap`, `/usr/bin/socat`, and Landlock ABI 11. Temporary C/Python fake-server files under `/tmp/dope-p5-*` were used and then removed. They were never installed into Dope or run as the Godot server.
+
+| Probe | Observed result | Limit |
+| --- | --- | --- |
+| Host network plus Landlock TCP port policy | Fake server could bind `127.0.0.1:9081`; binding 9082 and outbound TCP connect were denied (`EACCES`); a host client read `fake-bridge-ok`. A known existing user secret path returned `ENOENT` inside a Bubblewrap filesystem with private home. | Landlock's network rules cover TCP ports, not a bind **address** or UDP. This alone is not acceptable confinement for a host-networked external server. |
+| Private network namespace plus Unix relay | With loopback raised inside `unshare --user --map-root-user --net`, the fake server listened on private `127.0.0.1:9081`. A temporary host `socat` proxy bound host `127.0.0.1:9081` and forwarded to a Unix socket mounted into the private namespace. A host client read `private-bridge-ok`. The fake could not reach `1.1.1.1:80` (`ENETUNREACH`) or read the known host secret (`ENOENT`). | This proves a possible route for bridge bytes, **not** a safe production relay. The host proxy was an unrestricted test process; it accepted any local client, had no Dope project/registration binding or cancellation owner, and left a stale Unix socket path after exit. |
+| Post-probe state | No 9081 TCP listener or probe process remained; the temporary socket and files were removed manually. | Automatic socket cleanup, process-group termination under timeout, resource limits, active project-switch revocation, and uninstall revocation were not demonstrated. |
+
+No initial MCP handshake, `tools/list`, or live Godot connection was attempted in this recovery. No broad build or product tests were run because no product code was changed.
+
+## Minimum safe design choice before code
+
+A viable candidate is a **Dope-owned loopback relay** with a private network namespace for the external stdio child. Dope would bind only the configured host loopback port and forward only to a private Unix socket; the child would have no host network, private mounts, a minimal environment, bounded resources and process-group cleanup. The relay and child must be one revocable project/registration session. A trusted global launch profile would specify a bounded loopback bridge port and approved environment *names*; Dope would obtain the root from trusted active-project context, validate it under P3's identity rules, and require an exact current key match. P3's hash alone cannot recover a path. Project enablement and tool-call authority remain separate. The Godot addon must be configured for the matching URL and, where supported, a bridge token. This is a proposed design, not an implemented or approved trust boundary.
+
+Before any product launch code or P5 retry, review this new relay boundary and prove with a controlled fake server: fixed loopback bind, authenticated or otherwise bounded local peer behavior, no unrelated host egress or secret/outside-root reads, exact executable and project identity, process and Unix-socket cleanup on exit/timeout/cancel, resource limits, project switch/uninstall revocation, and no startup effect on canonical project files. Preserve the existing socket-denying local tool sandbox. Add only the minimum trusted launch profile to the global registry and AI Center; do not place launch commands or credentials in a project repository or permit arbitrary model-supplied environment/arguments.
+
+## Handoff
+
+**Original P5 cannot safely be retried yet.** The tested private-network relay is a promising route, but its production authority, peer restrictions, lifecycle and cleanup are unproven. An unrestricted `socat` process or host-network Landlock-only child would fail the stated P5 safety gate. The next step is owner review of the Dope-owned relay design, followed by a focused implementation and fake-server canary pass. Do not create a P5 marker, start P6, weaken the existing sandbox, or launch the live Godot server based on this report.
+
+Source SHA-256 anchors: `mcp-server-registry.ts` `8265b4337f41353709e34760c1816c6b947519ebf53c4db338118a8385c1b6a9`; `mcp-project-activation.ts` `2e4470962a99f59a689247eed23a64915303357e61c6250573d690ed461d8051`; `mcp-project-activation-backend.ts` `3f71eea536e2b8f9187f33f54d2ea9cf2a4d65090dff2d1f580ffc9f398f839c`; `ai-center-mcp.ts` `96aa52dae00bf0380a06e6b12e296f9fb6a3814977a8676d2cbefe959fbcb68b`; `ai-center-widget.ts` `427454cd6943753679510535e4d72b0fbf0019ccb7daf2729c1b67fcd4a74b2e`; `local-tool-sandbox.ts` `5224faf66c8e0f0a8c386642d4e675e1dfc21cba5545ac114e2e36d529164184`; P1 audit `5a4ff824527b0a24ad524e74c752f6d5bdcfd40e8f9035cdcb06ad6f631f0f3b`.

@@ -232,6 +232,7 @@ export class AICenterWidget extends BaseWidget {
             const enabled = view?.state === 'active' || view?.state === 'unconfigured' || view?.state === 'unavailable';
             row.append(element('h4', server.name), element('p', `ID: ${server.id} · Global: ${server.lifecycle} · Configuration: ${server.configStatus}`),
                 element('p', `Executable: ${server.config.command}`),
+                ...(server.config.launch ? [element('p', `Isolated bridge: 127.0.0.1:${server.config.launch.bridgePort} · Installation: ${server.config.launch.installRoot}`)] : []),
                 element('p', `Connection health: unverified. No server is started by this view.`),
                 element('p', `This project: ${!project?.projectKey ? 'no project selected' :
                     server.lifecycle === 'disabled' ? 'disabled globally' :
@@ -270,6 +271,14 @@ export class AICenterWidget extends BaseWidget {
         const name = field(form, 'Display name', 'name', existing?.name); name.required = true;
         const command = field(form, 'Absolute executable path (already installed)', 'command', existing?.config.command);
         command.required = true;
+        const installRoot = field(form, 'Isolated installation root (optional until P5)', 'installRoot',
+            existing?.config.launch?.installRoot);
+        const bridgePort = field(form, 'Local editor bridge port (optional until P5)', 'bridgePort',
+            existing?.config.launch ? String(existing.config.launch.bridgePort) : '');
+        bridgePort.type = 'number'; bridgePort.min = '1024'; bridgePort.max = '65535';
+        field(form, 'Bridge URL environment variable', 'bridgeUrlEnv', existing?.config.launch?.environment.bridgeUrl);
+        field(form, 'Bridge token environment variable', 'bridgeTokenEnv', existing?.config.launch?.environment.bridgeToken);
+        field(form, 'Project root environment variable', 'projectRootEnv', existing?.config.launch?.environment.projectRoot);
         const lifecycleLabel = element('label', 'Global availability');
         const lifecycle = element('select'); lifecycle.name = 'lifecycle';
         for (const optionValue of ['installed', 'disabled'] as const) {
@@ -277,15 +286,26 @@ export class AICenterWidget extends BaseWidget {
             option.value = optionValue; option.selected = optionValue === (existing?.lifecycle ?? 'installed'); lifecycle.append(option);
         }
         lifecycleLabel.append(lifecycle); form.append(lifecycleLabel);
-        form.append(element('p', 'This registry supports an existing local stdio executable with no arguments. Credentials and package installation are not available in this form. A registration requiring a secure credential must be repaired outside this form. Connection health requires the later transport integration.'));
+        form.append(element('p', 'This registry supports an existing local stdio executable with no arguments. Isolated bridge launch requires a narrow installation root, loopback port, three reviewed environment variable names and an existing secure bridge-token credential. Credential setup and connection health remain unavailable until P5.'));
         const save = button(existing ? 'Save global server' : 'Register existing server', () => {}, this.mcp.busy);
         save.type = 'submit'; form.append(save);
         form.append(button('Cancel', () => { this.mcpEditing = undefined; this.render(); }));
         form.addEventListener('submit', event => {
             event.preventDefault();
+            const rootValue = value(form, 'installRoot').trim();
+            const portValue = value(form, 'bridgePort').trim();
+            if (!!rootValue !== !!portValue) {
+                this.mcp.message = 'Enter both installation root and bridge port, or leave both empty.';
+                this.render(); return;
+            }
             const server: MCPServer = { version: 1, registrationRevision: existing?.registrationRevision ?? 1,
                 id: value(form, 'id'), name: value(form, 'name'), lifecycle: lifecycle.value as MCPServer['lifecycle'],
-                configStatus: existing?.configStatus ?? 'configured', config: { transport: 'stdio', command: value(form, 'command'), args: [] },
+                configStatus: existing?.configStatus ?? 'configured', config: { transport: 'stdio', command: value(form, 'command'), args: [],
+                    ...(rootValue ? { launch: { mode: 'isolated-loopback-bridge', installRoot: rootValue,
+                        bridgePort: Number(portValue), environment: {
+                            bridgeUrl: value(form, 'bridgeUrlEnv').trim(),
+                            bridgeToken: value(form, 'bridgeTokenEnv').trim(),
+                            projectRoot: value(form, 'projectRootEnv').trim() } } } : {}) },
                 ...(existing?.credential ? { credential: existing.credential } : {}) };
             void this.mcp.save(server, !existing).then(saved => { if (saved) { this.mcpEditing = undefined; this.render(); } });
         });

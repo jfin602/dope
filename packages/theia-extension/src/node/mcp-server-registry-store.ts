@@ -51,6 +51,19 @@ export class MCPServerRegistryStore {
         this.watcher.unref();
     }
     dispose(): void { this.watcher?.close(); this.watcher = undefined; this.listeners.clear(); }
+    /** Backend-only retrieval. A catalog reference never contains the bridge secret. */
+    async readBridgeToken(serverId: string): Promise<string> {
+        const server = (await this.read()).servers.find(item => item.id === serverId);
+        if (!server?.config.launch || server.configStatus !== 'configured' ||
+            server.credential?.source !== 'secure' || server.credential.account !== serverId)
+            throw new Error('MCP bridge credential unavailable');
+        const secure = await this.secureStore().catch(() => undefined);
+        if (!secure) throw new Error('MCP bridge credential unavailable');
+        const token = await secure.getPassword(credentialService, serverId).catch(() => undefined);
+        if (!token || token.length < 32 || token.length > 256 || /[\x00-\x1f\x7f]/u.test(token))
+            throw new Error('MCP bridge credential unavailable');
+        return token;
+    }
     private async safeRead(path: string): Promise<string | undefined> {
         try {
             const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);

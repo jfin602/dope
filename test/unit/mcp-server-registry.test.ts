@@ -133,6 +133,27 @@ test('stdio only, bounded paths and unknown secret fields are refused', () => {
         servers: [valid, valid] }), /Duplicate/);
 });
 
+test('isolated bridge profile requires a bounded loopback port and secure token reference', () => {
+    const valid = { ...server(), registrationRevision: 1,
+        config: { ...server().config, launch: { mode: 'isolated-loopback-bridge',
+            installRoot: '/home/user/.local/share/uv/tools/godot-editor-mcp', bridgePort: 9081,
+            environment: { bridgeUrl: 'MCP_BRIDGE_URL', bridgeToken: 'MCP_BRIDGE_TOKEN',
+                projectRoot: 'MCP_PROJECT_ROOT' } } },
+        credential: { source: 'secure', account: 'godot' } };
+    assert.equal(parseMCPServer(valid).config.launch?.bridgePort, 9081);
+    for (const bad of [
+        { ...valid, credential: undefined },
+        { ...valid, config: { ...valid.config, launch: { ...valid.config.launch, bridgePort: 0 } } },
+        { ...valid, config: { ...valid.config, launch: { ...valid.config.launch, bridgePort: 65536 } } },
+        { ...valid, config: { ...valid.config, launch: { ...valid.config.launch, installRoot: '/home/../tmp' } } },
+        { ...valid, config: { ...valid.config, launch: { ...valid.config.launch,
+            environment: { ...valid.config.launch.environment, bridgeToken: 'LD_PRELOAD' } } } },
+        { ...valid, config: { ...valid.config, launch: { ...valid.config.launch,
+            environment: { ...valid.config.launch.environment, projectRoot: 'MCP_BRIDGE_URL' } } } },
+        { ...valid, config: { ...valid.config, launch: { ...valid.config.launch, endpoint: '0.0.0.0' } } }
+    ]) assert.throws(() => parseMCPServer(bad));
+});
+
 test('credential references require OS secure storage and never persist the secret', async () => {
     await temporary(async directory => {
         const missing = new MCPServerRegistryStore(directory, async () => undefined);
