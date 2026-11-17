@@ -57,6 +57,8 @@ import { ChatPlanningSelection } from './chat-planning-selection';
 import { WorkOpenOwners } from './shared-panel-state';
 import { AIRegistryService, aiRegistryServicePath, type AIRegistryClient } from '@dope/contracts/lib/ai-registry-service';
 import { MCPServerRegistryService, mcpServerRegistryServicePath, type MCPServerRegistryClient } from '@dope/contracts/lib/mcp-server-registry-service';
+import { MCPProjectActivationService, mcpProjectActivationServicePath,
+    type MCPProjectActivationClient, type MCPProjectActivationEvent } from '@dope/contracts/lib/mcp-project-activation-service';
 import { AIRolePolicyService, aiRolePolicyServicePath, type AIRolePolicyClient } from '@dope/contracts/lib/ai-role-policy-service';
 import type { AIRolePolicyMutationRequest, MCPServerRegistryMutationRequest } from '@dope/ai';
 import { AICenterWidget, AI_CENTER_ID } from './ai-center-widget';
@@ -199,6 +201,15 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             context.container, mcpServerRegistryServicePath,
             { notifyMCPServerRegistryChanged: (revision: number) => changed.fire(revision) });
         return { list: () => proxy.list(), mutate: (request: MCPServerRegistryMutationRequest) => proxy.mutate(request),
+            onDidChange: changed.event };
+    }).inSingletonScope();
+    bind(MCPProjectActivationService).toDynamicValue(context => {
+        const changed = new Emitter<MCPProjectActivationEvent>();
+        const proxy = ServiceConnectionProvider.createProxy<MCPProjectActivationService & RpcServer<MCPProjectActivationClient>>(
+            context.container, mcpProjectActivationServicePath,
+            { notifyMCPProjectActivationChanged: (event: MCPProjectActivationEvent) => changed.fire(event) });
+        return { switchProject: (root?: string) => proxy.switchProject(root), current: () => proxy.current(),
+            setEnabled: (request: Parameters<MCPProjectActivationService['setEnabled']>[0]) => proxy.setEnabled(request),
             onDidChange: changed.event };
     }).inSingletonScope();
     bind(AIRolePolicyService).toDynamicValue(context => {
