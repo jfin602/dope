@@ -1,15 +1,16 @@
 TASK: Correction 13 / P6 — Bundled Pi Chat MCP Tool Attestation and Broker
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol High.
+- Recommended configuration: `GPT-6 Sol High`.
 - Browser required: no.
-- Manual T1 implementation with immediate security regression.
+- Runner-managed T1 implementation with immediate security regression.
 
 VERSIONING
-- Keep verified version and Pi 1.4.0 dependency pinned; no new agent/runtime or silent provider fallback.
+- Required unchanged project version: `0.13.11`.
+- No package-version, manifest, lockfile, dependency or Pi pin changes.
 
 PREFLIGHT
-Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0058, docs/planning/p13/external-mcp-compat-contract.md, and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Read actual prior P1–P(n−1) implementation/qualification evidence and current source. Check local HEAD, dirty tree, true version, changes/compiled-output freshness; preserve owner work, existing tests, historical NOT GREEN, source/authority invariants. Manual invocation only; do not run subsequent prompts or self-commit/launch Work.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0058, docs/planning/p13/external-mcp-compat-contract.md, and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Read actual P1–P5 source/qualification evidence and current source. Check local HEAD, dirty tree, true version, changes/compiled-output freshness; preserve owner work, existing tests, historical NOT GREEN, source/authority invariants. Manual invocation only; do not run subsequent prompts or self-commit/launch Work.
 
 ENTRY GATE
 P5 must have qualified a safe supervised MCP discovery route and P2/P3 must enforce stable server identity and project enablement. Otherwise STOP BLOCKED.
@@ -28,4 +29,4 @@ IMMEDIATE T1 VALIDATION
 Real bundled worker + controlled fake MCP broker tests for eligible observation, project-off, wrong project, revoked server, changed schema, forged tool name, attempted write/process/network, no tool in protected modes, strict built-in attestation, cancellation, output truncation, no silent provider switch and no canonical project writes. Inspect actual tests/compiled output; run only affected focused matrix and git diff --check. Any mutating call or privilege bypass is STOP/NOT GREEN, not P9 deferral.
 
 EXIT
-Report observed tools/receipts vs simulated; do not claim real Godot qualified. STOP after Chat/Pi broker. No live Godot scene changes or P7 automatically.
+Report observed tools/receipts vs simulated; do not claim real Godot qualified. STOP after Chat/Pi broker. No live Godot scene changes; runner may advance to P7 only after a successful guarded P6 checkpoint.
