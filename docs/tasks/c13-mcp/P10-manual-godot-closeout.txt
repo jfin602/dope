@@ -1,15 +1,16 @@
 TASK: Correction 13 / P10 — Real Godot MCP + Independent Dope Manual Closeout
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol High.
+- Recommended configuration: `GPT-6 Sol High`.
 - Browser required: yes.
-- Independently initiated manual T3 only; never part of an automatic runner/--closeout path.
+- Independently initiated MANUAL T3 closeout after runner P1–P9; Browser-required gate. Never auto-run via --closeout.
 
 VERSIONING
-- Read exact source/build/manifest version and dirty work; no automatic release bump, self-commit or new implementation scope.
+- Required unchanged project version: `0.13.11`.
+- No product-version, manifest, lockfile, dependency or Pi pin changes.
 
 PREFLIGHT
-Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0058, docs/planning/p13/external-mcp-compat-contract.md and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Inspect actual local HEAD/version/dirty tree, pertinent code/tests and prior prompt evidence. Preserve unrelated owner edits and historical NOT GREEN. Run this prompt manually; no codex:phase, self-commit, automatic next prompt, Work start or Roadmap GREEN.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0058, docs/planning/p13/external-mcp-compat-contract.md and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Inspect actual local HEAD/version/dirty tree, pertinent code/tests and prior prompt evidence. Preserve unrelated owner edits and historical NOT GREEN. Run this final qualification MANUALLY after P9; do not self-commit, use --closeout, start implementation Work or award Roadmap GREEN.
 
 ENTRY GATE
 Review P1 audit, P2–P8 actual source/qualification outcomes and P9 real worker T2 evidence. If a required mutation/containment/approval invariant is NOT GREEN, stop BLOCKED. Obtain owner permission before connecting or starting the existing Godot MCP, modifying fixture files, installing an extension or changing Godot settings.
