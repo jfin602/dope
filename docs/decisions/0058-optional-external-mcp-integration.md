@@ -1,6 +1,6 @@
 # ADR 0058 — Global MCP Installation, Per-Project Activation, and External Tool Independence
 
-**Date:** 2026-11-17. **Status:** OWNER-APPROVED DESIGN / DOCUMENTATION APPLIED; IMPLEMENTATION NOT STARTED OR QUALIFIED. **Product version:** `0.13.11` unchanged. **Manual implementation prompt stack:** [c13-mcp](../tasks/c13-mcp/README.md), P1–P10 assessment/plan/prompt text AUTHORED ONLY, not executed or qualified.
+**Date:** 2026-11-17. **Status:** OWNER-APPROVED DESIGN / DOCUMENTATION APPLIED; IMPLEMENTATION NOT STARTED OR QUALIFIED. **Product version:** `0.13.11` unchanged. **Implementation prompt stack:** [c13-mcp](../tasks/c13-mcp/README.md), assessment/plan/P1–P10 AUTHORED ONLY, NOT EXECUTED / NOT QUALIFIED. P1–P9 are runner-managed after explicit owner Run; P10 independently MANUAL/browser-required.
 
 ## Context
 
