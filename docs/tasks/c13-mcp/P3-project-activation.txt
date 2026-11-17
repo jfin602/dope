@@ -1,0 +1,30 @@
+TASK: Correction 13 / P3 — Project-Local MCP Enablement without Project Installation
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol Medium.
+- Browser required: no.
+- Manual execution only; one scoped prompt per owner action.
+
+VERSIONING
+- Keep the actually verified local coherent product version unchanged (repository docs last report 0.13.11).
+- No automatic dependency, package manifest, lockfile or release version changes.
+
+PREFLIGHT — ALL MANUAL PROMPTS
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/decisions/0058-optional-external-mcp-integration.md, docs/planning/p13/external-mcp-compat-contract.md and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Inspect actual local HEAD, dirty state, version and current relevant source. Honor existing owner changes and Phase 13 recovery; do not reset/stash/clean, rewrite historical evidence, self-commit or run subsequent prompts. Manual prompt, NOT codex:phase. Maintain source/permission/owner identity and no new Work Run or Roadmap Gate status. Record what was actually observed.
+
+GOAL
+Implement independent per-project enable/disable of servers in the globally installed catalog, initially OFF for each new project; no UI or Pi tool execution yet.
+
+SCOPE / IMPLEMENT
+1. Inspect P2 global server identities and Dope's current machine-local stable project identity and preferences mechanisms. Choose validated root/identity mapping that avoids cross-project mixups, unsafe symlink aliases and repository-shared executable state.
+2. Persist machine-local versioned preferences keyed by stable project identity + global server ID; use safe conflict/revision handling across windows and restarts. This is not a .dope/ canonical artifact and must not follow Git clone automatically.
+3. Server selection is only eligibility, never permission to invoke a tool or reveal project data. Fresh combinations default off. Switching Project A→B must atomically invalidate A's active MCP eligibility and pending calls; never copy activation into B.
+4. Global server removal disables/inerts dependent preference entries and prevents use; reinstall must not silently revive old execution permissions. Define truthful disabled, unconfigured, uninstalled, unavailable, active states and an API usable by existing AI Center.
+5. Add activation/revocation event contracts for future transport/Pi adapters without introducing a separate agent, Chat, Work or connection system.
+
+FOCUSED VALIDATION
+Focused tests: two projects opposite toggles; new project off; restart; two-window stale revision; root alias/symlink/cross-workspace denial; global uninstall/reinstall; no .dope/Git writes; project-switch revocation notification. Minimal changed-output builds; git diff --check.
+
+EXIT / HANDOFF
+Record registry and activation schemas and event semantics for P4/P5/P6. No server auto-start, tool approval, or source mutation. STOP P3.
+- State exact working tree/source identity, affected paths, executed test commands, PASS/PARTIAL/NOT GREEN/BLOCKED and any independent evidence gaps. STOP here, do not run P4 automatically.
