@@ -1,0 +1,29 @@
+TASK: Correction 13 / P8 — Standard GDScript and Godot File Editing in Dope
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol Medium.
+- Browser required: no.
+- Manual T1/configuration-first prompt; live GUI proof remains P10.
+
+VERSIONING
+- Keep checked product version. Do not add engine runtime dependencies or bundled Godot editor.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0058, docs/planning/p13/external-mcp-compat-contract.md and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Inspect actual local HEAD/version/dirty tree, pertinent code/tests and prior prompt evidence. Preserve unrelated owner edits and historical NOT GREEN. Run this prompt manually; no codex:phase, self-commit, automatic next prompt, Work start or Roadmap GREEN.
+
+GOAL
+Verify usable source editing for existing Godot projects through ordinary Theia/Monaco and a compatible GDScript extension; fix only demonstrated generic editor/extension gaps.
+
+ASSESS / IMPLEMENT
+1. On a disposable real Godot 4 project (and a safe read-only/backup copy of the fish game if available), open the directory containing project.godot in existing Dope Explorer. Do not import or convert into a new project type.
+2. Inspect Dope's current Open VSX extension support and test a verified compatible version of Godot Tools or equivalent extension. Record exact extension version, Theia version and Godot version. Do not claim that VS Code compatibility alone establishes Dope support, or auto-install unknown extensions without permission.
+3. Check .gd editing, syntax, completion, diagnostics and symbol navigation via the existing Godot LSP where actually connected. Distinguish basic text editing from LSP/debug functionality. A failed LSP is not a fabricated PASS; record reason and investigate only relevant generic Theia compatibility.
+4. Check text editing/highlighting of .tscn, .tres, .gdshader, .gdshaderinc, project.godot and .gdextension as applicable; preserve .uid, .import, source asset identifiers and Git status. Binary .scn, .res, .glb, images and audio must not be corrupted as text.
+5. Test safe external edits: clean-buffer reload between Godot and Dope, dirty-buffer warning/conflict, restart and no silent overwrite of scene files. Never automatically regenerate Godot resources or launch engine just because project opens.
+6. If configuration/standard extension resolves issues, produce a documented setup result with NO product source edits. Only repair proven general-purpose Theia editor/extension issues, with narrow regression tests; no special scene editor, analyzer or perpetual Godot dependency.
+
+T1 VALIDATION
+For actual changes only, run narrow editor/extension tests, necessary package build, git diff --check and verify both source byte integrity and dirty worktree preservation. Record any direct GUI checks actually performed, but reserve final real independent qualification for P10.
+
+EXIT
+Report actual extension features/limitations and unaffected non-Godot editing. P9 depends on this record; no automatic P9, install or project mutation.
