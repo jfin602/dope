@@ -1,0 +1,30 @@
+TASK: Correction 13 / P1 — Actual Godot MCP and Dope Pi Boundary Audit
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: no.
+- Manual execution only; one scoped prompt per owner action.
+
+VERSIONING
+- Keep the actually verified local coherent product version unchanged (repository docs last report 0.13.11).
+- No automatic dependency, package manifest, lockfile or release version changes.
+
+PREFLIGHT — ALL MANUAL PROMPTS
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/decisions/0058-optional-external-mcp-integration.md, docs/planning/p13/external-mcp-compat-contract.md and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Inspect actual local HEAD, dirty state, version and current relevant source. Honor existing owner changes and Phase 13 recovery; do not reset/stash/clean, rewrite historical evidence, self-commit or run subsequent prompts. Manual prompt, NOT codex:phase. Maintain source/permission/owner identity and no new Work Run or Roadmap Gate status. Record what was actually observed.
+
+GOAL
+Produce a trustworthy go/no-go assessment for reusing the EXISTING Godot MCP bridge through bundled Dope Pi; no product code changes.
+
+SCOPE / IMPLEMENT
+1. Inspect exact on-machine standalone Pi ↔ Godot MCP configuration, executable/source, installed version, transport (stdio or HTTP), startup, endpoint and real tool inventory. Do not guess package names, URLs, config paths or start untrusted processes. If the bridge cannot be found, list precise missing inputs and STOP BLOCKED for transport implementation.
+2. Observe/read only harmless server discovery, not live scene modification. Classify tools independently as observation, possibly mutating or unknown; readOnlyHint annotations are not proof. Identify any server-start side effects and what credentials/network/files the server can access.
+3. Compare actual Dope code: packages/pi-runtime/worker.mjs; packages/theia-extension/src/node/{pi-runtime-host,pi-model-bridge,pi-conversation-runtime}.ts; packages/agent-core/src/node/{local-tool-broker,local-tool-sandbox}.ts; AI Center registry/widget and relevant tests. Record exact fixed-tool and socket-deny behavior, extension/load policies, per-project identity and approval flow.
+4. Draw the narrowest viable audited architecture for global catalog, project toggle, supervised transport and observational Pi tools. If existing process containment cannot prevent unauthorized direct effects, explicitly stop future MCP live invocation until a safe boundary is designed; do not propose a blanket network/sandbox exception.
+5. Prepare docs/tasks/c13-mcp/qualification/p1-audit.md with source hashes, bridge inventory, observed vs assumed behavior, risk register, safe tool allowlist candidates and P2–P10 execution prerequisites. No fictitious PASS or integration tests.
+
+FOCUSED VALIDATION
+Inspect/report only. No package installation, Godot writes, MCP direct mutation, model tool execution, code changes or broad build/test. Verify Git state before/after and make the assessment available to later prompts.
+
+EXIT / HANDOFF
+Must explicitly decide whether safe observational transport is feasible. If unverified, downstream MCP transport/tool tasks remain BLOCKED, while purely separate registry and editor support may proceed under owner direction.
+- State exact working tree/source identity, affected paths, executed test commands, PASS/PARTIAL/NOT GREEN/BLOCKED and any independent evidence gaps. STOP here, do not run P2 automatically.
