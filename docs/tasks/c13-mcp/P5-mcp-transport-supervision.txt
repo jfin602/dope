@@ -1,15 +1,16 @@
 TASK: Correction 13 / P5 — Narrow MCP Transport and Server Supervision
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol High.
+- Recommended configuration: `GPT-6 Sol High`.
 - Browser required: no.
-- Manual T1 implementation with immediate safety canaries. If too broad, stop for owner-approved split.
+- Runner-managed T1 implementation with immediate safety canaries. If too broad, stop for owner-approved split.
 
 VERSIONING
-- Preserve checked local version and installed Pi dependency; no blanket package upgrades, manifest bump or arbitrary install.
+- Required unchanged project version: `0.13.11`.
+- No package-version, manifest, lockfile, dependency or Pi pin changes.
 
 PREFLIGHT
-Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0058, docs/planning/p13/external-mcp-compat-contract.md, and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Read actual prior P1–P(n−1) implementation/qualification evidence and current source. Check local HEAD, dirty tree, true version, changes/compiled-output freshness; preserve owner work, existing tests, historical NOT GREEN, source/authority invariants. Manual invocation only; do not run subsequent prompts or self-commit/launch Work.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0058, docs/planning/p13/external-mcp-compat-contract.md, and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Read actual P1–P4 source/qualification evidence and current source. Check local HEAD, dirty tree, true version, changes/compiled-output freshness; preserve owner work, existing tests, historical NOT GREEN, source/authority invariants. Manual invocation only; do not run subsequent prompts or self-commit/launch Work.
 
 ENTRY GATE
 P1 must have identified actual existing Godot bridge, supported MCP transport and feasible containment; P2/P3 must provide trusted catalog and per-project activation. If any are missing or unsafe, STOP BLOCKED before starting a server.
@@ -29,4 +30,4 @@ IMMEDIATE T1 SAFETY VALIDATION
 With a controlled fake MCP server, prove handshake/tools list, endpoint/executable validation, malicious schema, timeout, oversized messages, cancellation, socket/host-secret/outside-root denial, process exit cleanup, active project switch and no unapproved effects at server startup. If containment cannot be proved, mark NOT GREEN / BLOCKED and do not proceed to P6. Run only focused tests and necessary changed-package builds; git diff --check.
 
 EXIT
-Document exact selected transport and known unsupported transports. Do not install/launch the live Godot server without owner action. STOP P5; P6 owns tool invocation.
+Document exact selected transport and known unsupported transports. Do not install/launch the live Godot server without owner action. Finish P5 and return control to runner; P6 owns tool invocation. If containment is unverified, do not claim PASS or proceed to unsafe tool exposure.
