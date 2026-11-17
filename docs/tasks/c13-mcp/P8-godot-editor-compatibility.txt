@@ -25,5 +25,5 @@ ASSESS / IMPLEMENT
 T1 VALIDATION
 For actual changes only, run narrow editor/extension tests, necessary package build, git diff --check and verify both source byte integrity and dirty worktree preservation. Record any direct GUI checks actually performed, but reserve final real independent qualification for P10.
 
-EXIT
-Report actual extension features/limitations and unaffected non-Godot editing. P9 depends on this record; no automatic P9, install or project mutation.
+EXIT / STOP
+Report actual extension features/limitations and unaffected non-Godot editing. P9 depends on this record. STOP after P8: no automatic P9, unapproved install or project mutation.
