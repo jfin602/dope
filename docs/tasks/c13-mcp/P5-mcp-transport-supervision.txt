@@ -1,0 +1,32 @@
+TASK: Correction 13 / P5 — Narrow MCP Transport and Server Supervision
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: no.
+- Manual T1 implementation with immediate safety canaries. If too broad, stop for owner-approved split.
+
+VERSIONING
+- Preserve checked local version and installed Pi dependency; no blanket package upgrades, manifest bump or arbitrary install.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0058, docs/planning/p13/external-mcp-compat-contract.md, and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Read actual prior P1–P(n−1) implementation/qualification evidence and current source. Check local HEAD, dirty tree, true version, changes/compiled-output freshness; preserve owner work, existing tests, historical NOT GREEN, source/authority invariants. Manual invocation only; do not run subsequent prompts or self-commit/launch Work.
+
+ENTRY GATE
+P1 must have identified actual existing Godot bridge, supported MCP transport and feasible containment; P2/P3 must provide trusted catalog and per-project activation. If any are missing or unsafe, STOP BLOCKED before starting a server.
+
+GOAL
+Build a narrowly bounded, Dope-owned MCP connection/supervision layer for only verified necessary transport, not general host shell/network privileges. P6 will expose tools to Pi.
+
+IMPLEMENT
+1. Inspect exact transport from P1: local stdio or bounded Streamable HTTP. Do not implement irrelevant transports, remote endpoints, arbitrary network ranges or a user-authored command shell. Validate executable path and arguments or URL using a trusted user-approved global record, not model or repository-controlled config.
+2. Separate the MCP transport/supervisor from the existing local model-issued process sandbox, which denies sockets. Do NOT remove those seccomp/socket restrictions. If the server cannot safely run/connect under least privilege, expose an unavailable status and STOP; no unsafe fallback or unconfined spawn.
+3. Treat even launch and initial handshake as potentially effectful: explicit user-trusted server install/config, constrained environment (no credentials/host paths beyond reviewed need), suitable OS/process isolation, resource/time limits, cancellation, process cleanup and project switch/uninstall revocation.
+4. Implement bounded JSON-RPC/MCP initialize, tools/list, request correlation, typed shape checks, output redaction/size caps and changed-manifest invalidation for approved read-only discovery. Untrusted tool descriptions, tool annotations, tool results, prompts and resources may never expand authority. Do not invoke live Godot mutation tools.
+5. Keep connection state and health separate from global install and project enablement. No background automatic project-data read just from opening a project or showing the AI Center.
+6. Preserve exact provenance of transport type, server global ID, tool metadata revision, project scope, process exit and errors. Do not log secrets or raw private data.
+
+IMMEDIATE T1 SAFETY VALIDATION
+With a controlled fake MCP server, prove handshake/tools list, endpoint/executable validation, malicious schema, timeout, oversized messages, cancellation, socket/host-secret/outside-root denial, process exit cleanup, active project switch and no unapproved effects at server startup. If containment cannot be proved, mark NOT GREEN / BLOCKED and do not proceed to P6. Run only focused tests and necessary changed-package builds; git diff --check.
+
+EXIT
+Document exact selected transport and known unsupported transports. Do not install/launch the live Godot server without owner action. STOP P5; P6 owns tool invocation.
