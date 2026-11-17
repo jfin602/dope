@@ -439,6 +439,16 @@ Canonical product state must remain valid when the active provider changes.
 
 ADR 0026 extends the Phase 7 Model Runtime with one user-global AI control plane while preserving provider independence and feature authority.
 
+### External MCP Servers — ADR 0058 (approved design; not implemented)
+
+[ADR 0058](decisions/0058-optional-external-mcp-integration.md) and the [external MCP contract](planning/p13/external-mcp-compat-contract.md) add **MCP Servers as a section within the existing AI Center**, not a standalone workspace or specialized Godot editor. Installed/registered MCP servers belong to one revisioned, machine-local, application-global tool-server registry: install and configure once, discover from every project, and manage credentials through secure application secret handling. This registry is a separate tool-connection concern from the existing AI model/provider connection registry, not a new model authority.
+
+Each project has an independent machine-local enabled/disabled preference for each globally installed MCP server, keyed to stable validated project identity. New project/server combinations default off. Toggle state survives restart and does not enter repository-owned `.dope/` canonical knowledge. Enabling grants only potential availability, not tool authority. Disabling/uninstalling revokes affected sessions/calls without altering unrelated projects or installing duplicates.
+
+Bundle Pi remains the sole eligible local agent worker behind existing Chat/Planning/Work tool owners. MCP tool inventory is validated against Dope-owned per-project, per-operation permission and tool identity limits. The existing fixed built-in Pi tool attestation must not be bypassed by dynamic manifests, arbitrary Pi extensions, model/tool text, or server descriptions. All invocations use Dope-brokered authority, output limits, provenance, cancellation and fail-closed handling. External socket/process transport must be independently contained without weakening existing sandbox network denials; **direct live Godot scene/resource writes are deferred** until a separately approved Dope-authoritative direct-effect contract exists.
+
+Godot's external MCP bridge is the first qualification fixture, not a product dependency. GDScript, shaders, text scenes and resources use existing Theia editor/language extension mechanisms where possible. Godot keeps its own visual editor and files; Dope stays fully functional with no Godot/MCP server installed or connected. This is forward documentation only, not implementation, Work, server installation, or qualification.
+
 ### Logical application-global registry
 
 The Model Connections/AI policy registry is **machine-local and application-global for one OS user/Dope installation**. It is one logical authority, not a requirement that every Dope window literally share one backend process. The implementation must preserve one revisioned state across the actual Electron/Theia process topology, including cross-process mutation exclusion where more than one backend can write and live update propagation to other open windows.
