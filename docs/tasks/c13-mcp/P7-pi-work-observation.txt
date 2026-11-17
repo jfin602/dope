@@ -1,15 +1,16 @@
 TASK: Correction 13 / P7 — Permission-Bound MCP Observation in Work
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol High.
+- Recommended configuration: `GPT-6 Sol High`.
 - Browser required: no.
-- Manual T1 implementation with mandatory immediate authority tests.
+- Runner-managed T1 implementation with mandatory immediate authority tests.
 
 VERSIONING
-- Keep current source-verified coherent version and pinned Pi dependency unchanged.
+- Required unchanged project version: `0.13.11`.
+- No product-version, manifest, lockfile, dependency or Pi pin changes.
 
 PREFLIGHT
-Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0058, docs/planning/p13/external-mcp-compat-contract.md and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Inspect actual local HEAD/version/dirty tree, pertinent code/tests and prior prompt evidence. Preserve unrelated owner edits and historical NOT GREEN. Run this prompt manually; no codex:phase, self-commit, automatic next prompt, Work start or Roadmap GREEN.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0058, docs/planning/p13/external-mcp-compat-contract.md and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Inspect actual local HEAD/version/dirty tree, pertinent code/tests and prior prompt evidence. Preserve unrelated owner edits and historical NOT GREEN. This is a runner-managed implementation/integration task. Do not self-commit, manually run later prompts, start unrelated Work or mark Roadmap GREEN; the runner owns checkpoints.
 
 ENTRY GATE
 Require P5 transport and P6 broker core security PASS at their exact source. Otherwise STOP BLOCKED. Reuse one existing Pi Work session, not a new agent.
@@ -28,4 +29,4 @@ MANDATORY T1 VALIDATION
 Focused grant/broker/worker tests: allowed read-only fixture receipt; no global install; installed-but-project-off; wrong project/task; disabled after start; expired/revoked grant; unknown/mutating method; outside-root, process, network and scene-write attempts; failure/cancel while active; no candidate promotion; existing baseline Work file/process tests. Minimal affected output builds and git diff --check.
 
 EXIT
-Report exact integration outcomes and deferred direct-effect policy. If any authority bypass or unknown mutation reaches external app, STOP NOT GREEN; no P8/P9 automatic execution.
+Report exact integration outcomes and deferred direct-effect policy. If any authority bypass or unknown mutation reaches external app, STOP NOT GREEN; no direct P8/P9 invocation by the agent; runner progression only after validated source and authority checks.
