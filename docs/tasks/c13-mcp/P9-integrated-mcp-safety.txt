@@ -1,15 +1,16 @@
 TASK: Correction 13 / P9 — MCP Integrated Security and Genericity Qualification
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol High.
+- Recommended configuration: `GPT-6 Sol High`.
 - Browser required: no.
-- Manual T2 cross-subsystem qualification.
+- Runner-managed T2 cross-subsystem qualification.
 
 VERSIONING
-- Validate exact implemented candidate and actual verified version; no automatic bump.
+- Required unchanged project version: `0.13.11`.
+- No product-version, manifest, lockfile, dependency or Pi pin changes.
 
 PREFLIGHT
-Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0058, docs/planning/p13/external-mcp-compat-contract.md and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Inspect actual local HEAD/version/dirty tree, pertinent code/tests and prior prompt evidence. Preserve unrelated owner edits and historical NOT GREEN. Run this prompt manually; no codex:phase, self-commit, automatic next prompt, Work start or Roadmap GREEN.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0058, docs/planning/p13/external-mcp-compat-contract.md and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Inspect actual local HEAD/version/dirty tree, pertinent code/tests and prior prompt evidence. Preserve unrelated owner edits and historical NOT GREEN. This is a runner-managed implementation/integration task. Do not self-commit, manually run later prompts, start unrelated Work or mark Roadmap GREEN; the runner owns checkpoints.
 
 ENTRY GATE
 All P2–P7 affected critical security/authority checks must PASS at their changed source; P8 compatibility result must exist. If a live effect can bypass enforcement, STOP rather than continue. Do not treat P1 assumptions as verified facts.
@@ -32,4 +33,4 @@ REPORT
 Write docs/tasks/c13-mcp/qualification/p9-integrated-safety.md with exact HEAD/dirty basis, actual commands and output, every G1–G10 gate's scoped T2 evidence, failures, missing external/native evidence, server IDs/protocol, changed files/hashes, no secret data. PASS/NOT GREEN/PARTIAL/BLOCKED/EVIDENCE GAP per case.
 
 EXIT
-P9 T2 does NOT automatically qualify P10 real Godot, launch Work or grant Gate GREEN. Stop on critical safety failure. Do not run P10 automatically.
+P9 T2 does NOT automatically qualify P10 real Godot, launch Work or grant Gate GREEN. Stop on critical safety failure. Do not invoke P10 from this prompt. Normal runner stops after P9 and hands P10 to the owner for independent manual/browser qualification.
