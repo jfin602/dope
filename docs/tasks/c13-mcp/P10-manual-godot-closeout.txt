@@ -1,0 +1,34 @@
+TASK: Correction 13 / P10 — Real Godot MCP + Independent Dope Manual Closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: yes.
+- Independently initiated manual T3 only; never part of an automatic runner/--closeout path.
+
+VERSIONING
+- Read exact source/build/manifest version and dirty work; no automatic release bump, self-commit or new implementation scope.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0058, docs/planning/p13/external-mcp-compat-contract.md and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Inspect actual local HEAD/version/dirty tree, pertinent code/tests and prior prompt evidence. Preserve unrelated owner edits and historical NOT GREEN. Run this prompt manually; no codex:phase, self-commit, automatic next prompt, Work start or Roadmap GREEN.
+
+ENTRY GATE
+Review P1 audit, P2–P8 actual source/qualification outcomes and P9 real worker T2 evidence. If a required mutation/containment/approval invariant is NOT GREEN, stop BLOCKED. Obtain owner permission before connecting or starting the existing Godot MCP, modifying fixture files, installing an extension or changing Godot settings.
+
+GOAL
+Independently demonstrate Dope as general IDE and Godot as independent visual/editor engine: globally configured existing Godot MCP, per-project enablement, Pi observational tool calls and GDScript/source editing. Do not recreate Godot in Dope.
+
+MANUAL JOURNEY
+1. Capture exact committed and working tree source identities, bundled Pi/version, actual selected local model, MCP bridge executable/version/transport, Godot/extension version and effective host process details. Confirm correct served browser/native candidate and that fixtures are backed up and disposable.
+2. In the actual AI Center, register or locate global Godot MCP once. Verify its section is inside the EXISTING AI Center, with clear globally installed/configured vs per-project toggle. Project A enable; Project B disabled; switch, restart, return. Verify no reinstall.
+3. In one controlled project, use a permitted observational MCP request through bundled Pi Chat and, when eligible, Work. Inspect the actual tool request, broker permission decision, server response and saved result. Attempt denied mutation with a controlled non-destructive fixture only; do not deliberately modify live fish-game scenes. Verify no unchecked project/external effect.
+4. Test no connection/disabled server, wrong project, failed startup, connection drop/restart, cancellation and bad tool schema. Require truthful user-visible recovery; record exact missing permissions/tooling instead of simulating success.
+5. In Dope edit an ordinary .gd file and inspect .tscn/.tres/.gdshader/shader includes/project config. Exercise extension's actual highlighting/LSP completion/diagnostics as available; verify import/UID metadata and SCM. Switch between Dope and Godot; validate dirty-buffer conflicts and clean reload.
+6. With owner-controlled native Godot editor, run a safe disposable project/scene and verify changes visually. In a backed-up copy of the fish game, assess navigation and editing only with owner approval. Never substitute headless import success for manual gameplay qualification.
+7. Close Godot: Dope must remain usable. Close Dope: Godot must remain usable. Open a separate TypeScript/Rust project in Dope with MCP disabled; verify ordinary Chat/editor/Git/Work remain unaffected.
+8. Verify global removal does not corrupt projects, and a second unrelated controlled MCP fixture uses same generic pipeline without Godot-specific Dope code. Do not auto install unknown external servers.
+
+CLOSEOUT / EVIDENCE
+Record docs/tasks/c13-mcp/qualification/p10-manual-godot-closeout.md with real GUI screenshots/observations when available, exact source/build/server/model/project identities, G1–G10 outcomes, before/after file hashes/Git diff, approval actions, read-only and denial receipts, native vs browser vs scripted distinction, unsolved gaps, and owner's separate disposition. Use PASS/PARTIAL/NOT GREEN/BLOCKED/EVIDENCE GAP and never mark unobserved tests as PASS. Include affected aggregate/build only when warranted by actual T3 source changes; no duplicate passing broad suites.
+
+STOP
+No automatic repair cycle, direct agent-driven Godot scene mutation, additional MCP tool privileges, engine embedding, Work Run/Gate/Phase GREEN, version bump, or unapproved commit. Report independent qualification and await separate owner direction.
