@@ -25,7 +25,7 @@ Exactly **nine** runner-managed, source-bound P1–P9 prompts and **one** termin
 9. P9: T2 worker/permission/transport/registry/second-server integration and adversarial regression.
 10. P10: manual T3 real Godot/browser/native/non-Godot owner closeout.
 
-Dependency P1→P2→P3→P4→P5→P6→P7→P8→P9, then independently manual P10. Never auto-run browser P10 or silently start a separate Work grant. P1 missing bridge details are an explicitly documented P5 blocker, not grounds to invent executable/URL or relax local sandbox.
+Dependency P1→P2→P3→P4→P5→P6→P7→P8→P9, then independently manual P10. Never auto-run browser P10 or silently start a separate Work grant. P1 missing bridge identity/transport/tools is a hard entry blocker: do not produce a success checkpoint, so the runner stops. Any remaining effect/containment uncertainty is an additional P5 blocker; never invent a launcher or relax the local sandbox.
 
 ## Hard boundaries and honest status
 
