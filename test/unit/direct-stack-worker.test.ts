@@ -14,6 +14,7 @@ import { ChatBackend } from '../../packages/theia-extension/lib/node/chat-backen
 import { ChatProjectGrounder } from '../../packages/theia-extension/lib/node/chat-project-grounder.js';
 import { PiRuntimeHost } from '../../packages/theia-extension/lib/node/pi-runtime-host.js';
 import { classifyPiFailure } from '../../packages/theia-extension/lib/node/pi-conversation-runtime.js';
+import { resolveOperationContextPolicy } from '../../packages/theia-extension/lib/node/operation-context-policy.js';
 import { PromptDraftStore } from '../../packages/theia-extension/lib/node/prompt-draft-store.js';
 import { validatePromptStackProposal } from '../../packages/theia-extension/lib/node/prompt-stack-proposal.js';
 import { discoverRoadmapTaskStacks } from '../../packages/agent-core/lib/node/roadmap-task-discovery.js';
@@ -88,14 +89,15 @@ test('one trusted direct command reaches the real Pi worker, reviewed files and 
                     maxInputTokens: 32768 } }] }] }),
         async *generate(_selection: unknown, request: { messages: { role: 'system' | 'user' | 'assistant'; content: string }[];
             maxOutputTokens?: number; signal?: AbortSignal; projectTools?: { root: string;
-                operationPolicy?: unknown; proposalTools?: boolean; generationId?: string;
+                operationPolicy?: unknown; proposalTools?: boolean; directProposalTools?: boolean; generationId?: string;
                 execute(name: string, args: unknown, signal?: AbortSignal, id?: number): Promise<string> } }) {
             const host = new PiRuntimeHost();
             try {
                 await host.start();
                 await host.openChatToolsSession({ ...model, baseUrl: endpoint }, root, undefined, 'low',
                     false, false, request.projectTools?.proposalTools ?? false, false,
-                    request.projectTools?.operationPolicy as never, false);
+                    request.projectTools?.operationPolicy as never, false,
+                    request.projectTools?.directProposalTools ?? false);
                 for await (const event of host.streamTurn(request.messages, request.maxOutputTokens ?? 4096,
                     request.signal, async call => {
                         const output = await request.projectTools!.execute(call.name, call.arguments,
@@ -138,6 +140,7 @@ test('one trusted direct command reaches the real Pi worker, reviewed files and 
             validatePromptStackProposal(proposal);
             assert.equal(assistant?.role === 'assistant' && assistant.proposalProgress?.state, 'ready-for-review');
             assert.equal(proposal.files.length, count + 2);
+            assert.equal(proposal.files.filter(file => /manual-label-closeout\.txt$/u.test(file.path)).length, 1);
             assert.ok(proposal.files.every(file => !/prompt-assessment|implementation-plan/.test(file.path)));
             assert.deepEqual(calls.map(call => call.name), operations.map(operation => operation.name));
             assert.equal(JSON.parse(calls.at(-1)!.output).state, 'ready-for-review');
@@ -166,4 +169,22 @@ test('one trusted direct command reaches the real Pi worker, reviewed files and 
             await rm(temporary, { recursive: true, force: true, maxRetries: 10, retryDelay: 25 });
         }
     }
+});
+
+test('the real worker rejects a direct policy without the trusted direct tool mode', async () => {
+    const host = new PiRuntimeHost();
+    const policy = { commandId: randomUUID(), modelId: model.id,
+        snapshot: resolveOperationContextPolicy('managed', 'gen-stack',
+            { conversationalText: true, streaming: true, contextWindowTokens: 32768,
+                maxInputTokens: 32768, maxOutputTokens: 8192 }) };
+    try {
+        await host.start();
+        await assert.rejects(host.openChatToolsSession({ ...model, baseUrl: 'http://127.0.0.1:1/v1' },
+            process.cwd(), undefined, 'low', false, false, false, false, policy),
+        error => (error as { code?: string }).code === 'policy_invalid');
+        await assert.rejects(host.openChatToolsSession({ ...model, baseUrl: 'http://127.0.0.1:1/v1' },
+            process.cwd(), undefined, 'low', false, false, false, false,
+            { ...policy, snapshot: { ...policy.snapshot, operation: 'chat' as const } }, false, true),
+        error => (error as { code?: string }).code === 'policy_invalid');
+    } finally { host.dispose(); }
 });
