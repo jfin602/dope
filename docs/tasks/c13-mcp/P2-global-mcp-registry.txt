@@ -1,16 +1,16 @@
 TASK: Correction 13 / P2 — Global MCP Server Registry and Safe Configuration
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol High.
+- Recommended configuration: `GPT-6 Sol High`.
 - Browser required: no.
-- Manual execution only; one scoped prompt per owner action.
+- Runner-managed implementation prompt; not a manual handoff.
 
 VERSIONING
-- Keep the actually verified local coherent product version unchanged (repository docs last report 0.13.11).
-- No automatic dependency, package manifest, lockfile or release version changes.
+- Required unchanged project version: `0.13.11`.
+- Do not modify package version, manifests, dependency pins or lockfiles.
 
-PREFLIGHT — ALL MANUAL PROMPTS
-Read BOOT.md, AGENTS.md, docs/workflow.md, docs/decisions/0058-optional-external-mcp-integration.md, docs/planning/p13/external-mcp-compat-contract.md and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Inspect actual local HEAD, dirty state, version and current relevant source. Honor existing owner changes and Phase 13 recovery; do not reset/stash/clean, rewrite historical evidence, self-commit or run subsequent prompts. Manual prompt, NOT codex:phase. Maintain source/permission/owner identity and no new Work Run or Roadmap Gate status. Record what was actually observed.
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/decisions/0058-optional-external-mcp-integration.md, docs/planning/p13/external-mcp-compat-contract.md and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Inspect actual local HEAD, dirty state, version and current relevant source. Honor existing owner changes and Phase 13 recovery; do not reset/stash/clean, rewrite historical evidence, self-commit or run subsequent prompts. Runner owns Git checkpoints and commits. Do not self-commit, manually invoke the next prompt, run independent Work or award Roadmap Gate status. Record only actually observed evidence.
 
 GOAL
 Add a minimal application-global, machine-local MCP server registry, SEPARATE from the model/provider connection registry; no Pi execution or project activation in P2.
@@ -26,5 +26,5 @@ FOCUSED VALIDATION
 Focused registry/schema/service tests for round-trip, restart, duplicate IDs, stale revision, concurrent updates, corrupted/unsupported input, no secret persistence, no project-root record and unchanged AI model registry. Inspect test/import compiled-output prerequisites and build only changed packages; git diff --check. No whole-suite run.
 
 EXIT / HANDOFF
-Demonstrate one server record can be configured once and read from multiple project contexts without running it. P3 owns activation. STOP P2.
-- State exact working tree/source identity, affected paths, executed test commands, PASS/PARTIAL/NOT GREEN/BLOCKED and any independent evidence gaps. STOP here, do not run P3 automatically.
+Demonstrate one server record can be configured once and read from multiple project contexts without running it; keep focused permanent registry tests as a commit-worthy source change. P3 owns activation. Finish P2; do not start P3 yourself.
+- State exact working tree/source identity, affected paths, executed test commands, PASS/PARTIAL/NOT GREEN/BLOCKED and any independent evidence gaps. STOP this prompt and return control to the runner; it advances only after successful validation and a runner-owned checkpoint.
