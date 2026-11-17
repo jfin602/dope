@@ -1,0 +1,31 @@
+TASK: Correction 13 / P6 — Bundled Pi Chat MCP Tool Attestation and Broker
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: no.
+- Manual T1 implementation with immediate security regression.
+
+VERSIONING
+- Keep verified version and Pi 1.4.0 dependency pinned; no new agent/runtime or silent provider fallback.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0058, docs/planning/p13/external-mcp-compat-contract.md, and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Read actual prior P1–P(n−1) implementation/qualification evidence and current source. Check local HEAD, dirty tree, true version, changes/compiled-output freshness; preserve owner work, existing tests, historical NOT GREEN, source/authority invariants. Manual invocation only; do not run subsequent prompts or self-commit/launch Work.
+
+ENTRY GATE
+P5 must have qualified a safe supervised MCP discovery route and P2/P3 must enforce stable server identity and project enablement. Otherwise STOP BLOCKED.
+
+GOAL
+Allow bundled Pi Chat to discover and invoke only separately checked OBSERVATIONAL MCP tools via Dope authority, without weakening existing exact built-in tool-set checking or giving full Godot scene control.
+
+IMPLEMENT
+1. Inspect packages/pi-runtime/worker.mjs, packages/theia-extension/src/node/{pi-runtime-host,pi-model-bridge,pi-conversation-runtime,chat-backend}.ts, tool-dispatch broker/permission policies and exact worker tests. Preserve the original built-in tool list/identity verification.
+2. Introduce a separate, bounded MCP tool descriptor namespace manifest, checked against Dope-owned global server ID, project activation, current Chat operation policy, model eligibility, verified schema/revision and a server-tool allowlist. Do not let model/provider, project text or MCP metadata self-register new privileged tools.
+3. Treat tool calls as untrusted: parse/validate arguments strictly, recheck current project and server enablement at invocation, apply existing Commands Ask/Allow and individual authority ceilings, route only through P5 supervised transport, and return bounded result/provenance. Reject unknown/changed/non-observational tools; do not depend on readOnlyHint alone to classify them safe.
+4. Ensure active Chat/pending calls fail closed on disable, switch, disconnect, cancellation or manifest drift. Preserve saved Chat output and truthful completed/denied/failed receipts without making tool output canonical source facts.
+5. Do not expose MCP tools in no-tool sessions, protected planning/proposal operations with fixed tool contracts unless explicitly allowed by those existing owners, or Work (P7 owns Work). Do not create a second Pi runtime/agent or bypass ordinary project-file tools.
+
+IMMEDIATE T1 VALIDATION
+Real bundled worker + controlled fake MCP broker tests for eligible observation, project-off, wrong project, revoked server, changed schema, forged tool name, attempted write/process/network, no tool in protected modes, strict built-in attestation, cancellation, output truncation, no silent provider switch and no canonical project writes. Inspect actual tests/compiled output; run only affected focused matrix and git diff --check. Any mutating call or privilege bypass is STOP/NOT GREEN, not P9 deferral.
+
+EXIT
+Report observed tools/receipts vs simulated; do not claim real Godot qualified. STOP after Chat/Pi broker. No live Godot scene changes or P7 automatically.
