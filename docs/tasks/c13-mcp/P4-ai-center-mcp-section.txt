@@ -1,15 +1,16 @@
 TASK: Correction 13 / P4 — Existing AI Center MCP Servers Section
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol Medium.
+- Recommended configuration: `GPT-6 Sol Medium`.
 - Browser required: no.
-- Manual T1 implementation; final GUI is P10.
+- Runner-managed T1 implementation; final GUI is P10.
 
 VERSIONING
-- Keep verified current coherent version unchanged; no manifest/lockfile changes without separate approval.
+- Required unchanged project version: `0.13.11`.
+- No package-version, manifest, lockfile, dependency or Pi pin changes.
 
 PREFLIGHT
-Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0058, docs/planning/p13/external-mcp-compat-contract.md, and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Read actual prior P1–P(n−1) implementation/qualification evidence and current source. Check local HEAD, dirty tree, true version, changes/compiled-output freshness; preserve owner work, existing tests, historical NOT GREEN, source/authority invariants. Manual invocation only; do not run subsequent prompts or self-commit/launch Work.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0058, docs/planning/p13/external-mcp-compat-contract.md, and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Read actual P1–P3 source/qualification evidence and current source. Check local HEAD, dirty tree, true version, changes/compiled-output freshness; preserve owner work, existing tests, historical NOT GREEN, source/authority invariants. Manual invocation only; do not run subsequent prompts or self-commit/launch Work.
 
 GOAL
 Add usable global MCP server management and active-project toggles INSIDE the single existing AI Center, not another workbench/editor.
@@ -26,4 +27,4 @@ FOCUSED T1 VALIDATION
 Add/update focused controller, widget and accessible-state tests for install-once/visible-in-two-projects, off-by-default toggle, remove, denied/missing/health states, stale revision, keyboard/aria, and old AI model/roles tabs unchanged. Only affected typecheck/build required for tests; git diff --check. Unit tests are NOT observed browser/native UX.
 
 EXIT
-Report exact changed files and tests, evidence/gaps and P5 handoff. STOP. No auto browser launch, MCP server execution, live project modifications or next prompt.
+Report exact changed files and tests, evidence/gaps and P5 handoff. STOP. No automatic browser launch, MCP server execution or live project modifications; return to runner after validated P4.
