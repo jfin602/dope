@@ -1,18 +1,19 @@
 TASK: Correction 13 / P8 — Standard GDScript and Godot File Editing in Dope
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol Medium.
+- Recommended configuration: `GPT-6 Sol Medium`.
 - Browser required: no.
-- Manual T1/configuration-first prompt; live GUI proof remains P10.
+- Runner-managed T1/configuration-first prompt; live GUI proof remains P10.
 
 VERSIONING
-- Keep checked product version. Do not add engine runtime dependencies or bundled Godot editor.
+- Required unchanged project version: `0.13.11`.
+- No product-version, manifest, lockfile, dependency or Pi pin changes.
 
 PREFLIGHT
-Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0058, docs/planning/p13/external-mcp-compat-contract.md and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Inspect actual local HEAD/version/dirty tree, pertinent code/tests and prior prompt evidence. Preserve unrelated owner edits and historical NOT GREEN. Run this prompt manually; no codex:phase, self-commit, automatic next prompt, Work start or Roadmap GREEN.
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0058, docs/planning/p13/external-mcp-compat-contract.md and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Inspect actual local HEAD/version/dirty tree, pertinent code/tests and prior prompt evidence. Preserve unrelated owner edits and historical NOT GREEN. This is a runner-managed implementation/integration task. Do not self-commit, manually run later prompts, start unrelated Work or mark Roadmap GREEN; the runner owns checkpoints.
 
 GOAL
-Verify usable source editing for existing Godot projects through ordinary Theia/Monaco and a compatible GDScript extension; fix only demonstrated generic editor/extension gaps.
+Verify usable source editing for existing Godot projects through ordinary Theia/Monaco and a compatible GDScript extension; create a durable source-grounded compatibility report (required runner checkpoint), and fix only demonstrated generic editor/extension gaps.
 
 ASSESS / IMPLEMENT
 1. On a disposable real Godot 4 project (and a safe read-only/backup copy of the fish game if available), open the directory containing project.godot in existing Dope Explorer. Do not import or convert into a new project type.
@@ -20,10 +21,10 @@ ASSESS / IMPLEMENT
 3. Check .gd editing, syntax, completion, diagnostics and symbol navigation via the existing Godot LSP where actually connected. Distinguish basic text editing from LSP/debug functionality. A failed LSP is not a fabricated PASS; record reason and investigate only relevant generic Theia compatibility.
 4. Check text editing/highlighting of .tscn, .tres, .gdshader, .gdshaderinc, project.godot and .gdextension as applicable; preserve .uid, .import, source asset identifiers and Git status. Binary .scn, .res, .glb, images and audio must not be corrupted as text.
 5. Test safe external edits: clean-buffer reload between Godot and Dope, dirty-buffer warning/conflict, restart and no silent overwrite of scene files. Never automatically regenerate Godot resources or launch engine just because project opens.
-6. If configuration/standard extension resolves issues, produce a documented setup result with NO product source edits. Only repair proven general-purpose Theia editor/extension issues, with narrow regression tests; no special scene editor, analyzer or perpetual Godot dependency.
+6. If configuration/standard extension resolves issues, write docs/tasks/c13-mcp/qualification/p8-editor-compatibility.md with exact supported and unsupported features, configuration, version evidence, file identity results and reproduction steps; this document is the required runner-owned checkpoint even if no product source edits are needed. Only repair proven general-purpose Theia editor/extension issues, with narrow regression tests; no special scene editor, analyzer or perpetual Godot dependency.
 
 T1 VALIDATION
-For actual changes only, run narrow editor/extension tests, necessary package build, git diff --check and verify both source byte integrity and dirty worktree preservation. Record any direct GUI checks actually performed, but reserve final real independent qualification for P10.
+Check the new P8 report's references and actual observed facts. For product-source changes only, run narrow editor/extension tests and necessary package build; always run git diff --check and verify source byte integrity and owner dirty-worktree preservation. Record any direct GUI checks actually performed, but reserve final real independent qualification for P10.
 
 EXIT / STOP
-Report actual extension features/limitations and unaffected non-Godot editing. P9 depends on this record. STOP after P8: no automatic P9, unapproved install or project mutation.
+Report actual extension features/limitations and unaffected non-Godot editing. P9 depends on this record. STOP this task after P8 and return control to runner. No unapproved install or project mutation; only runner may advance to P9 following a real checkpoint.
