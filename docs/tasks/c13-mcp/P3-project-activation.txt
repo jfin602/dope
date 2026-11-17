@@ -1,16 +1,16 @@
 TASK: Correction 13 / P3 — Project-Local MCP Enablement without Project Installation
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol Medium.
+- Recommended configuration: `GPT-6 Sol Medium`.
 - Browser required: no.
-- Manual execution only; one scoped prompt per owner action.
+- Runner-managed implementation prompt; not a manual handoff.
 
 VERSIONING
-- Keep the actually verified local coherent product version unchanged (repository docs last report 0.13.11).
-- No automatic dependency, package manifest, lockfile or release version changes.
+- Required unchanged project version: `0.13.11`.
+- Do not modify package version, manifests, dependency pins or lockfiles.
 
-PREFLIGHT — ALL MANUAL PROMPTS
-Read BOOT.md, AGENTS.md, docs/workflow.md, docs/decisions/0058-optional-external-mcp-integration.md, docs/planning/p13/external-mcp-compat-contract.md and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Inspect actual local HEAD, dirty state, version and current relevant source. Honor existing owner changes and Phase 13 recovery; do not reset/stash/clean, rewrite historical evidence, self-commit or run subsequent prompts. Manual prompt, NOT codex:phase. Maintain source/permission/owner identity and no new Work Run or Roadmap Gate status. Record what was actually observed.
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/decisions/0058-optional-external-mcp-integration.md, docs/planning/p13/external-mcp-compat-contract.md and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Inspect actual local HEAD, dirty state, version and current relevant source. Honor existing owner changes and Phase 13 recovery; do not reset/stash/clean, rewrite historical evidence, self-commit or run subsequent prompts. Runner owns Git checkpoints and commits. Do not self-commit, manually invoke the next prompt, run independent Work or award Roadmap Gate status. Record only actually observed evidence.
 
 GOAL
 Implement independent per-project enable/disable of servers in the globally installed catalog, initially OFF for each new project; no UI or Pi tool execution yet.
@@ -26,5 +26,5 @@ FOCUSED VALIDATION
 Focused tests: two projects opposite toggles; new project off; restart; two-window stale revision; root alias/symlink/cross-workspace denial; global uninstall/reinstall; no .dope/Git writes; project-switch revocation notification. Minimal changed-output builds; git diff --check.
 
 EXIT / HANDOFF
-Record registry and activation schemas and event semantics for P4/P5/P6. No server auto-start, tool approval, or source mutation. STOP P3.
-- State exact working tree/source identity, affected paths, executed test commands, PASS/PARTIAL/NOT GREEN/BLOCKED and any independent evidence gaps. STOP here, do not run P4 automatically.
+Record registry and activation schemas and event semantics for P4/P5/P6, with changed source and permanent focused regression tests. No server auto-start, tool approval, or source mutation. Finish P3; do not start P4 yourself.
+- State exact working tree/source identity, affected paths, executed test commands, PASS/PARTIAL/NOT GREEN/BLOCKED and any independent evidence gaps. STOP this prompt and return control to the runner; it advances only after successful validation and a runner-owned checkpoint.
