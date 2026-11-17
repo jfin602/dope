@@ -1,0 +1,29 @@
+TASK: Correction 13 / P4 — Existing AI Center MCP Servers Section
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol Medium.
+- Browser required: no.
+- Manual T1 implementation; final GUI is P10.
+
+VERSIONING
+- Keep verified current coherent version unchanged; no manifest/lockfile changes without separate approval.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0058, docs/planning/p13/external-mcp-compat-contract.md, and docs/tasks/c13-mcp/{prompt-assessment,implementation-plan}.md. Read actual prior P1–P(n−1) implementation/qualification evidence and current source. Check local HEAD, dirty tree, true version, changes/compiled-output freshness; preserve owner work, existing tests, historical NOT GREEN, source/authority invariants. Manual invocation only; do not run subsequent prompts or self-commit/launch Work.
+
+GOAL
+Add usable global MCP server management and active-project toggles INSIDE the single existing AI Center, not another workbench/editor.
+
+IMPLEMENT
+1. Inspect packages/theia-extension/src/browser/ai-center-widget.ts and AICenterController, tests/unit/ai-center.test.ts, theme/layout conventions (ADR 0016 and ADR 0037), and actual P2 global registry/P3 activation APIs.
+2. Add a discoverable 'MCP Servers' section/tab to existing AI Center. Display global installed/registered server identity, lifecycle/health, safe configuration/edit/remove and current-project enabled status. The global catalog must be visible from any project.
+3. Distinguish actions visually and semantically: 'Add existing server' or genuinely supported install action adds to GLOBAL catalog; 'Enable for this project' toggles ONLY current project. If package installation is not implemented with a safe approval path, do not label a registration button as an executable package installer; show truthful installation limits.
+4. No automatic server start or project egress while browsing the section. Show clear status and recovery when server missing, disabled globally, disabled for project, connection unavailable or config invalid. Project toggle should not pretend to authorize mutations.
+5. Reuse existing theme tokens and AI Center section navigation. Accessible names, keyboard focus, screen-reader state, narrow-pane wrapping, meaningful normal/disabled/error feedback, alternate-theme isolation and no Godot-specific permanent UI.
+6. No new app global model connection identity, second AI Center launcher, new panel or duplicate registry writer.
+
+FOCUSED T1 VALIDATION
+Add/update focused controller, widget and accessible-state tests for install-once/visible-in-two-projects, off-by-default toggle, remove, denied/missing/health states, stale revision, keyboard/aria, and old AI model/roles tabs unchanged. Only affected typecheck/build required for tests; git diff --check. Unit tests are NOT observed browser/native UX.
+
+EXIT
+Report exact changed files and tests, evidence/gaps and P5 handoff. STOP. No auto browser launch, MCP server execution, live project modifications or next prompt.
