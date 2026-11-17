@@ -6,6 +6,11 @@ import type { AIRegistryService } from '@dope/contracts/lib/ai-registry-service'
 import type { AICredentialService } from '@dope/contracts/lib/ai-credential-service';
 import type { CodexAuthService } from '@dope/contracts/lib/codex-auth-service';
 import type { AIRolePolicyService } from '@dope/contracts/lib/ai-role-policy-service';
+import type { MCPServer } from '@dope/ai';
+import type { MCPServerRegistryService } from '@dope/contracts/lib/mcp-server-registry-service';
+import type { MCPProjectActivationService } from '@dope/contracts/lib/mcp-project-activation-service';
+import { WorkspaceService } from '@theia/workspace/lib/browser/workspace-service';
+import { AICenterMCPController } from './ai-center-mcp';
 import { AICenterController, connectionHealth, localPiReadiness, usableModelSummary } from './ai-center-controller';
 import { AICenterRolesController, emptyRoleHard, ROLE_DETAILS, ROLE_REASON_LABELS,
     roleEntryLabel, roleResolution, roleTargetLabel } from './ai-center-roles';
@@ -48,15 +53,19 @@ function safeEndpoint(endpoint: string): string {
 export class AICenterWidget extends BaseWidget {
     readonly controller: AICenterController;
     readonly roles: AICenterRolesController;
+    readonly mcp: AICenterMCPController;
     private readonly content = element('div');
-    private surface: 'connections' | 'models' | 'roles' = 'connections';
+    private surface: 'connections' | 'models' | 'roles' | 'mcp' = 'connections';
     private editing = false;
+    private mcpEditing?: string;
     private modelsOpen = false;
+    private mcpWorkspaceRequest = 0;
     private returnToChat?: () => void;
     private returnLabel = 'Return to Chat';
 
     constructor(registry: AIRegistryService, credentials: AICredentialService, roles: AIRolePolicyService,
-        codex: CodexAuthService) {
+        codex: CodexAuthService, mcpServers: MCPServerRegistryService, mcpActivation: MCPProjectActivationService,
+        private readonly workspaces: WorkspaceService) {
         super();
         this.id = AI_CENTER_ID;
         this.title.label = this.title.caption = 'AI Center';
@@ -66,12 +75,34 @@ export class AICenterWidget extends BaseWidget {
         this.addClass('dope-ai-center');
         this.controller = new AICenterController(registry, credentials, () => this.render(), codex);
         this.roles = new AICenterRolesController(roles, () => this.render());
+        this.mcp = new AICenterMCPController(mcpServers, mcpActivation, () => this.render());
+        this.toDispose.push(workspaces.onWorkspaceChanged(() => void this.refreshMCP()));
+        this.toDispose.push(workspaces.onWorkspaceLocationChanged(() => void this.refreshMCP()));
+        const serverChanged = mcpServers.onDidChange?.(() => void this.mcp.load());
+        if (serverChanged) this.toDispose.push(serverChanged);
+        const activationChanged = mcpActivation.onDidChange?.(() => void this.mcp.load());
+        if (activationChanged) this.toDispose.push(activationChanged);
         this.node.append(this.content);
         void this.controller.load();
         void this.roles.load();
+        void this.refreshMCP();
     }
 
-    refresh(): void { void this.controller.load(); void this.roles.load(); }
+    refresh(): void { void this.controller.load(); void this.roles.load(); void this.refreshMCP(); }
+
+    private async refreshMCP(): Promise<void> {
+        const request = ++this.mcpWorkspaceRequest;
+        try {
+            const roots = await this.workspaces.roots;
+            if (this.isDisposed || request !== this.mcpWorkspaceRequest) return;
+            await this.mcp.attach(roots.length === 1 && roots[0].resource.scheme === 'file' ?
+                roots[0].resource.path.toString() : undefined);
+        } catch {
+            if (this.isDisposed || request !== this.mcpWorkspaceRequest) return;
+            this.mcp.message = 'Workspace context is unavailable. Refresh MCP Servers after opening a local project.';
+            this.render();
+        }
+    }
 
     async focusRole(id: AIRoleId): Promise<void> {
         this.surface = 'roles';
@@ -109,6 +140,11 @@ export class AICenterWidget extends BaseWidget {
         const roleStatus = element('p', this.roles.message, 'dope-ai-message');
         roleStatus.setAttribute('role', 'status'); roleStatus.setAttribute('aria-live', 'polite');
         this.content.append(roleStatus);
+        if (this.surface === 'mcp') {
+            const mcpStatus = element('p', this.mcp.message, 'dope-ai-message');
+            mcpStatus.setAttribute('role', 'status'); mcpStatus.setAttribute('aria-live', 'polite');
+            this.content.append(mcpStatus);
+        }
         this.content.append(element('p',
             'Local Chat and coding use the Pi runtime bundled with Dope. Pi is checked when used; an installed runtime does not mean the Local server or model is ready. Connect and select a model here once. Codex remains a separate provider.'));
         if (this.returnToChat) this.content.append(button(this.returnLabel, () => {
@@ -118,13 +154,14 @@ export class AICenterWidget extends BaseWidget {
             action?.();
         }));
         const tabs = element('nav', undefined, 'dope-ai-tabs'); tabs.setAttribute('aria-label', 'AI Center sections');
-        for (const surface of ['connections', 'models', 'roles'] as const) {
-            const tab = button(surface[0].toUpperCase() + surface.slice(1), () => {
+        for (const surface of ['connections', 'models', 'roles', 'mcp'] as const) {
+            const tab = button(surface === 'mcp' ? 'MCP Servers' : surface[0].toUpperCase() + surface.slice(1), () => {
                 this.surface = surface; this.render();
             });
             tab.setAttribute('aria-current', String(this.surface === surface)); tabs.append(tab);
         }
         this.content.append(tabs);
+        if (this.surface === 'mcp') { this.renderMCP(); return; }
         if (this.surface === 'roles') { this.renderRoles(); return; }
         if (this.surface === 'models') { this.renderModels(); return; }
         const layout = element('div', undefined, 'dope-ai-layout');
@@ -173,6 +210,86 @@ export class AICenterWidget extends BaseWidget {
             section.append(row);
         }
         this.content.append(section);
+    }
+
+    private renderMCP(): void {
+        const section = element('section', undefined, 'dope-ai-mcp');
+        section.setAttribute('aria-label', 'MCP Servers');
+        section.append(element('h3', 'MCP Servers'), element('p',
+            'Global server registrations are visible in every project. Registration does not install a package, start a server, connect to it, or authorize tool calls. Install and verify an executable separately before registering its absolute path.'));
+        const project = this.mcp.project;
+        section.append(element('p', project?.projectKey ? 'Current project: selection available.' :
+            'Current project: open one local project to enable a server.'));
+        section.append(button('Refresh MCP Servers', () => void this.refreshMCP(), this.mcp.busy));
+        section.append(button('Add existing server', () => { this.mcpEditing = 'new'; this.render(); }, this.mcp.busy));
+        const catalog = this.mcp.registry;
+        if (!catalog) section.append(element('p', 'Global MCP catalog unavailable. Refresh to retry.'));
+        else if (!catalog.servers.length) section.append(element('p', 'No global MCP servers registered. Add an existing executable to begin.'));
+        for (const server of catalog?.servers ?? []) {
+            const row = element('section', undefined, 'dope-ai-mcp-server');
+            row.setAttribute('aria-label', `MCP server ${server.name}`);
+            const view = project?.servers.find(item => item.serverId === server.id);
+            const enabled = view?.state === 'active' || view?.state === 'unconfigured' || view?.state === 'unavailable';
+            row.append(element('h4', server.name), element('p', `ID: ${server.id} · Global: ${server.lifecycle} · Configuration: ${server.configStatus}`),
+                element('p', `Executable: ${server.config.command}`),
+                element('p', `Connection health: unverified. No server is started by this view.`),
+                element('p', `This project: ${!project?.projectKey ? 'no project selected' :
+                    server.lifecycle === 'disabled' ? 'disabled globally' :
+                    view?.state === 'unconfigured' ? 'configuration needs attention' :
+                    view?.state === 'unavailable' ? 'connection unavailable' :
+                    enabled ? 'enabled for this project; connection unverified' : 'disabled for this project'}`));
+            if (server.lifecycle === 'disabled') row.append(element('p', 'Enable global availability through Edit global server before selecting it for a project.'));
+            if (server.configStatus === 'needs-credential') row.append(element('p',
+                'Secure credential is missing or needs repair. Project enablement is unavailable until the global configuration is repaired.'));
+            if (view?.state === 'unavailable') row.append(element('p', 'Connection unavailable. Check the executable and transport, then refresh.'));
+            const actions = element('div', undefined, 'dope-ai-actions');
+            const toggle = button(enabled ? 'Disable for this project' : 'Enable for this project',
+                () => void this.mcp.setEnabled(server, !enabled),
+                this.mcp.busy || !project?.projectKey || server.lifecycle === 'disabled' || server.configStatus !== 'configured');
+            toggle.setAttribute('aria-pressed', String(enabled));
+            actions.append(toggle, button('Edit global server', () => { this.mcpEditing = server.id; this.render(); }, this.mcp.busy),
+                button('Remove global server', () => {
+                    if (window.confirm(`Remove ${server.name} from the global MCP catalog?`)) void this.mcp.remove(server.id);
+                }, this.mcp.busy));
+            row.append(actions);
+            if (this.mcpEditing === server.id) this.renderMCPForm(row, server);
+            section.append(row);
+        }
+        if (this.mcpEditing === 'new') this.renderMCPForm(section);
+        for (const view of project?.servers ?? []) if (view.state === 'uninstalled')
+            section.append(element('p', `Previously selected server ${view.serverId} is missing from the global catalog. Register it again and review project selection.`));
+        this.content.append(section);
+    }
+
+    private renderMCPForm(parent: HTMLElement, existing?: MCPServer): void {
+        const form = element('form');
+        form.setAttribute('aria-label', existing ? `Edit global server ${existing.name}` : 'Register existing MCP server globally');
+        form.append(element('h4', existing ? 'Edit global server' : 'Add existing server'));
+        const id = field(form, 'Server ID (lowercase letters, digits, hyphens)', 'id', existing?.id);
+        id.required = true; id.readOnly = !!existing; id.pattern = '[a-z][a-z0-9-]*';
+        const name = field(form, 'Display name', 'name', existing?.name); name.required = true;
+        const command = field(form, 'Absolute executable path (already installed)', 'command', existing?.config.command);
+        command.required = true;
+        const lifecycleLabel = element('label', 'Global availability');
+        const lifecycle = element('select'); lifecycle.name = 'lifecycle';
+        for (const optionValue of ['installed', 'disabled'] as const) {
+            const option = element('option', optionValue === 'installed' ? 'Registered / available' : 'Disabled globally');
+            option.value = optionValue; option.selected = optionValue === (existing?.lifecycle ?? 'installed'); lifecycle.append(option);
+        }
+        lifecycleLabel.append(lifecycle); form.append(lifecycleLabel);
+        form.append(element('p', 'This registry supports an existing local stdio executable with no arguments. Credentials and package installation are not available in this form. A registration requiring a secure credential must be repaired outside this form. Connection health requires the later transport integration.'));
+        const save = button(existing ? 'Save global server' : 'Register existing server', () => {}, this.mcp.busy);
+        save.type = 'submit'; form.append(save);
+        form.append(button('Cancel', () => { this.mcpEditing = undefined; this.render(); }));
+        form.addEventListener('submit', event => {
+            event.preventDefault();
+            const server: MCPServer = { version: 1, registrationRevision: existing?.registrationRevision ?? 1,
+                id: value(form, 'id'), name: value(form, 'name'), lifecycle: lifecycle.value as MCPServer['lifecycle'],
+                configStatus: existing?.configStatus ?? 'configured', config: { transport: 'stdio', command: value(form, 'command'), args: [] },
+                ...(existing?.credential ? { credential: existing.credential } : {}) };
+            void this.mcp.save(server, !existing).then(saved => { if (saved) { this.mcpEditing = undefined; this.render(); } });
+        });
+        parent.append(form);
     }
 
     private renderRoles(): void {

@@ -6,6 +6,11 @@ import type { AIRegistryService, AIInventoryState } from '../../packages/contrac
 import type { AICredentialService } from '../../packages/contracts/src/ai-credential-service.ts';
 import type { CodexAuthService, CodexAccountStatus } from '../../packages/contracts/src/codex-auth-service.ts';
 import { AICenterController, connectionWarning, usableModelSummary } from '../../packages/theia-extension/lib/browser/ai-center-controller.js';
+import { AICenterMCPController } from '../../packages/theia-extension/lib/browser/ai-center-mcp.js';
+import { applyMCPServerRegistryMutation } from '../../packages/ai/lib/mcp-server-registry.js';
+import type { MCPServer, MCPServerRegistrySnapshot } from '../../packages/ai/src/mcp-server-registry.ts';
+import type { MCPServerRegistryService } from '../../packages/contracts/src/mcp-server-registry-service.ts';
+import type { MCPProjectActivationService, MCPProjectActivationSnapshot } from '../../packages/contracts/src/mcp-project-activation-service.ts';
 
 const connection = (id: string): AIConnection => ({ version: 1, id, alias: id, lifecycle: 'enabled',
     config: { type: 'local', runtime: 'lm-studio', endpoint: 'http://127.0.0.1:1234/v1' } });
@@ -202,7 +207,7 @@ test('workbench integration uses a singleton main tab, supported account replace
     assert.match(launcher, /executeCommand\(AI_CENTER_COMMAND\)/);
     assert.match(launcher, /React\.createElement\('button'/);
     assert.match(launcher, /item\.badge \? React\.createElement\('span'.*!/);
-    assert.doesNotMatch(`${widget}\n${contribution}`, /WorkspaceService/);
+    assert.match(widget, /WorkspaceService/);
     assert.match(widget, /setAttribute\('aria-current'/);
     assert.match(widget, /setAttribute\('aria-expanded'/);
     assert.match(widget, /setAttribute\('aria-live', 'polite'\)/);
@@ -230,4 +235,82 @@ test('workbench integration uses a singleton main tab, supported account replace
     assert.doesNotMatch(widget, /(?:accessToken|refreshToken|idToken|authorizationUrl|innerHTML)/);
     assert.match(css, /\.dope-ai-center :is\(button, input, select\):focus-visible/);
     assert.match(css, /var\(--theia-editor-background\)/);
+    assert.match(widget, /'connections', 'models', 'roles', 'mcp'/);
+    assert.match(widget, /aria-pressed/);
+    assert.match(widget, /Add existing server/);
+    assert.match(widget, /Enable for this project/);
+    assert.match(widget, /Connection health: unverified/);
+    assert.doesNotMatch(widget, /innerHTML|Install MCP package/);
+    assert.match(css, /\.dope-ai-mcp-server/);
+});
+
+test('MCP registration is global while project selection is independent and off by default', async () => {
+    let catalog: MCPServerRegistrySnapshot = { version: 1, revision: 0, servers: [] };
+    let projectRoot: string | undefined;
+    let preferenceRevision = 0;
+    const selected = new Map<string, boolean>();
+    const calls: string[] = [];
+    const registry: MCPServerRegistryService = {
+        async list() { return catalog; },
+        async mutate(request) { catalog = applyMCPServerRegistryMutation(catalog, request); calls.push(request.mutation.type); return catalog; }
+    };
+    const view = (): MCPProjectActivationSnapshot => ({ projectKey: projectRoot,
+        preferencesRevision: preferenceRevision, registryRevision: catalog.revision,
+        servers: catalog.servers.map(server => ({ serverId: server.id, registrationRevision: server.registrationRevision,
+            state: selected.get(`${projectRoot}:${server.id}`) ? 'active' : 'disabled',
+            eligible: selected.get(`${projectRoot}:${server.id}`) === true })) });
+    const activation: MCPProjectActivationService = {
+        async switchProject(root) { projectRoot = root; return view(); },
+        async current() { return view(); },
+        async setEnabled(request) {
+            assert.equal(request.projectKey, projectRoot);
+            assert.equal(request.expectedRevision, preferenceRevision);
+            assert.equal(request.registrationRevision, catalog.servers[0].registrationRevision);
+            selected.set(`${projectRoot}:${request.serverId}`, request.enabled); preferenceRevision++;
+            calls.push('project-toggle'); return view();
+        }
+    };
+    const controller = new AICenterMCPController(registry, activation, () => {});
+    const server: MCPServer = { version: 1, id: 'bridge', registrationRevision: 1, name: 'Bridge',
+        lifecycle: 'installed', configStatus: 'configured', config: { transport: 'stdio', command: '/opt/bridge', args: [] } };
+    await controller.attach('/projects/one');
+    assert.equal(await controller.save(server, true), true);
+    assert.equal(controller.registry?.servers.length, 1);
+    assert.equal(controller.project?.servers[0].state, 'disabled');
+    assert.equal(await controller.setEnabled(controller.registry!.servers[0], true), true);
+    assert.match(controller.message, /Tool calls still require separate authorization/);
+    await controller.attach('/projects/two');
+    assert.equal(controller.registry?.servers[0].name, 'Bridge');
+    assert.equal(controller.project?.servers[0].state, 'disabled');
+    await controller.attach('/projects/one');
+    assert.equal(controller.project?.servers[0].state, 'active');
+    assert.equal(await controller.remove('bridge'), true);
+    assert.equal(controller.registry?.servers.length, 0);
+    assert.deepEqual(calls, ['create', 'project-toggle', 'remove']);
+});
+
+test('MCP controller reports stale revisions and unavailable project context without leaking backend details', async () => {
+    let catalog: MCPServerRegistrySnapshot = { version: 1, revision: 0, servers: [] };
+    let projectKey: string | undefined;
+    const registry: MCPServerRegistryService = { async list() { return catalog; },
+        async mutate(request) { catalog = applyMCPServerRegistryMutation(catalog, request); return catalog; } };
+    const activation: MCPProjectActivationService = { async switchProject(root) { projectKey = root; return this.current(); },
+        async current() { return { projectKey, preferencesRevision: 0, registryRevision: catalog.revision, servers: [] }; },
+        async setEnabled() { throw new Error('private backend error'); } };
+    const controller = new AICenterMCPController(registry, activation, () => {});
+    await controller.attach();
+    const server: MCPServer = { version: 1, id: 'bridge', registrationRevision: 1, name: 'Bridge',
+        lifecycle: 'installed', configStatus: 'configured', config: { transport: 'stdio', command: '/opt/bridge', args: [] } };
+    assert.equal(await controller.setEnabled(server, true), false);
+    assert.match(controller.message, /Open one project/);
+    catalog = applyMCPServerRegistryMutation(catalog, { version: 1, expectedRevision: 0,
+        mutation: { type: 'create', server: { version: 1, id: server.id, name: server.name,
+            lifecycle: server.lifecycle, configStatus: server.configStatus, config: server.config } } });
+    assert.equal(await controller.save(server, true), false);
+    assert.match(controller.message, /catalog may have changed/);
+    assert.doesNotMatch(controller.message, /private backend error/);
+    await controller.attach('/projects/denied');
+    assert.equal(await controller.setEnabled(catalog.servers[0], true), false);
+    assert.match(controller.message, /project or server may have changed/);
+    assert.doesNotMatch(controller.message, /private backend error/);
 });

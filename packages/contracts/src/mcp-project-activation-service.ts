@@ -27,6 +27,8 @@ export interface MCPProjectActivationService {
     current(): Promise<MCPProjectActivationSnapshot>;
     setEnabled(request: { projectKey: string; serverId: string; registrationRevision: number;
         expectedRevision: number; enabled: boolean }): Promise<MCPProjectActivationSnapshot>;
+    /** Browser proxy notification; consumers must re-read state after revocation. */
+    onDidChange?: (listener: (event: MCPProjectActivationEvent) => void) => { dispose(): void };
 }
 export interface MCPProjectActivationClient {
     notifyMCPProjectActivationChanged(event: MCPProjectActivationEvent): void;

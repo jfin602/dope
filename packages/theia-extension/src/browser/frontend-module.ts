@@ -223,7 +223,9 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     }).inSingletonScope();
     bind(WidgetFactory).toDynamicValue(context => ({ id: AI_CENTER_ID, createWidget: () => new AICenterWidget(
         context.container.get(AIRegistryService), context.container.get(AICredentialService),
-        context.container.get(AIRolePolicyService), context.container.get<CodexAuthService>(codexAuthServicePath)) })).inSingletonScope();
+        context.container.get(AIRolePolicyService), context.container.get<CodexAuthService>(codexAuthServicePath),
+        context.container.get(MCPServerRegistryService), context.container.get(MCPProjectActivationService),
+        context.container.get(WorkspaceService)) })).inSingletonScope();
     bind(ModelConnectionsService).toDynamicValue(context =>
         ServiceConnectionProvider.createProxy<ModelConnectionsService & RpcServer<ModelConnectionsClient>>(
             context.container, modelConnectionsServicePath,
