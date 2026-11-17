@@ -24,6 +24,9 @@ import { modelConnectionsServicePath, type ModelConnectionsClient } from '@dope/
 import { ModelConnectionsBackend, ModelConnectionsRegistry } from './model-connections';
 import { aiRegistryServicePath, type AIRegistryClient } from '@dope/contracts/lib/ai-registry-service';
 import { AIRegistryStore } from './ai-registry-store';
+import { MCPServerRegistryStore } from './mcp-server-registry-store';
+import { MCPServerRegistryBackend } from './mcp-server-registry-backend';
+import { mcpServerRegistryServicePath, type MCPServerRegistryClient } from '@dope/contracts/lib/mcp-server-registry-service';
 import { AIRolePolicyStore } from './ai-role-policy-store';
 import { AIRoleRoutingService } from './ai-role-routing';
 import { AIRolePolicyBackend } from './ai-role-policy-backend';
@@ -367,6 +370,13 @@ export default new ContainerModule(bind => {
     bind(ChatProjectGrounder).toDynamicValue(context => new ChatProjectGrounder(
         context.container.get(SoftwareMapIndex))).inSingletonScope();
     bind(AIRegistryStore).toSelf().inSingletonScope();
+    bind(MCPServerRegistryStore).toSelf().inSingletonScope();
+    bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<MCPServerRegistryClient>(
+        mcpServerRegistryServicePath, client => {
+            const backend = new MCPServerRegistryBackend(context.container.get(MCPServerRegistryStore), client);
+            client.onDidCloseConnection(() => backend.dispose());
+            return backend;
+        })).inSingletonScope();
     bind(AIRolePolicyStore).toSelf().inSingletonScope();
     bind(AIRoleRoutingService).toDynamicValue(context => new AIRoleRoutingService(
         context.container.get(AIRolePolicyStore), context.container.get(AIInventoryController),

@@ -56,8 +56,9 @@ import { ChatOpenOwners } from './chat-panel-controller';
 import { ChatPlanningSelection } from './chat-planning-selection';
 import { WorkOpenOwners } from './shared-panel-state';
 import { AIRegistryService, aiRegistryServicePath, type AIRegistryClient } from '@dope/contracts/lib/ai-registry-service';
+import { MCPServerRegistryService, mcpServerRegistryServicePath, type MCPServerRegistryClient } from '@dope/contracts/lib/mcp-server-registry-service';
 import { AIRolePolicyService, aiRolePolicyServicePath, type AIRolePolicyClient } from '@dope/contracts/lib/ai-role-policy-service';
-import type { AIRolePolicyMutationRequest } from '@dope/ai';
+import type { AIRolePolicyMutationRequest, MCPServerRegistryMutationRequest } from '@dope/ai';
 import { AICenterWidget, AI_CENTER_ID } from './ai-center-widget';
 import { AICenterContribution } from './ai-center-contribution';
 import { AICenterBottomMenuWidget } from './ai-center-launcher';
@@ -192,6 +193,14 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             notifyAIInventoryChanged: () => { modelInventoryChanged.fire(); void context.container.get(AICenterContribution).refresh();
                 void context.container.get(SoftwareMapController).refreshInventory(); }
         })).inSingletonScope();
+    bind(MCPServerRegistryService).toDynamicValue(context => {
+        const changed = new Emitter<number>();
+        const proxy = ServiceConnectionProvider.createProxy<MCPServerRegistryService & RpcServer<MCPServerRegistryClient>>(
+            context.container, mcpServerRegistryServicePath,
+            { notifyMCPServerRegistryChanged: (revision: number) => changed.fire(revision) });
+        return { list: () => proxy.list(), mutate: (request: MCPServerRegistryMutationRequest) => proxy.mutate(request),
+            onDidChange: changed.event };
+    }).inSingletonScope();
     bind(AIRolePolicyService).toDynamicValue(context => {
         const changed = new Emitter<number>();
         const proxy = ServiceConnectionProvider.createProxy<AIRolePolicyService & RpcServer<AIRolePolicyClient>>(

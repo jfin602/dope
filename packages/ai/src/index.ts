@@ -1,5 +1,6 @@
 export const AI_REGISTRY_VERSION = 1 as const;
 export * from './role-policy';
+export * from './mcp-server-registry';
 
 export type AIConnectionId = string;
 export type ProviderModelKey = string;
