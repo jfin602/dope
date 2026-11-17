@@ -6,7 +6,7 @@
 
 | Prompt | Tiers / source owner | Actual deliverable and bounded tests |
 | --- | --- | --- |
-| **P1** | Audit / no product code | Inspect real standalone Pi/Godot MCP configuration and actual tool list, bundled Pi worker, fixed tool attestation, local broker and socket-denying sandbox. **Write `qualification/p1-audit.md`** as real source-backed report for runner checkpoint. Missing bridge facts are marked unknown and block P5, not invented. |
+| **P1** | Audit / no product code | Inspect real standalone Pi/Godot MCP configuration and actual tool list, bundled Pi worker, fixed tool attestation, local broker and socket-denying sandbox. **Write `qualification/p1-audit.md`** as real source-backed report for runner checkpoint. If the real bridge identity/transport/tool inventory cannot be inspected, stop P1 without a report/checkpoint so the runner cannot advance. Unknown effect/containment safeguards additionally block P5. |
 | **P2** | T1 / application-global tool registry | Stable validated server IDs and transport config, secure credential references, versioned/revision-safe persistence and restart; focused schema/store/secret tests; no new model connection type. |
 | **P3** | T1 / project preference owner | Machine-local server enablement keyed by stable project identity, off default, cross-window/restart conflict and server disable/remove; focused project isolation tests. |
 | **P4** | T1 / existing AI Center widget/controller | MCP Servers section for global register/configure/health/remove and current-project enable. No duplicate workspace; focused accessibility/controller/theme tests. Native GUI is P10. |
@@ -21,7 +21,7 @@
 
 Use `npm run codex:phase:validate -- c13-mcp` before a separately authorized `npm run codex:phase -- c13-mcp`. Correction runner checkpoints P1–P9 with exact per-prompt commit subject `c13-mcp/Pn: <title>` and unchanged version `0.13.11`. Do not self-commit, amend checkpoints, or run P10 through `--closeout`. The browser-required final P10 must remain outside the runner.
 
-P1's audit must be an actual evidence file, not an empty/no-op checkpoint; unverified live bridge limits later tool transport. P8 commits truthful compatibility/setup findings even when no product code change is required. P9 commits real source-bound evidence. Never claim STOP/NOT GREEN conditions are qualified merely because a runner commit exists; source/authority security blockers must stop safe progression and be reported.
+P1 writes an audit evidence file only after confirming real bridge identity, transport and tool inventory. If inaccessible, stop without a tracked change so the runner's no-empty-commit guard blocks progression; any uncertain side effects still block P5. P8 commits truthful compatibility/setup findings even when no product code change is required. P9 commits real source-bound evidence. Never claim STOP/NOT GREEN conditions are qualified merely because a runner commit exists; source/authority security blockers must stop safe progression and be reported.
 
 ## Prompt Efficiency Gate (10 checks)
 
