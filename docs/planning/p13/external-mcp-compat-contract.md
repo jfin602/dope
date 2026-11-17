@@ -1,6 +1,6 @@
 # External MCP and Godot Project Compatibility — Forward Contract
 
-**Date:** 2026-11-17. **Status:** OWNER-APPROVED DESIGN / DOCUMENTATION ONLY; NOT IMPLEMENTED OR QUALIFIED. **ADR:** [0058](../../decisions/0058-optional-external-mcp-integration.md). **Future target:** `c13-external-mcp-compat` (task plan only; no executable prompts or Run authorized). **Version:** `0.13.11` unchanged.
+**Date:** 2026-11-17. **Status:** OWNER-APPROVED DESIGN / DOCUMENTATION ONLY; NOT IMPLEMENTED OR QUALIFIED. **ADR:** [0058](../../decisions/0058-optional-external-mcp-integration.md). **Manual prompt stack:** [c13-mcp](../../tasks/c13-mcp/README.md), assessment/plan/P1–P10 AUTHORED ONLY; no source execution or Work Run authorized. **Version:** `0.13.11` unchanged.
 
 ## Product objective and invariants
 
