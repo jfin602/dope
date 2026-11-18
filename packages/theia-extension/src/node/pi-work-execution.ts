@@ -1,7 +1,9 @@
 import type { AgentExecutionAdapter, AgentExecutionHandle, AgentExecutionRequest } from '@dope/agent-core/lib/execution';
 import type { LocalToolRequest } from '@dope/agent-core/lib/node/local-tool-contracts';
 import { createHash, randomBytes } from 'node:crypto';
-import { parseExecutionGrant, checkEffect } from '@dope/agent-core/lib/authority';
+import { parseExecutionGrant, checkEffect, checkWorkMCPObservationApproval,
+    parseWorkMCPObservationReceipt } from '@dope/agent-core/lib/authority';
+import type { WorkMCPObservationCallApproval } from '@dope/agent-core/lib/authority';
 import { parseLocalToolRequests, recoverableLocalReadError } from '@dope/agent-core/lib/node/local-tool-contracts';
 import type { LocalProcessCommand } from '@dope/agent-core/lib/node/local-tool-broker';
 import { preflightLocalToolSandbox } from '@dope/agent-core/lib/node/local-tool-sandbox';
@@ -9,6 +11,8 @@ import { ExecutionWorkspace } from '@dope/agent-core/lib/node/execution-workspac
 import { localWorkspaceBroker } from './local-agent-turn-loop';
 import type { PiModelBridge } from './pi-model-bridge';
 import type { PiRuntimeFactory, PiRuntimeHost, PiWorkEvent } from './pi-runtime-host';
+import { MCPChatObservation, reviewedMCPObservation } from './mcp-chat-observation';
+import type { WorkMCPObservationAuthority } from './mcp-work-observation';
 import { WorkAgentsRouting } from './work-agents-routing';
 import { WorkDocumentRouting } from './work-document-routing';
 import { verifyRecoveryReads } from './work-recovery';
@@ -118,7 +122,8 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
 
     constructor(private readonly bridge: PiModelBridge, private readonly factory: PiRuntimeFactory,
         private readonly workspace: (request: AgentExecutionRequest) => ExecutionWorkspace,
-        private readonly commands: (request: AgentExecutionRequest) => readonly LocalProcessCommand[]) {}
+        private readonly commands: (request: AgentExecutionRequest) => readonly LocalProcessCommand[],
+        private readonly mcp?: WorkMCPObservationAuthority) {}
 
     async start(request: AgentExecutionRequest): Promise<AgentExecutionHandle> {
         if (this.disposed || request.reasoningEffort || !request.prompt?.trim() ||
@@ -140,22 +145,49 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
         let documents: WorkDocumentRouting | undefined;
         const host = this.factory.create();
         this.active.add(host);
+        const abort = new AbortController();
+        const activeRoot = () => { try { this.workspace(request); return request.projectRoot; }
+            catch { return undefined; } };
+        const scope = grant.mcpObservation;
+        const unregisterMCP = scope ? this.mcp?.registerSession(request.projectRoot,
+            () => { abort.abort(); host.dispose(); }) : undefined;
+        let mcpObservation: MCPChatObservation | undefined;
+        let mcpCallsUsed = 0;
         let endpoint: string;
         let boundRegistryRevision: number;
         try {
+            if (scope) {
+                if (!this.mcp || !request.runId ||
+                    !reviewedMCPObservation(scope.serverId, scope.toolName))
+                    throw new Error('Work MCP observation authority unavailable');
+                await this.mcp.assertScope(request.projectRoot, grant, request.connectionId, request.modelId);
+                mcpObservation = await MCPChatObservation.open(request.projectRoot, activeRoot,
+                    abort.signal, this.mcp.registry, this.mcp.preferences,
+                    () => { abort.abort(); host.dispose(); });
+                if (!mcpObservation || mcpObservation.identity.projectKey !== scope.projectKey ||
+                    mcpObservation.identity.serverId !== scope.serverId ||
+                    mcpObservation.identity.registrationRevision !== scope.registrationRevision ||
+                    mcpObservation.descriptors.length !== 1 ||
+                    mcpObservation.descriptors[0].name !== reviewedMCPObservation(scope.serverId, scope.toolName))
+                    throw new Error('Work MCP observation identity changed');
+                await this.mcp.assertScope(request.projectRoot, grant, request.connectionId, request.modelId);
+            }
             await host.start();
             const binding = await this.bridge.bind({ connectionId: request.connectionId,
                 modelId: request.modelId, registryRevision: request.selectedRegistryRevision,
                 loadedContextTokens: request.selectedLoadedContextTokens }, host, workspace.root,
-                { tools: true, workProcessAvailable: commands.length > 0 });
+                { tools: true, workProcessAvailable: commands.length > 0,
+                    ...(mcpObservation ? { mcpTools: mcpObservation.descriptors } : {}) });
             endpoint = binding.endpoint;
             boundRegistryRevision = binding.registryRevision;
         } catch (error) {
+            abort.abort();
+            await mcpObservation?.close().catch(() => undefined);
+            unregisterMCP?.();
             this.factory.release(host); this.active.delete(host); throw error;
         }
         let cancelled = false;
         let denied = false;
-        const abort = new AbortController();
         let count = 0;
         const seenTools = new Set<number>();
         const outputs = new Map<string, { text: string; status: 'completed' | 'failed';
@@ -220,7 +252,8 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                 const answer = await host.runWork(scopedPrompt, async raw => {
                   let stage = 'request-check';
                   const toolId = Number.isSafeInteger(raw.id) && raw.id > 0 ? `pi-${raw.id}` : 'pi-invalid';
-                  const toolName = expectedTools.includes(raw.name) ? raw.name : 'unknown';
+                  const isMCP = !!mcpObservation?.descriptors.some(tool => tool.name === raw.name);
+                  const toolName = expectedTools.includes(raw.name) || isMCP ? raw.name : 'unknown';
                   let brokerInvoked = false;
                   const observe = (phase: 'requested' | 'validating' | 'executing' | 'completed' | 'failed' | 'recoverable' | 'denied' | 'cancelled',
                       extra: { detail?: string; stage?: string; code?: string; effectExecuted?: boolean } = {}) =>
@@ -234,7 +267,82 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     if (!Number.isSafeInteger(raw.id) || raw.id < 1 || seenTools.has(raw.id) || ++count > 32)
                         throw new Error('Invalid Pi Work tool event');
                     seenTools.add(raw.id);
-                    if (!expectedTools.includes(raw.name)) throw new Error('Unsupported Pi Work tool');
+                    if (!expectedTools.includes(raw.name) && !isMCP) throw new Error('Unsupported Pi Work tool');
+                    if (isMCP) {
+                        if (!scope || !this.mcp || !mcpObservation || !request.runId || mcpCallsUsed !== 0 ||
+                            !raw.arguments || typeof raw.arguments !== 'object' || Array.isArray(raw.arguments) ||
+                            Object.keys(raw.arguments).length !== 0)
+                            throw new Error('Unsupported Work MCP observation call');
+                        stage = 'workspace-check';
+                        this.workspace(request);
+                        stage = 'model-check';
+                        await this.bridge.assertWorkSelection({ connectionId: request.connectionId,
+                            modelId: request.modelId, registryRevision: boundRegistryRevision,
+                            loadedContextTokens: request.selectedLoadedContextTokens }, endpoint);
+                        stage = 'candidate-check';
+                        await broker.assertActive();
+                        const current: Omit<WorkMCPObservationCallApproval, 'approvedAt' | 'approvedBy'> = {
+                            grantId: grant.id, grantRevision: grant.revision, taskId: request.taskId,
+                            projectKey: scope.projectKey, serverId: scope.serverId,
+                            registrationRevision: scope.registrationRevision,
+                            catalogRevision: scope.catalogRevision, toolName: scope.toolName,
+                            connectionId: request.connectionId, modelId: request.modelId,
+                            workspaceId: workspace.id, candidateFingerprint: await workspace.fingerprint(),
+                            callId: toolId };
+                        stage = 'approval';
+                        observe('validating', { stage, detail: JSON.stringify({ serverId: scope.serverId,
+                            toolName: scope.toolName, candidateFingerprint: current.candidateFingerprint }) });
+                        const approval = await this.mcp.request(request.projectRoot, request.runId,
+                            grant, current, abort.signal);
+                        if (!approval) throw new Error('Work MCP observation approval denied');
+                        mcpCallsUsed = 1;
+                        let dispatched = false;
+                        let status: 'completed' | 'denied' | 'failed' | 'cancelled' = 'failed';
+                        let outputSha256: string | undefined;
+                        try {
+                            const approved = async () => {
+                                stage = 'approval-recheck';
+                                this.workspace(request);
+                                await this.bridge.assertWorkSelection({ connectionId: request.connectionId,
+                                    modelId: request.modelId, registryRevision: boundRegistryRevision,
+                                    loadedContextTokens: request.selectedLoadedContextTokens }, endpoint);
+                                await broker.assertActive();
+                                await this.mcp!.assertScope(request.projectRoot, grant,
+                                    request.connectionId, request.modelId);
+                                return !abort.signal.aborted &&
+                                    await workspace.fingerprint() === current.candidateFingerprint &&
+                                    checkWorkMCPObservationApproval(grant, approval, current, 0);
+                            };
+                            stage = 'broker-execute';
+                            const output = await mcpObservation.execute(raw.name, raw.arguments, approved,
+                                activeRoot, () => { dispatched = true; brokerInvoked = true; });
+                            if (abort.signal.aborted || cancelled || this.disposed) throw new Error('Work MCP observation cancelled');
+                            this.workspace(request);
+                            await this.bridge.assertWorkSelection({ connectionId: request.connectionId,
+                                modelId: request.modelId, registryRevision: boundRegistryRevision,
+                                loadedContextTokens: request.selectedLoadedContextTokens }, endpoint);
+                            await broker.assertActive();
+                            await this.mcp!.assertScope(request.projectRoot, grant,
+                                request.connectionId, request.modelId);
+                            if (await workspace.fingerprint() !== current.candidateFingerprint)
+                                throw new Error('Work MCP observation candidate changed');
+                            const sanitized = safe(output, 4096, true);
+                            outputSha256 = createHash('sha256').update(sanitized).digest('hex');
+                            status = 'completed';
+                            observe('completed', { stage, detail: JSON.stringify({ serverId: scope.serverId,
+                                toolName: scope.toolName, outputSha256 }), effectExecuted: false });
+                            return { status: 'completed' as const, output: sanitized };
+                        } catch (error) {
+                            status = abort.signal.aborted || cancelled ? 'cancelled' :
+                                dispatched ? 'failed' : 'denied';
+                            throw error;
+                        } finally {
+                            const receipt = parseWorkMCPObservationReceipt({ approval, status,
+                                dispatched, endedAt: new Date().toISOString(),
+                                ...(outputSha256 ? { outputSha256 } : {}) });
+                            request.onEvent({ kind: 'mcp-observation', receipt });
+                        }
+                    }
                     const name = workToolNames[raw.name as keyof typeof workToolNames];
                     stage = 'request-parse';
                     observe('validating', { stage });
@@ -491,7 +599,10 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                 if (text.trim()) request.onEvent({ kind: 'agent-message', summary: 'Pi Work response', text,
                     truncated: answer.textTruncated === true || answer.text.length > 12_000,
                     redacted: text !== answer.text });
-            } finally { outputs.clear(); issuedOutputHandles.clear(); this.factory.release(host); this.active.delete(host); }
+            } finally { outputs.clear(); issuedOutputHandles.clear(); abort.abort();
+                await mcpObservation?.close().catch(() => undefined);
+                unregisterMCP?.();
+                this.factory.release(host); this.active.delete(host); }
         })();
         result.catch(() => {});
         return { result, terminate: () => { cancelled = true; abort.abort(); host.dispose(); },

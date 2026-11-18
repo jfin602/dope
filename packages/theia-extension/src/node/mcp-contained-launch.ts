@@ -1,10 +1,10 @@
 import { spawn, type ChildProcess } from 'node:child_process';
 import type { Writable } from 'node:stream';
 import { createServer, connect, type Server, type Socket } from 'node:net';
-import { access, lstat, mkdtemp, readdir, realpath, rm, stat } from 'node:fs/promises';
+import { access, lstat, mkdtemp, open, readlink, readdir, realpath, rm, stat } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { mcpProjectKey } from './mcp-project-preferences-store';
 
 /** P5-R1 launch foundation. Only a trusted backend may supply this policy. No MCP tool is invoked here. */
@@ -65,7 +65,46 @@ function directoryComponents(path: string): string[] {
     return parts.map((_, index) => '/' + parts.slice(0, index + 1).join('/'));
 }
 
-async function validate(policy: MCPContainedLaunchPolicy): Promise<{ command: string; masks: string[] }> {
+interface RuntimeMount { root: string; alias?: string }
+
+/** A uv tool may use a Python interpreter in its sibling uv/python installation. */
+async function runtimeMount(command: string, installRoot: string,
+    projectRoot: string): Promise<RuntimeMount | undefined> {
+    const file = await open(command, 'r');
+    const header = Buffer.alloc(512);
+    let length: number;
+    try { ({ bytesRead: length } = await file.read(header, 0, header.length, 0)); }
+    finally { await file.close(); }
+    const shebang = /^#!\s*(\/[^\s\r\n]+)/u.exec(header.toString('utf8', 0, length));
+    if (!shebang) return undefined;
+    const interpreter = shebang[1];
+    if (!interpreter.startsWith('/home/')) return undefined;
+    if (!interpreter.startsWith(installRoot + '/'))
+        throw new MCPContainmentUnavailable('interpreter outside narrow installation');
+    const resolved = await realpath(interpreter).catch(() => '');
+    if (resolved.startsWith(installRoot + '/')) return undefined;
+    const uvRoot = resolve(installRoot, '../..');
+    const pythonRoot = join(uvRoot, 'python');
+    if (basename(uvRoot) !== 'uv' || basename(dirname(installRoot)) !== 'tools' ||
+        await realpath(pythonRoot).catch(() => '') !== pythonRoot)
+        throw new MCPContainmentUnavailable('interpreter outside narrow installation');
+    const link = await readlink(interpreter).catch(() => '');
+    const target = link ? resolve(dirname(interpreter), link) : '';
+    if (!target.startsWith(pythonRoot + '/') || !resolved.startsWith(pythonRoot + '/'))
+        throw new MCPContainmentUnavailable('interpreter outside narrow installation');
+    const alias = join(pythonRoot, relative(pythonRoot, target).split(sep)[0]);
+    const root = join(pythonRoot, relative(pythonRoot, resolved).split(sep)[0]);
+    if (!resolved.startsWith(root + '/bin/') || root === projectRoot ||
+        root.startsWith(projectRoot + '/') || projectRoot.startsWith(root + '/') ||
+        await realpath(root).catch(() => '') !== root ||
+        await realpath(alias).catch(() => '') !== root ||
+        !(await stat(root).catch(() => undefined))?.isDirectory())
+        throw new MCPContainmentUnavailable('interpreter outside narrow installation');
+    return { root, alias: alias === root ? undefined : alias };
+}
+
+async function validate(policy: MCPContainedLaunchPolicy): Promise<{ command: string; masks: string[];
+    runtime?: RuntimeMount }> {
     if (process.platform !== 'linux' || process.arch !== 'x64')
         throw new MCPContainmentUnavailable('Linux x86-64 is required');
     if (!policy || !isAbsolute(policy.command) || !isAbsolute(policy.installRoot) ||
@@ -98,14 +137,15 @@ async function validate(policy: MCPContainedLaunchPolicy): Promise<{ command: st
         if (!(await stat(path).catch(() => undefined))?.isFile())
             throw new MCPContainmentUnavailable('required isolation utility missing');
     }
-    return { command, masks: await privatePaths(policy.projectRoot) };
+    return { command, masks: await privatePaths(policy.projectRoot),
+        runtime: await runtimeMount(command, root, policy.projectRoot) };
 }
 
 const launchScript = 'set -eu; IFS= read -r bridge_token < /run/bridge-token; export "$3=ws://127.0.0.1:$1" "$4=$bridge_token" "$5=/work"; /usr/bin/socat "UNIX-LISTEN:/relay/bridge.sock,fork,unlink-early,mode=0600" "TCP:127.0.0.1:$1" </dev/null >/dev/null 2>/dev/null & exec "$2"';
 
 /** The host listener is owned by this session; the child sees only a private loopback namespace. */
 export async function launchContainedMCPServer(policy: MCPContainedLaunchPolicy): Promise<MCPContainedSession> {
-    const { command, masks } = await validate(policy);
+    const { command, masks, runtime } = await validate(policy);
     const directory = await mkdtemp(join(tmpdir(), 'dope-mcp-relay-'));
     const socketPath = join(directory, 'bridge.sock');
     let child: ChildProcess | undefined, server: Server | undefined, timer: NodeJS.Timeout | undefined;
@@ -135,10 +175,16 @@ export async function launchContainedMCPServer(policy: MCPContainedLaunchPolicy)
             '--symlink', 'usr/lib64', '/lib64', '--size', String(64 * 1024 * 1024), '--tmpfs', '/tmp',
             '--size', String(16 * 1024 * 1024), '--tmpfs', '/home', '--dir', '/home/mcp',
             '--tmpfs', '/run', '--dir', '/relay', '--dir', '/work'];
-        for (const component of directoryComponents(policy.installRoot))
+        const components = new Set([...directoryComponents(policy.installRoot),
+            ...(runtime ? directoryComponents(runtime.root) : [])]);
+        for (const component of components)
             if (component !== '/home') args.push('--dir', component);
-        args.push('--ro-bind', policy.installRoot, policy.installRoot,
-            '--ro-bind', policy.projectRoot, '/work', '--bind', directory, '/relay',
+        args.push('--ro-bind', policy.installRoot, policy.installRoot);
+        if (runtime) {
+            args.push('--ro-bind', runtime.root, runtime.root);
+            if (runtime.alias) args.push('--symlink', runtime.root, runtime.alias);
+        }
+        args.push('--ro-bind', policy.projectRoot, '/work', '--bind', directory, '/relay',
             '--ro-bind-data', '3', '/run/bridge-token', '--proc', '/proc', '--dev', '/dev');
         for (const mask of masks) {
             const destination = '/work/' + relative(policy.projectRoot, mask.replace(/\/$/u, '')).split(sep).join('/');

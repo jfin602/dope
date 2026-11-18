@@ -55,7 +55,7 @@ import { documentModelStage, promptModelStage, proposalToolError } from './propo
 import { IncrementalDocumentReview } from './incremental-document-review';
 import { DirectPromptStack, IncrementalPromptStack } from './incremental-prompt-stack';
 import { PiConversationFailure } from './pi-conversation-runtime';
-import { MCPChatObservation } from './mcp-chat-observation';
+import { MCPChatObservation, mcpObservationFailure } from './mcp-chat-observation';
 import { MCPServerRegistryStore } from './mcp-server-registry-store';
 import { MCPProjectPreferencesStore } from './mcp-project-preferences-store';
 import { resolveOperationContextPolicy, trustedOperationForTurn, type OperationContextPolicy } from './operation-context-policy';
@@ -2526,8 +2526,11 @@ export class ChatBackend implements ChatService {
                     } catch (error) {
                         status = error instanceof Error && /denied|revoked|unavailable|changed/iu.test(error.message) ?
                             'denied' : 'failed';
+                        if (process.env.DOPE_MCP_OBSERVATION_TRACE === '1')
+                            console.warn('[dope-mcp-observation]', status,
+                                status === 'denied' ? 'denied' : mcpObservationFailure(error));
                         return status === 'denied' ? 'MCP observation denied; no result was accepted' :
-                            'MCP observation failed; no result was accepted';
+                            mcpObservationFailure(error);
                     } finally {
                         toolEvents.push({ name: name as `mcp_${string}`, status, truncated: false,
                             brokerExecuted, stage: brokerExecuted ? 'broker' : 'authority' });

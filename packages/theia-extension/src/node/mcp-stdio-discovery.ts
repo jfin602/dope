@@ -194,8 +194,16 @@ export class MCPStdioDiscovery {
             const output = JSON.stringify({ serverId: discovery.serverId,
                 manifestRevision: discovery.manifestRevision,
                 content: result.content.map(item => (item as { text: string }).text) });
-            if (Buffer.byteLength(output, 'utf8') > 8192) throw new Error('MCP observation output limit');
-            return output;
+            if (Buffer.byteLength(output, 'utf8') <= 8192) return output;
+            // Preserve a bounded, explicitly partial observation. The server's full
+            // message was already limited by MAX_LINE; no omitted bytes reach Pi.
+            const first = (result.content[0] as { text: string } | undefined)?.text ?? '';
+            const truncated = JSON.stringify({ serverId: discovery.serverId,
+                manifestRevision: discovery.manifestRevision,
+                content: [Buffer.from(first, 'utf8').subarray(0, 7000).toString('utf8')],
+                truncated: true });
+            if (Buffer.byteLength(truncated, 'utf8') > 8192) throw new Error('MCP observation output limit');
+            return truncated;
         } catch (error) {
             this.fail('MCP observation failed');
             throw error;

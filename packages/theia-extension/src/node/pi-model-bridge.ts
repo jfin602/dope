@@ -160,7 +160,7 @@ export class PiModelBridge {
             await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, true, false, false, false,
                 options.operationPolicy) :
             options.tools ? await host.openWorkSession(modelSpec, cwd, credential, thinkingLevel,
-                options.workProcessAvailable !== false) : options.chatTools ?
+                options.workProcessAvailable !== false, options.mcpTools) : options.chatTools ?
                 await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, false, false, false,
                     options.operationPolicy, false, false, options.mcpTools) :
                 await host.openNoToolSession(modelSpec, cwd, credential, thinkingLevel);
@@ -182,11 +182,11 @@ export class PiModelBridge {
         const offeredMCP = options.mcpTools?.map(tool => tool.name) ?? [];
         if (offeredMCP.length > 8 || offeredMCP.some(name => !/^mcp_[a-z][a-z0-9_]{0,79}$/u.test(name) ||
             expected.includes(name)) || new Set(offeredMCP).size !== offeredMCP.length ||
-            offeredMCP.length && (!options.chatTools || options.tools || options.roadmapTools ||
+            offeredMCP.length && (!options.chatTools && !options.tools || options.tools && offeredMCP.length !== 1 || options.roadmapTools ||
                 options.roadmapGeneration || options.proposalTools || options.directProposalTools ||
                 options.assessmentTools || options.planTools ||
-                !['chat', 'investigation'].includes(options.operationPolicy?.snapshot.operation ?? '')))
-            throw unavailable('MCP Chat tool boundary invalid');
+                options.chatTools && !['chat', 'investigation'].includes(options.operationPolicy?.snapshot.operation ?? '')))
+            throw unavailable('MCP tool boundary invalid');
         const actualBuiltins = opened.tools?.filter(name => !offeredMCP.includes(name));
         const actualMCP = opened.tools?.filter(name => offeredMCP.includes(name));
         if (opened.version !== '1.4.0' || opened.resources !== 'isolated' ||

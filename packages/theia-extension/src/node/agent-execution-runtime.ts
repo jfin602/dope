@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { AGENT_SCHEMA_VERSION, checkEffect, createBlockedProposedAction, isModelCapacityFailure, parseAgentTask, parseExecutionGrant, projectPath } from '@dope/agent-core';
+import { AGENT_SCHEMA_VERSION, checkEffect, createBlockedProposedAction, isModelCapacityFailure, parseAgentTask, parseExecutionGrant, parseWorkMCPObservationReceipt, projectPath } from '@dope/agent-core';
 import type { AgentExecutionAdapter, AgentExecutionEvent, AgentExecutionHandle, AgentModelPolicy, AgentRun,
     AgentRunEvent, AgentTask, ExecutionGrant, ExecutionProvenance, AgentExecutionRequest, AgentTranscriptInput,
     WorkDocumentRead } from '@dope/agent-core';
@@ -309,9 +309,9 @@ export class AgentExecutionRuntime {
     }
 
     private observed(active: Active, observation: AgentExecutionEvent): void {
-        if (active.stopping || active.denied || !active.run ||
+        if ((active.stopping && observation?.kind !== 'mcp-observation') || active.denied || !active.run ||
             ['completed', 'cancelled', 'failed', 'interrupted'].includes(active.run.status)) return;
-        if (!observation || !['reasoning', 'observation-gap', 'work-observation', 'agent-message', 'command-started', 'command-completed',
+        if (!observation || !['reasoning', 'observation-gap', 'work-observation', 'mcp-observation', 'agent-message', 'command-started', 'command-completed',
             'file-changed', 'status', 'warning', 'authority-denied', 'provider-event'].includes(observation.kind)) {
             active.denied = true;
             void this.serial(active, () => this.event(active, 'authority', 'Invalid adapter observation')).catch(() => {});
@@ -325,6 +325,26 @@ export class AgentExecutionRuntime {
             return;
         }
         if (observation.kind === 'authority-denied') active.denied = true;
+        if (observation.kind === 'mcp-observation') {
+            try {
+                const receipt = parseWorkMCPObservationReceipt(observation.receipt);
+                if (receipt.approval.grantId !== active.grant?.id ||
+                    receipt.approval.grantRevision !== active.grant.revision ||
+                    receipt.approval.taskId !== active.task?.id ||
+                    receipt.approval.workspaceId !== active.workspace?.id ||
+                    receipt.approval.projectKey !== active.grant.mcpObservation?.projectKey)
+                    throw new Error('MCP receipt owner changed');
+                void this.serial(active, async () => {
+                    await this.update(active, run => run.mcpObservations?.length ? run :
+                        ({ ...run, mcpObservations: [receipt] }));
+                    await this.event(active, 'message', `MCP observation ${receipt.status}`);
+                }).catch(() => {});
+            } catch {
+                active.denied = true;
+                void this.interrupt(active);
+            }
+            return;
+        }
         if (observation.kind === 'work-observation' && observation.phase === 'requested' ||
             observation.kind === 'command-started' || observation.kind === 'file-changed')
             active.toolRequested = true;
@@ -631,6 +651,8 @@ export class AgentExecutionRuntime {
                     (grant.id === sourceRun.grantId || grant.acceptedAt < sourceRun.endedAt!))
                 throw new Error('Accepted ExecutionGrant does not match the task/project');
             const selected = await this.select(task.modelPolicy, hostedAuthorized);
+            if (grant.mcpObservation && selected.provenance.runtimeKind !== 'local')
+                throw new Error('Work MCP observation requires the selected Local Pi agent');
             if (resume && JSON.stringify(selected.provenance) !== JSON.stringify(sourceRun?.provenance))
                 throw new Error('Original model binding changed; choose and authorize a new Work task');
             if (selected.provenance.runtimeKind === 'local' && task.controls.reasoningEffort)
@@ -707,7 +729,7 @@ export class AgentExecutionRuntime {
                 `No old tool request was replayed. Inspect restored files before editing; complete the original task ` +
                 `under this run's grant, required validation, and human review.` : '';
             const request: AgentExecutionRequest = { projectRoot: root, executionRoot: active.workspace.root,
-                grant, taskId: task.id,
+                grant, taskId: task.id, runId: active.run!.id,
                 workingPaths: task.origin.kind === 'work-item' ? task.origin.scope.workingSet :
                     task.origin.kind === 'phase-stack' ? phaseStackReviewScope(task.instructions)?.delegablePaths : undefined,
                 ...(checkedRecovery.reads.length ? { priorDocumentReads: checkedRecovery.reads } : {}),

@@ -1,4 +1,6 @@
 /** Portable, provider-neutral Phase 8B execution records. All persisted input goes through parsers. */
+import { parseWorkMCPObservationReceipt } from './authority';
+import type { WorkMCPObservationReceipt } from './authority';
 export const AGENT_SCHEMA_VERSION = 1 as const;
 export type AgentOrigin =
     | { kind: 'direct' }
@@ -81,6 +83,8 @@ export interface AgentRun {
     taskContract?: TaskContractSnapshot;
     /** Broker-observed document ranges, not claims that their requirements were followed. */
     documentReads?: WorkDocumentRead[];
+    /** Factual broker outcome only; never a Criterion or Gate award. */
+    mcpObservations?: WorkMCPObservationReceipt[];
     contextCompactions?: { result: 'succeeded' | 'failed'; reason: 'threshold' | 'overflow' | 'manual' }[];
     resumedFrom?: { runId: string; candidateFingerprint: string };
     candidateReview?: CandidateReview;
@@ -411,12 +415,14 @@ export function parseAgentRun(value: unknown): AgentRun {
     const x = record(value, ['version', 'id', 'taskId', 'status', 'grantId', 'grantRevision', 'requestedPolicy',
         'projectRoot', 'projectId', 'createdAt', 'startedAt', 'endedAt', 'provenance', 'basis',
         'changedFiles', 'validationResults', 'changeSummary', 'finalGit', 'commandEvidence', 'recovery', 'outcome',
-        'validationBasis', 'candidateDelta', 'candidateFingerprint', 'resumedFrom', 'candidateReview', 'reviewDecision', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries', 'taskContract', 'documentReads', 'contextCompactions']);
+        'validationBasis', 'candidateDelta', 'candidateFingerprint', 'resumedFrom', 'candidateReview', 'reviewDecision', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries', 'taskContract', 'documentReads', 'mcpObservations', 'contextCompactions']);
     if (projectPath(x.projectRoot, true) !== '.') throw new Error('Invalid project root');
     const status = parseAgentRunStatus(x.status);
     const basis = x.basis === undefined ? undefined : record(x.basis, ['head', 'clean', 'metadataChanged']);
     const taskContract = x.taskContract === undefined ? undefined : parseTaskContract(x.taskContract);
     const documentReads = x.documentReads === undefined ? undefined : array(x.documentReads, 24, parseWorkDocumentRead);
+    const mcpObservations = x.mcpObservations === undefined ? undefined : array(x.mcpObservations, 1,
+        parseWorkMCPObservationReceipt);
     const contextCompactions = x.contextCompactions === undefined ? undefined : array(x.contextCompactions, 16, item => {
         const compact = record(item, ['result', 'reason']);
         return { result: select(compact.result, ['succeeded', 'failed'] as const),
@@ -488,6 +494,7 @@ export function parseAgentRun(value: unknown): AgentRun {
         ...(x.projectId === undefined ? {} : { projectId: id(x.projectId) }),
         ...(taskContract === undefined ? {} : { taskContract }),
         ...(documentReads === undefined ? {} : { documentReads }),
+        ...(mcpObservations === undefined ? {} : { mcpObservations }),
         ...(contextCompactions === undefined ? {} : { contextCompactions }),
         createdAt: timestamp(x.createdAt), ...(startedAt ? { startedAt } : {}), ...(endedAt ? { endedAt } : {}),
         ...(executionWorkspace === undefined ? {} : { executionWorkspace: {

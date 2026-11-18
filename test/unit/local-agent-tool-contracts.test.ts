@@ -33,7 +33,7 @@ test('reject malformed, mixed, truncated, oversized, unknown, and repeated calls
         [{ ...read, arguments: { ...read.arguments, maxBytes: LOCAL_TOOL_LIMITS.readBytes + 1 } }],
         [{ ...read, arguments: { ...read.arguments, recursive: { depth: 999 } } }],
         [{ ...read, arguments: { path: ['src/main.ts'], maxBytes: 10 } }],
-        [{ ...read, arguments: { path: 'src/main.ts' } }],
+        [{ ...read, arguments: { path: 'src/main.ts', offset: 1 } }],
         [{ ...read, arguments: { ...read.arguments, path: 'x'.repeat(LOCAL_TOOL_LIMITS.pathBytes + 1) } }],
         [{ id: 'edit-1', name: 'edit', arguments: { operation: 'delete', path: 'src/a', content: '' } }],
         [{ id: 'edit-1', name: 'edit', arguments: { operation: 'modify', path: 'src/a',

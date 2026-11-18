@@ -7,6 +7,7 @@ import type { AICredentialService } from '../../packages/contracts/src/ai-creden
 import type { CodexAuthService, CodexAccountStatus } from '../../packages/contracts/src/codex-auth-service.ts';
 import { AICenterController, connectionWarning, usableModelSummary } from '../../packages/theia-extension/lib/browser/ai-center-controller.js';
 import { AICenterMCPController } from '../../packages/theia-extension/lib/browser/ai-center-mcp.js';
+import { mcpServerRegistryFrontendService } from '../../packages/theia-extension/lib/browser/mcp-server-registry-frontend.js';
 import { applyMCPServerRegistryMutation } from '../../packages/ai/lib/mcp-server-registry.js';
 import type { MCPServer, MCPServerRegistrySnapshot } from '../../packages/ai/src/mcp-server-registry.ts';
 import type { MCPServerRegistryService } from '../../packages/contracts/src/mcp-server-registry-service.ts';
@@ -289,6 +290,37 @@ test('MCP registration is global while project selection is independent and off 
     assert.equal(await controller.remove('bridge'), true);
     assert.equal(controller.registry?.servers.length, 0);
     assert.deepEqual(calls, ['create', 'project-toggle', 'remove']);
+});
+
+test('MCP browser service exposes credential checks and token changes for a saved registration', async () => {
+    const server: MCPServer = { version: 1, id: 'bridge', registrationRevision: 1, name: 'Bridge',
+        lifecycle: 'installed', configStatus: 'configured', config: { transport: 'stdio', command: '/opt/bridge', args: [] } };
+    const snapshot: MCPServerRegistrySnapshot = { version: 1, revision: 1, servers: [server] };
+    const calls: string[] = [];
+    const proxy: MCPServerRegistryService = {
+        async list() { calls.push('list'); return snapshot; },
+        async mutate() { throw new Error('not used'); },
+        async bridgeCredentialStatus(id) { calls.push(`status:${id}`); return 'missing'; },
+        async replaceBridgeToken(id, revision, secret) {
+            calls.push(`token:${id}:${revision}:${secret}`); return snapshot;
+        }
+    };
+    const service = mcpServerRegistryFrontendService(proxy, () => ({ dispose() {} }));
+    const activation: MCPProjectActivationService = {
+        async switchProject(root) { return { projectKey: root, preferencesRevision: 0, registryRevision: 1,
+            servers: [{ serverId: 'bridge', registrationRevision: 1, state: 'disabled', eligible: false }] }; },
+        async current() { return this.switchProject('/projects/one'); },
+        async setEnabled() { throw new Error('not used'); }
+    };
+    const controller = new AICenterMCPController(service, activation, () => {});
+    await controller.attach('/projects/one');
+    assert.equal(controller.message, '');
+    assert.equal(controller.registry?.servers[0].id, 'bridge');
+    assert.equal(controller.project?.servers[0].state, 'disabled');
+    assert.equal(controller.credentialStatuses.get('bridge'), 'missing');
+    assert.deepEqual(calls, ['list', 'status:bridge']);
+    assert.deepEqual(await service.replaceBridgeToken('bridge', 1, 'fixture-token'), snapshot);
+    assert.deepEqual(calls, ['list', 'status:bridge', 'token:bridge:1:fixture-token']);
 });
 
 test('MCP controller reports stale revisions and unavailable project context without leaking backend details', async () => {

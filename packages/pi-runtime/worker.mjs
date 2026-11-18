@@ -468,7 +468,9 @@ function chatTools() {
       name === 'plan_finish' ? 'Seal only a complete validated Plan. Final prose cannot replace this receipt.' :
       mcpChatTools.find(tool => tool.name === name)?.description ??
       'Search eligible project source contents for a symbol or phrase. Protected entries are excluded.',
-    parameters: name === 'proposal_stage_document' || name === 'proposal_stage_prompt' ||
+    parameters: mcpChatTools.some(tool => tool.name === name) ?
+      Type.Object({}, { additionalProperties: false }) :
+      name === 'proposal_stage_document' || name === 'proposal_stage_prompt' ||
       name === 'proposal_stage_file' || name === 'proposal_replace_file' ?
       properties : Type.Object(properties, { additionalProperties: false }),
     async execute(_toolCallId, params, signal) {
@@ -542,13 +544,14 @@ function chatTools() {
   }));
 }
 function workTools() {
-  return Object.entries(WORK_TOOLS).filter(([name]) => name !== 'run_command' || workProcessAvailable).map(([name, properties]) => ({
-    name, label: name, description: name === 'read_file' ?
+  return [...Object.entries(WORK_TOOLS).filter(([name]) => name !== 'run_command' || workProcessAvailable),
+    ...mcpChatTools.map(tool => [tool.name, {}])].map(([name, properties]) => ({
+    name, label: name, description: mcpChatTools.find(tool => tool.name === name)?.description ?? (name === 'read_file' ?
       'Read an authorized candidate file. On the FIRST read of each file, send path and offset 0; OMIT expectedSourceHash entirely. The reply supplies sourceHash and nextOffset. Only for later pages, send that exact returned sourceHash as expectedSourceHash with nextOffset. A task, Git or candidate hash is NOT a file sourceHash. Path-only reads retain the legacy sanitized prefix.' :
       name === 'list_files' ? 'List one directory in the authorized candidate workspace using a relative path and entry limit.' :
       name === 'edit_file' ? 'Create or modify one file in the authorized candidate workspace. Canonical project files are not edited.' :
       name === 'read_command_output' ? 'Read a retained page of a completed approved command result by handle and UTF-8 byte offset; does not rerun it.' :
-      'Run an approved test or build command by its granted commandId in the authorized candidate workspace.',
+      'Run an approved test or build command by its granted commandId in the authorized candidate workspace.'),
     parameters: Type.Object(properties, { additionalProperties: false }),
     async execute(_toolCallId, params, signal) {
       if (!workMode || signal?.aborted) throw new Error('Dope Work tool unavailable');
@@ -712,8 +715,8 @@ export async function dispatch(message) {
           !assessmentToolsMode && !proposalToolsMode && !directProposalToolsMode && !roadmapToolsMode && !roadmapGenerationMode;
         const specialMode = roadmapToolsMode || roadmapGenerationMode || proposalToolsMode ||
           directProposalToolsMode || assessmentToolsMode || planToolsMode;
-        if (message.mcpTools !== undefined && (!chatToolsMode || specialMode ||
-            !Array.isArray(message.mcpTools) || message.mcpTools.length > 8 ||
+        if (message.mcpTools !== undefined && (!(chatToolsMode || workMode) || specialMode ||
+            !Array.isArray(message.mcpTools) || message.mcpTools.length > (workMode ? 1 : 8) ||
             message.mcpTools.some(tool => !tool || typeof tool !== 'object' ||
               !/^mcp_[a-z][a-z0-9_]{0,79}$/.test(tool.name) ||
               typeof tool.description !== 'string' || tool.description.length > 300 ||
@@ -743,7 +746,7 @@ export async function dispatch(message) {
             keepRecentTokens: Math.min(4096, Math.floor(message.model.contextWindow / 8)) },
             retry: { enabled: false } }),
           resourceLoader: emptyResources, tools: workMode ? Object.keys(WORK_TOOLS).filter(name =>
-            name !== 'run_command' || workProcessAvailable) :
+            name !== 'run_command' || workProcessAvailable).concat(mcpChatTools.map(tool => tool.name)) :
             chatToolsMode ? chatToolNames : [],
           noTools: 'all', customTools: workMode ? workTools() : chatToolsMode ? chatTools() : [],
           scopedModels: [{ model: message.model }]
@@ -752,7 +755,7 @@ export async function dispatch(message) {
         sessionConsumed = false;
         const tools = session.getActiveToolNames();
         if (JSON.stringify(tools.slice().sort()) !== JSON.stringify((workMode ? Object.keys(WORK_TOOLS).filter(name =>
-          name !== 'run_command' || workProcessAvailable) :
+          name !== 'run_command' || workProcessAvailable).concat(mcpChatTools.map(tool => tool.name)) :
           chatToolsMode ? chatToolNames : []).sort()))
           throw new Error('Pi opened with unexpected tools');
         return { version, tools, resources: 'isolated' };

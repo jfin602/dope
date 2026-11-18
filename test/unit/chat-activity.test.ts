@@ -54,6 +54,12 @@ test('activity is identity-bound, ordered, redacted and retains output beyond th
     withPath.add('tool', 'read_file: running · src/counter file.ts');
     withPath.add('tool', 'read_file: completed · src/counter file.ts');
     assert.deepEqual(parseExecutionActivity(withPath.snapshot(), ...ids), withPath.snapshot());
+    const mcp = new ChatActivityRecorder(...ids);
+    mcp.add('tool', 'mcp_godot_server_info: running');
+    mcp.add('tool', 'mcp_godot_server_info: failed');
+    assert.deepEqual(parseExecutionActivity(mcp.snapshot(), ...ids), mcp.snapshot());
+    assert.throws(() => parseExecutionActivity({ ...mcp.snapshot(), events: [
+        { sequence: 1, kind: 'tool', text: 'mcp_godot_server_info: completed · secret.txt' }] }, ...ids), /event/);
     assert.throws(() => parseExecutionActivity({ ...withPath.snapshot(), events: [
         { sequence: 1, kind: 'tool', text: 'read_file: running · ../outside.ts' }] }, ...ids), /event/);
 });
@@ -180,7 +186,7 @@ test('completed answer alone enters saved conversation; twelve cancelled drafts 
         requests.push(request.messages.filter(item => item.role === 'assistant').map(item => item.content));
         if (mode === 'complete') {
             yield { type: 'activity' as const, kind: 'thinking' as const, text: 'Explicit exposed thinking.' };
-            yield { type: 'delta' as const, text: 'draft answer' };
+            yield { type: 'delta' as const, text: 'Final answer.' };
             yield { type: 'complete' as const, text: 'Final answer.', actualModelId: 'q4',
                 usage: { tokenMeasurement: 'unavailable' as const } };
         } else if (mode === 'long') {
@@ -236,7 +242,7 @@ test('completed answer alone enters saved conversation; twelve cancelled drafts 
         await assert.rejects(run('Try again'), /stopped|failed/i);
         saved = (await backend.get(handle, chatId))!.messages.at(-1)!;
         assert.equal(saved.content, '');
-        assert.equal(saved.role === 'assistant' && saved.execution.status, 'failed');
+        assert.equal(saved.role === 'assistant' && saved.execution.status, 'interrupted');
         mode = 'text-only';
         await run('Continue');
         saved = (await backend.get(handle, chatId))!.messages.at(-1)!;

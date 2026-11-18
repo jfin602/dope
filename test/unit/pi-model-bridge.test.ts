@@ -329,6 +329,30 @@ test('Pi Work binding returns the refreshed registry revision for subsequent too
     await assert.rejects(bridge.assertWorkSelection(selected, binding.endpoint), /changed during execution/);
 });
 
+test('Pi Work binding attests exactly one optional MCP descriptor alongside fixed tools', async () => {
+    const f = fixture();
+    f.state.registry.models[0].capabilities.agentExecution = known(true);
+    f.state.registry.models[0].capabilities.toolCalling = known(true);
+    const descriptor = { name: 'mcp_godot_server_info', description: 'Reviewed observation',
+        parameters: { type: 'object', properties: {}, additionalProperties: false } };
+    f.host.openWorkSession = async (...args: any[]) => {
+        f.calls.push(args);
+        return { version: '1.4.0', resources: 'isolated',
+            tools: ['edit_file', 'list_files', 'read_command_output', 'read_file',
+                ...args[5].map((tool: any) => tool.name)] };
+    };
+    await f.bridge.bind({ connectionId: 'desk', modelId: 'exact-model' }, f.host as any, '/tmp',
+        { tools: true, workProcessAvailable: false, mcpTools: [descriptor] });
+    assert.deepEqual(f.calls[0][5], [descriptor]);
+    await assert.rejects(f.bridge.bind({ connectionId: 'desk', modelId: 'exact-model' }, f.host as any, '/tmp',
+        { tools: true, workProcessAvailable: false,
+            mcpTools: [descriptor, { ...descriptor, name: 'mcp_godot_scene_write' }] }), /boundary/);
+    f.host.openWorkSession = async () => ({ version: '1.4.0', resources: 'isolated',
+        tools: ['edit_file', 'list_files', 'read_command_output', 'read_file'] });
+    await assert.rejects(f.bridge.bind({ connectionId: 'desk', modelId: 'exact-model' }, f.host as any, '/tmp',
+        { tools: true, workProcessAvailable: false, mcpTools: [descriptor] }), /boundary/);
+});
+
 test('a stopped Local service fails closed and a fresh selected binding can resume', async () => {
     const f = fixture();
     const selected = { connectionId: 'desk', modelId: 'exact-model', registryRevision: 3,

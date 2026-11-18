@@ -1,10 +1,11 @@
-import { AGENT_SCHEMA_VERSION, createDefaultExecutionGrant, parseAgentTask } from '@dope/agent-core';
+import { AGENT_SCHEMA_VERSION, createDefaultExecutionGrant, createMCPObservationExecutionGrant, parseAgentTask } from '@dope/agent-core';
 import type { AgentModelPolicy, AgentRun, AgentRunEvent, AgentTask, AgentTaskSequence } from '@dope/agent-core';
+import type { WorkMCPObservationScope } from '@dope/agent-core/lib/authority';
 import { findEligibleModels, futureFeatureRoleRequest, resolveAIRole } from '@dope/ai';
 import type { AIInventoryState } from '@dope/contracts/lib/ai-registry-service';
 import type { AIRegistryService } from '@dope/contracts/lib/ai-registry-service';
 import type { AIRolePolicyService } from '@dope/contracts/lib/ai-role-policy-service';
-import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
+import type { AgentRuntimeService, PendingWorkMCPObservation } from '@dope/contracts/lib/agent-runtime-service';
 
 export interface AgentTarget { connectionId: string; modelId: string; label: string; locality: 'local' | 'hosted'; context?: number }
 export class AgentRunController {
@@ -22,6 +23,9 @@ export class AgentRunController {
     busy = false;
     accepted = false;
     hostedProjectDataAuthorized = false;
+    mcpOffer?: WorkMCPObservationScope;
+    mcpAccepted = false;
+    pendingMCP: PendingWorkMCPObservation[] = [];
     objective = '';
     instructions = '';
     validationCommand = '';
@@ -37,6 +41,7 @@ export class AgentRunController {
         const serial = ++this.serial;
         this.project = project; this.handle = undefined; this.runs = []; this.sequences = []; this.selected = undefined;
         this.task = undefined; this.events = []; this.sequence = 0; this.accepted = false; this.hostedProjectDataAuthorized = false;
+        this.mcpOffer = undefined; this.mcpAccepted = false; this.pendingMCP = [];
         this.objective = ''; this.instructions = ''; this.validationCommand = '';
         this.changed();
         if (!project) return;
@@ -99,6 +104,14 @@ export class AgentRunController {
             }
             this.targetMessage = result.target ? `Coding Agent target: ${result.target.label} (${result.target.locality}${
                 result.target.context ? `, observed context ${result.target.context} tokens` : ''})` : result.reason;
+            this.mcpOffer = undefined;
+            this.mcpAccepted = false;
+            if (this.handle && result.target?.locality === 'local' && this.runtime.workMCPObservationOffer) {
+                const offer = await this.runtime.workMCPObservationOffer(this.handle,
+                    result.target.connectionId, result.target.modelId).catch(() => undefined);
+                if (serial !== this.serial || policy !== this.policy) return;
+                this.mcpOffer = offer;
+            }
             this.changed();
         } catch {
             if (serial === this.serial) { this.resolved = undefined; this.exactTargets = [];
@@ -113,11 +126,20 @@ export class AgentRunController {
             locality: model?.locality ?? 'hosted', context: state.loadedLocalModels?.find(item =>
                 item.connectionId === connectionId && item.providerModelKey === modelId)?.contextWindowTokens };
     }
-    setPolicy(policy: AgentModelPolicy): void { this.policy = policy; this.accepted = false; this.hostedProjectDataAuthorized = false; this.resolved = undefined; void this.resolveTarget(); this.changed(); }
+    setPolicy(policy: AgentModelPolicy): void { this.policy = policy; this.accepted = false; this.hostedProjectDataAuthorized = false;
+        this.mcpOffer = undefined; this.mcpAccepted = false; this.resolved = undefined; void this.resolveTarget(); this.changed(); }
     edit(objective: string, instructions: string): void { this.objective = objective; this.instructions = instructions;
         this.accepted = false; }
     setValidation(command: string): void { this.validationCommand = command; this.accepted = false; this.changed(); }
     acceptGrant(accepted: boolean): void { this.accepted = accepted; this.changed(); }
+    acceptMCPObservation(accepted: boolean): void { this.mcpAccepted = accepted && !!this.mcpOffer;
+        this.accepted = false; this.changed(); }
+    async decideMCPObservation(runId: string, requestId: string, approved: boolean): Promise<void> {
+        if (!this.handle) return;
+        try { await this.runtime.decideWorkMCPObservation(this.handle, runId, requestId, approved); }
+        catch { this.message = 'MCP observation approval expired or no longer belongs to this Work run.'; }
+        await this.refresh(); this.changed();
+    }
     authorizeHostedProjectData(authorized: boolean): void { this.hostedProjectDataAuthorized = authorized; this.changed(); }
     get canStart(): boolean { return Boolean((this.resolved?.locality !== 'hosted' || this.hostedProjectDataAuthorized) && this.handle && this.project && this.resolved && this.accepted &&
         this.objective.trim() && this.instructions.trim() && this.validationCommand.trim() && !this.busy && !this.runs.some(run =>
@@ -131,6 +153,19 @@ export class AgentRunController {
             if (!fresh || fresh.connectionId !== shown.connectionId || fresh.modelId !== shown.modelId ||
                 fresh.locality !== shown.locality || (fresh.locality === 'hosted' && !this.hostedProjectDataAuthorized))
                 throw new Error('Coding Agent selection changed. Review the target and approve again.');
+            let mcpScope: WorkMCPObservationScope | undefined;
+            if (this.mcpAccepted) {
+                if (!this.mcpOffer || fresh.locality !== 'local') throw new Error('Work MCP observation offer changed');
+                const offered = await this.runtime.workMCPObservationOffer(this.handle,
+                    fresh.connectionId, fresh.modelId);
+                if (!offered || offered.projectKey !== this.mcpOffer.projectKey ||
+                    offered.serverId !== this.mcpOffer.serverId ||
+                    offered.registrationRevision !== this.mcpOffer.registrationRevision ||
+                    offered.catalogRevision !== this.mcpOffer.catalogRevision ||
+                    offered.toolName !== this.mcpOffer.toolName)
+                    throw new Error('Work MCP observation offer changed');
+                mcpScope = offered;
+            }
             const hostedAuthorized = shown.locality === 'hosted' && this.hostedProjectDataAuthorized;
             const task = parseAgentTask({ version: AGENT_SCHEMA_VERSION, id: crypto.randomUUID(), createdAt: new Date().toISOString(),
                 objective: this.objective.trim(), instructions: this.instructions.trim(), projectRoot: '.',
@@ -139,10 +174,12 @@ export class AgentRunController {
                     requireValidationPass: true }, origin: { kind: 'direct' },
                 reviewPolicy: { kind: 'required' as const } });
             this.task = await this.runtime.createTask(this.handle, task);
-            const grant = createDefaultExecutionGrant({ id: crypto.randomUUID(), revision: 1, taskId: task.id,
-                acceptedAt: new Date().toISOString() });
+            const grantInput = { id: crypto.randomUUID(), revision: 1, taskId: task.id,
+                acceptedAt: new Date().toISOString() };
+            const grant = mcpScope ? createMCPObservationExecutionGrant({ ...grantInput,
+                mcpObservation: mcpScope }) : createDefaultExecutionGrant(grantInput);
             const run = await this.runtime.start(this.handle, this.project, task.id, grant, hostedAuthorized);
-            this.selected = run; this.accepted = false; this.hostedProjectDataAuthorized = false;
+            this.selected = run; this.accepted = false; this.hostedProjectDataAuthorized = false; this.mcpAccepted = false;
             await this.refresh();
             return run;
         } catch { this.message = 'Agent Run could not start. Review the project, target and grant, then retry.'; }
@@ -181,8 +218,11 @@ export class AgentRunController {
         try {
             const before = JSON.stringify(this.runs.map(run => [run.id, run.status, run.endedAt, run.changedFiles.length, run.validationResults.length, run.changeSummary?.summary]));
             const priorGates = JSON.stringify(this.sequences);
+            const priorMCP = JSON.stringify(this.pendingMCP);
             const priorSequence = this.sequence;
-            [this.runs, this.sequences] = await Promise.all([this.runtime.listRuns(handle), this.runtime.listSequences(handle)]);
+            [this.runs, this.sequences, this.pendingMCP] = await Promise.all([this.runtime.listRuns(handle),
+                this.runtime.listSequences(handle), this.runtime.pendingWorkMCPObservations ?
+                    this.runtime.pendingWorkMCPObservations(handle) : Promise.resolve([])]);
             if (this.handle !== handle) return;
             if (this.selected) this.selected = this.runs.find(item => item.id === this.selected?.id) ?? this.selected;
             else if (this.runs.length) { this.selected = this.runs[0]; this.task = await this.runtime.readTask(handle, this.selected.taskId); }
@@ -196,6 +236,7 @@ export class AgentRunController {
                 }
             }
             if (priorGates !== JSON.stringify(this.sequences) ||
+                priorMCP !== JSON.stringify(this.pendingMCP) ||
                 before !== JSON.stringify(this.runs.map(run => [run.id, run.status, run.endedAt, run.changedFiles.length, run.validationResults.length, run.changeSummary?.summary])) ||
                 priorSequence !== this.sequence) this.changed();
         } catch { this.message = 'Agent Run activity could not be refreshed.'; this.changed(); }

@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { AgentStore } from '../../packages/agent-core/lib/node/agent-store.js';
-import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/authority.js';
+import { createDefaultExecutionGrant, createMCPObservationExecutionGrant } from '../../packages/agent-core/lib/authority.js';
 import { AgentExecutionRuntime } from '../../packages/theia-extension/lib/node/agent-execution-runtime.js';
 import { readHistoryWorkGitMetadata } from '../../packages/theia-extension/lib/node/history-work-git.js';
 import { piWorkObservation } from '../../packages/theia-extension/lib/node/pi-work-execution.js';
@@ -48,6 +48,61 @@ test('compaction observations label estimates and never expose a private summary
         kind: 'compaction_failed', reason: 'overflow' }),
     { kind: 'warning', summary: 'Context compaction failed (overflow)' });
 });
+
+test('Work stores one factual MCP receipt without promoting the candidate or awarding a Gate',
+    { timeout: 60_000 }, async () => {
+        const parent = await mkdtemp(join(tmpdir(), 'dope-pi-mcp-receipt-'));
+        const root = join(parent, 'project');
+        const store = new AgentStore();
+        const taskId = 'mcp-receipt-task';
+        const scope = { projectKey: 'a'.repeat(64), serverId: 'godot', registrationRevision: 1,
+            catalogRevision: 3, toolName: 'godot_get_server_info', connectionId: 'local',
+            modelId: 'fixture-model', maxCalls: 1 as const,
+            expiresAt: new Date(Date.now() + 600_000).toISOString() };
+        const grant = createMCPObservationExecutionGrant({ id: 'mcp-receipt-grant', revision: 1,
+            taskId, acceptedAt: new Date().toISOString(), mcpObservation: scope });
+        let runRuntime: AgentExecutionRuntime;
+        const adapter = { id: 'pi-local-work', async start(request: any) {
+            const result = Promise.resolve().then(async () => {
+                const candidate = runRuntime.localWorkspace(request);
+                const fingerprint = await candidate.fingerprint();
+                const approvedAt = new Date().toISOString();
+                request.onEvent({ kind: 'mcp-observation', receipt: {
+                    approval: { grantId: grant.id, grantRevision: grant.revision, taskId,
+                        projectKey: scope.projectKey, serverId: scope.serverId,
+                        registrationRevision: scope.registrationRevision,
+                        catalogRevision: scope.catalogRevision, toolName: scope.toolName,
+                        connectionId: scope.connectionId, modelId: scope.modelId,
+                        workspaceId: candidate.id, candidateFingerprint: fingerprint,
+                        callId: 'pi-1', approvedAt, approvedBy: 'developer' },
+                    status: 'completed', dispatched: true, endedAt: new Date().toISOString(),
+                    outputSha256: 'e'.repeat(64) } });
+                await writeFile(join(request.executionRoot, 'candidate-mcp.txt'), 'held candidate\n');
+                request.onEvent({ kind: 'file-changed', summary: 'Candidate file changed', path: 'candidate-mcp.txt' });
+            });
+            return { result, async cancel() {} };
+        }, dispose() {} };
+        try {
+            await git('git', ['clone', '--quiet', '--shared', resolve('.'), root]);
+            await store.createTask(root, { version: 1, id: taskId, createdAt: now,
+                objective: 'Observe one server and edit a candidate', instructions: 'Keep review required',
+                projectRoot: '.', modelPolicy, controls: {}, authority: { profile: 'phase-8b-project' },
+                completion: { validation: [{ kind: 'test', label: 'fixture', command: 'fixture-test' }],
+                    requireValidationPass: true }, origin: { kind: 'direct' }, reviewPolicy: { kind: 'required' } } as any);
+            runRuntime = runtime(store, adapter);
+            const started = await runRuntime.start(root, new URL(`file://${root}`).href, taskId, grant, false);
+            const held = await runRuntime.waitForRun(root, started.id);
+            assert.equal(held.candidateReview?.state, 'ready');
+            assert.equal(held.mcpObservations?.length, 1);
+            assert.equal(held.mcpObservations?.[0].status, 'completed');
+            assert.equal(held.mcpObservations?.[0].dispatched, true);
+            assert.equal(held.appliedFiles, undefined);
+            await assert.rejects(readFile(join(root, 'candidate-mcp.txt')), { code: 'ENOENT' });
+            const reopened = await new AgentStore().readRun(root, held.id);
+            assert.deepEqual(reopened?.mcpObservations, held.mcpObservations);
+            assert.equal(reopened?.reviewDecision, undefined);
+        } finally { await runRuntime?.dispose(); await rm(parent, { recursive: true, force: true }); }
+    });
 
 test('two fresh Pi-mapped Work candidates retain transcript and History identities through restart and review',
     { timeout: 120_000 }, async () => {

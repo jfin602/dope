@@ -1,11 +1,16 @@
 import type { AgentModelPolicy, AgentMapImpact, AgentRun, AgentRunEvent, AgentTask, AgentTaskSequence, AgentTranscriptEntry, ProposedAction,
     AgentSteeringRequest, AgentSteeringState,
     CompletionPolicy, ExecutionControls, ExecutionGrant, StackMode, SequenceStatus } from '@dope/agent-core';
+import type { WorkMCPObservationScope } from '@dope/agent-core/lib/authority';
 
 export const agentRuntimeServicePath = '/services/dope/agent-runtime';
 export const AgentRuntimeService = Symbol('AgentRuntimeService');
 
-export interface AgentStoreChange { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering' | 'map-impact'; id: string }
+export interface AgentStoreChange { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering' | 'map-impact' | 'mcp-approval'; id: string }
+export interface PendingWorkMCPObservation {
+    id: string; runId: string; taskId: string; projectKey: string;
+    serverId: string; toolName: string; expiresAt: string;
+}
 export interface AgentRuntimeClient { notifyAgentStateChanged(change: AgentStoreChange): void }
 export interface DiscoveredTaskStack {
     folderName: string; path: string; mode: StackMode; phase: number;
@@ -28,6 +33,9 @@ export interface CandidateResumePreview {
 }
 export interface AgentRuntimeService {
     attach(folderUri: string): Promise<{ projectHandle: string }>;
+    workMCPObservationOffer(projectHandle: string, connectionId: string, modelId: string): Promise<WorkMCPObservationScope | undefined>;
+    pendingWorkMCPObservations(projectHandle: string): Promise<PendingWorkMCPObservation[]>;
+    decideWorkMCPObservation(projectHandle: string, runId: string, requestId: string, approved: boolean): Promise<void>;
     createTask(projectHandle: string, task: AgentTask): Promise<AgentTask>;
     launchWorkItem(projectHandle: string, request: WorkItemLaunchRequest): Promise<AgentTask>;
     listWorkItemTasks(projectHandle: string, planningMapId: string, workItemId: string): Promise<AgentTask[]>;

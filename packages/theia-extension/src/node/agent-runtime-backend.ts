@@ -15,6 +15,7 @@ import type { AgentRuntimeClient, AgentRuntimeService, DiscoveredTaskStack, Open
 import type { WorkItemLaunchRequest } from '@dope/contracts/lib/agent-runtime-service';
 import { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import type { AgentExecutionRuntime } from './agent-execution-runtime';
+import type { WorkMCPObservationAuthority } from './mcp-work-observation';
 
 // Shared by RPC backend instances in this process; persisted HEAD/checkpoint evidence owns restart safety.
 const checkpointProjects = new Set<string>();
@@ -27,13 +28,19 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
     private attaching?: { root: string; promise: Promise<{ projectHandle: string }> };
     private disposed = false;
     private readonly unlisten: () => void;
+    private readonly unlistenMCP?: () => void;
     private readonly pendingStarts = new Map<string, Promise<AgentRun>>();
     private readonly sequenceObservers = new Map<string, Promise<void>>();
 
     constructor(private readonly store: AgentStore, client: AgentRuntimeClient,
-        private readonly execution?: AgentExecutionRuntime, private readonly planning?: PlanningStore) {
+        private readonly execution?: AgentExecutionRuntime, private readonly planning?: PlanningStore,
+        private readonly mcp?: WorkMCPObservationAuthority) {
         this.unlisten = store.onChange((root, change) => {
             if (!this.disposed && root === this.root) client.notifyAgentStateChanged(change);
+        });
+        this.unlistenMCP = mcp?.onChange((root, runId) => {
+            if (!this.disposed && root === this.root)
+                client.notifyAgentStateChanged({ kind: 'mcp-approval', id: runId });
         });
     }
 
@@ -48,6 +55,7 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         if (this.root === root) return { projectHandle: this.handle };
         // A renderer has one channel, but its project can change. Retire the old
         // handle before attaching the next root so delayed calls cannot cross it.
+        if (this.root) this.mcp?.revoke(this.root);
         this.root = undefined;
         this.handle = randomUUID();
         const handle = this.handle;
@@ -70,6 +78,20 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
     private active(handle: string): string {
         if (this.disposed || !this.root || handle !== this.handle) throw new Error('Invalid or detached Agent Runtime project handle');
         return this.root;
+    }
+
+    workMCPObservationOffer(handle: string, connectionId: string, modelId: string) {
+        if (!this.mcp) return Promise.resolve(undefined);
+        return this.mcp.offer(this.active(handle), connectionId, modelId);
+    }
+    async pendingWorkMCPObservations(handle: string) {
+        return this.mcp?.list(this.active(handle)) ?? [];
+    }
+    async decideWorkMCPObservation(handle: string, runId: string, requestId: string, approved: boolean): Promise<void> {
+        const root = this.active(handle);
+        if (!this.mcp || this.execution?.activeRunId(root) !== runId)
+            throw new Error('Work MCP approval run unavailable');
+        this.mcp.decide(root, runId, requestId, approved);
     }
 
     createTask(handle: string, task: AgentTask): Promise<AgentTask> {
@@ -615,5 +637,6 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         if (!this.execution) throw new Error('Agent execution unavailable');
         return this.execution.stop(this.active(handle), runId);
     }
-    dispose(): void { if (!this.disposed) { this.disposed = true; this.unlisten(); } }
+    dispose(): void { if (!this.disposed) { this.disposed = true; this.unlisten(); this.unlistenMCP?.();
+        if (this.root) this.mcp?.revoke(this.root); } }
 }

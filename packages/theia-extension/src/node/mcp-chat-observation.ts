@@ -8,6 +8,28 @@ export interface MCPChatDescriptor { name: string; description: string;
 
 /** Reviewed adapter profile. Its server implementation was inspected in P1; metadata cannot add tools. */
 const reviewed = new Map([['godot', new Map([['godot_get_server_info', 'mcp_godot_server_info']])]]);
+/** Dope reviewed policy, independent of any external tool annotation or description. */
+export function reviewedMCPObservation(serverId: string, toolName: string): string | undefined {
+    return reviewed.get(serverId)?.get(toolName);
+}
+export function reviewedMCPObservations(): { serverId: string; toolName: string; alias: string }[] {
+    return [...reviewed].flatMap(([serverId, tools]) => [...tools].map(([toolName, alias]) =>
+        ({ serverId, toolName, alias })));
+}
+/** Map only Dope-owned transport errors to user-visible outcomes. Never echo server text. */
+export function mcpObservationFailure(error: unknown): string {
+    const reason = error instanceof Error ? error.message : '';
+    const code = reason === 'MCP observation output limit' ? 'output limit' :
+        reason === 'Invalid MCP observation result' ? 'invalid or rejected server result' :
+        reason === 'MCP server returned an error' ? 'server error' :
+        reason === 'MCP discovery timed out' ? 'timeout' :
+        reason === 'MCP server exited' ? 'server exited' :
+        reason === 'MCP tool manifest changed' ? 'tool list changed' :
+        reason === 'Unexpected MCP response' ? 'invalid protocol response' :
+        reason === 'MCP output limit exceeded' || reason === 'MCP message limit exceeded' ?
+            'transport output limit' : 'unavailable';
+    return `MCP observation failed (${code}); no result was accepted`;
+}
 const emptyArguments = (value: unknown): boolean => !!value && typeof value === 'object' &&
     !Array.isArray(value) && Object.keys(value).length === 0;
 const emptySchema = (value: Record<string, unknown>): boolean => value.type === 'object' &&
@@ -22,6 +44,11 @@ export class MCPChatObservation {
         private readonly transport: MCPStdioDiscovery, private readonly discovery: MCPDiscovery,
         private readonly root: string, private readonly registry: MCPServerRegistryStore,
         private readonly preferences: MCPProjectPreferencesStore, private readonly signal: AbortSignal) {}
+
+    get identity(): { projectKey: string; serverId: string; registrationRevision: number } {
+        return { projectKey: this.discovery.projectKey, serverId: this.discovery.serverId,
+            registrationRevision: this.discovery.registrationRevision };
+    }
 
     static async open(root: string, activeRoot: () => string | undefined, signal: AbortSignal,
         registry: MCPServerRegistryStore, preferences: MCPProjectPreferencesStore,

@@ -60,7 +60,8 @@ import { MCPServerRegistryService, mcpServerRegistryServicePath, type MCPServerR
 import { MCPProjectActivationService, mcpProjectActivationServicePath,
     type MCPProjectActivationClient, type MCPProjectActivationEvent } from '@dope/contracts/lib/mcp-project-activation-service';
 import { AIRolePolicyService, aiRolePolicyServicePath, type AIRolePolicyClient } from '@dope/contracts/lib/ai-role-policy-service';
-import type { AIRolePolicyMutationRequest, MCPServerRegistryMutationRequest } from '@dope/ai';
+import type { AIRolePolicyMutationRequest } from '@dope/ai';
+import { mcpServerRegistryFrontendService } from './mcp-server-registry-frontend';
 import { AICenterWidget, AI_CENTER_ID } from './ai-center-widget';
 import { AICenterContribution } from './ai-center-contribution';
 import { AICenterBottomMenuWidget } from './ai-center-launcher';
@@ -200,8 +201,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         const proxy = ServiceConnectionProvider.createProxy<MCPServerRegistryService & RpcServer<MCPServerRegistryClient>>(
             context.container, mcpServerRegistryServicePath,
             { notifyMCPServerRegistryChanged: (revision: number) => changed.fire(revision) });
-        return { list: () => proxy.list(), mutate: (request: MCPServerRegistryMutationRequest) => proxy.mutate(request),
-            onDidChange: changed.event };
+        return mcpServerRegistryFrontendService(proxy, changed.event);
     }).inSingletonScope();
     bind(MCPProjectActivationService).toDynamicValue(context => {
         const changed = new Emitter<MCPProjectActivationEvent>();

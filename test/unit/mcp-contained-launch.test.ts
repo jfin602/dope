@@ -111,6 +111,49 @@ test('private bridge is authenticated, confined, bounded and revoked on project 
     } finally { await rm(temporary, { recursive: true, force: true }); }
 });
 
+test('uv tool mounts only its resolved Python runtime and rejects an unrelated interpreter', async () => {
+    port = await availablePort();
+    const temporary = await mkdtemp(join(process.cwd(), 'dope-mcp-uv-'));
+    const uvRoot = join(temporary, 'uv');
+    const installRoot = join(uvRoot, 'tools', 'fake');
+    const runtimeRoot = join(uvRoot, 'python', 'cpython-test-3.13');
+    const runtimeAlias = join(uvRoot, 'python', 'cpython-test');
+    const projectRoot = join(temporary, 'project');
+    const interpreter = join(installRoot, 'bin', 'python');
+    const command = join(installRoot, 'bin', 'fake-mcp');
+    const hostSecret = join(temporary, 'host-secret');
+    try {
+        await mkdir(join(installRoot, 'bin'), { recursive: true });
+        await mkdir(join(runtimeRoot, 'bin'), { recursive: true });
+        await mkdir(projectRoot);
+        await writeFile(join(runtimeRoot, 'bin', 'python3'), '#!/bin/sh\nexec /usr/bin/python3 "$@"\n');
+        await chmod(join(runtimeRoot, 'bin', 'python3'), 0o700);
+        await symlink(runtimeRoot, runtimeAlias);
+        await symlink(join(runtimeAlias, 'bin', 'python3'), interpreter);
+        await writeFile(command, fake.replace('#!/usr/bin/python3', `#!${interpreter}`)
+            .replaceAll('__HOST_SECRET__', JSON.stringify(hostSecret)));
+        await chmod(command, 0o700);
+        await writeFile(hostSecret, 'host-secret');
+        await writeFile(join(projectRoot, 'visible'), 'project-data');
+        await writeFile(join(projectRoot, '.env'), 'project-secret');
+        const policy = { command, installRoot, projectRoot,
+            projectKey: await mcpProjectKey(projectRoot), bridgePort: port, bridgeToken: token, environment };
+        const session = await launchContainedMCPServer(policy);
+        try {
+            let output = '';
+            session.stdio.stdout!.on('data', chunk => { output += chunk; });
+            for (let attempt = 0; !output.includes('READY') && attempt < 100; attempt++)
+                await new Promise(resolve => setTimeout(resolve, 20));
+            assert.match(output, /READY/);
+            assert.equal(await bridgeRequest(token), 'authorized');
+        } finally { await session.close(); }
+        await rm(interpreter);
+        await symlink('/usr/bin/python3', interpreter);
+        await assert.rejects(launchContainedMCPServer(policy), /interpreter outside narrow installation/);
+        assert.equal(await readFile(hostSecret, 'utf8'), 'host-secret');
+    } finally { await rm(temporary, { recursive: true, force: true }); }
+});
+
 test('trusted project switch revokes the registered server session', async () => {
     port = await availablePort();
     const base = process.cwd();

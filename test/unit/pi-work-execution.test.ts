@@ -60,8 +60,8 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
                     const record = JSON.parse(String(chunk));
                     if (record.tool) {
                         replies.push(onTool(record.tool).then(result => dispatch({ type: 'tool-result',
-                            toolId: record.tool.id, result }), () => dispatch({ type: 'tool-result',
-                            toolId: record.tool.id, result: { status: 'denied', output: '' } })));
+                            requestId: record.id, toolId: record.tool.id, result }), () => dispatch({ type: 'tool-result',
+                            requestId: record.id, toolId: record.tool.id, result: { status: 'denied', output: '' } })));
                         return true;
                     }
                 } catch { /* normal output */ }

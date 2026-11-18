@@ -1466,6 +1466,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         accept.onchange = () => { controller.acceptGrant(accept.checked); start.disabled = !controller.canStart; };
         acceptLabel.className = 'dope-work-grant';
         acceptLabel.append(accept, ' Accept project execution grant');
+        const mcpLabel = document.createElement('label'); mcpLabel.className = 'dope-work-grant';
+        const mcp = document.createElement('input'); mcp.type = 'checkbox';
+        mcp.checked = controller.mcpAccepted;
+        mcp.onchange = () => { controller.acceptMCPObservation(mcp.checked);
+            accept.checked = false; start.disabled = !controller.canStart; };
+        if (controller.mcpOffer) mcpLabel.append(mcp,
+            ` Allow one ${controller.mcpOffer.serverId} ${controller.mcpOffer.toolName} observation for this Work task; approve the call separately`);
         const hostedLabel = document.createElement('label'); hostedLabel.className = 'dope-work-grant';
         const hosted = document.createElement('input'); hosted.type = 'checkbox';
         hosted.checked = controller.hostedProjectDataAuthorized;
@@ -1479,7 +1486,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             if (run) { await this.workController?.refresh(); this.selectWork({ kind: 'run', id: run.id }); }
         };
         form.onsubmit = event => { event.preventDefault(); void submit(); };
-        form.append(prompt, model, validation, acceptLabel, ...(controller.resolved?.locality === 'hosted' ? [hostedLabel] : []), review, status, start);
+        form.append(prompt, model, validation, ...(controller.mcpOffer ? [mcpLabel] : []), acceptLabel,
+            ...(controller.resolved?.locality === 'hosted' ? [hostedLabel] : []), review, status, start);
         this.content.append(form);
     }
     private renderWork(): void {
@@ -1660,6 +1668,21 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         scroll.append(overview);
         const displayedRun = work.kind === 'sequence' ? controller.phase.run :
             work.kind === 'run' ? controller.selectedRun : undefined;
+        for (const pending of this.directController?.pendingMCP ?? []) {
+            if (displayedRun?.id !== pending.runId) continue;
+            const approval = document.createElement('section'); approval.className = 'dope-work-start';
+            approval.setAttribute('aria-label', 'MCP observation approval');
+            const title = document.createElement('h3'); title.textContent = 'Approve one MCP observation';
+            const detail = document.createElement('p');
+            detail.textContent = `${pending.serverId} · ${pending.toolName} · Work task ${pending.taskId}. ` +
+                'This reads bounded external server information. It cannot edit the project or promote candidate files.';
+            approval.append(title, detail,
+                this.button('Allow once', () => void this.directController?.decideMCPObservation(
+                    pending.runId, pending.id, true)),
+                this.button('Deny', () => void this.directController?.decideMCPObservation(
+                    pending.runId, pending.id, false)));
+            scroll.append(approval);
+        }
         if (displayedRun?.startedAt) scroll.append(this.elapsedClock(displayedRun.startedAt,
             displayedRun.endedAt, displayedRun.status === 'running'));
         const decision = document.createElement('section'); decision.className = 'dope-work-start';
@@ -2133,6 +2156,16 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     accept.onchange = () => controller.acceptStartGrant(accept.checked);
                     acceptLabel.append(accept, ' Accept project execution grant');
                     section.append(acceptLabel);
+                    if (controller.startMCPOffer) {
+                        const mcpLabel = document.createElement('label'); mcpLabel.className = 'dope-work-grant';
+                        const mcp = document.createElement('input'); mcp.type = 'checkbox';
+                        mcp.checked = controller.startMCPAccepted;
+                        mcp.onchange = () => { controller.acceptStartMCPObservation(mcp.checked);
+                            accept.checked = false; };
+                        mcpLabel.append(mcp, ` Allow one ${controller.startMCPOffer.serverId} ` +
+                            `${controller.startMCPOffer.toolName} observation for this WorkItem; approve the call separately`);
+                        section.append(mcpLabel);
+                    }
                     if (controller.startTarget?.locality === 'hosted') {
                         const hostedLabel = document.createElement('label'); hostedLabel.className = 'dope-work-grant';
                         const hosted = document.createElement('input'); hosted.type = 'checkbox';

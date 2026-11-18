@@ -25,8 +25,12 @@ function harness() {
         fallbacks: [], hard: { requiredCapabilities: [], locality: 'any', enabledOnly: true, usableOnly: true,
             hostedProjectData: 'requires-feature-authorization' }, preferences: [], allowFallback: false })) };
     let run: AgentRun | undefined; let task: unknown; let grant: unknown; let authorized: unknown; let stopped = false;
-    let gate: any; let reconciliations = 0;
+    let gate: any; let reconciliations = 0; let mcpOffer: any;
+    let pendingMCP: any[] = []; const mcpDecisions: unknown[][] = [];
     const runtime = { async attach() { return { projectHandle: 'handle' }; },
+        async workMCPObservationOffer() { return mcpOffer; },
+        async pendingWorkMCPObservations() { return pendingMCP; },
+        async decideWorkMCPObservation(...args: unknown[]) { mcpDecisions.push(args); pendingMCP = []; },
         async listRuns() { return run ? [run] : []; }, async listSequences() { return gate ? [gate] : []; },
         async reconcileManualGate() { reconciliations++; return gate; }, async readRun() { return run; },
         async readTask() { return task; }, async createTask(_handle: string, value: unknown) { task = value; return value; },
@@ -43,6 +47,8 @@ function harness() {
     return { controller, runtime, inventory, policy, get task() { return task; }, get grant() { return grant; },
         get authorized() { return authorized; }, get stopped() { return stopped; },
         get reconciliations() { return reconciliations; }, setGate(value: unknown) { gate = value; },
+        setMCPOffer(value: unknown) { mcpOffer = value; }, setPendingMCP(value: unknown[]) { pendingMCP = value; },
+        get mcpDecisions() { return mcpDecisions; },
         finish(status: AgentRun['status']) { run = { ...run!, status, changedFiles: ['src/a.ts'],
             validationResults: [{ version: 1, kind: 'test', label: 'unit', status: 'passed' }],
             changeSummary: { version: 1, filesChanged: 1, insertions: 2, deletions: 1, summary: 'Updated source', truncated: false } }; } };
@@ -220,4 +226,40 @@ test('Local exact and role targets require observed readiness and never grant ho
     await h.controller.resolveTarget();
     assert.equal(h.controller.resolved, undefined);
     assert.equal(h.controller.canStart, false);
+});
+
+test('direct Local Work requires separate MCP grant acceptance and decides only a pending call', async () => {
+    const h = harness();
+    const local = { ...h.inventory.registry.models[0], connectionId: 'local', providerModelKey: 'qwen',
+        label: 'Qwen', locality: 'local', capabilities: { ...h.inventory.registry.models[0].capabilities,
+            toolCalling: { source: 'adapter-known', value: true } } };
+    h.inventory.registry.connections.push({ version: 1, id: 'local', alias: 'LM Studio', lifecycle: 'enabled',
+        config: { type: 'local', runtime: 'lm-studio', endpoint: 'http://127.0.0.1:1234' } } as any);
+    h.inventory.registry.models.push(local as any);
+    h.inventory.observations.push({ connectionId: 'local', health: 'ready' });
+    (h.inventory as any).loadedLocalModels = [{ connectionId: 'local', providerModelKey: 'qwen', contextWindowTokens: 4096 }];
+    h.policy.policies.find(item => item.roleId === 'coding-agent')!.preferred =
+        { type: 'exact', target: { connectionId: 'local', modelId: 'qwen' } };
+    const offer = { projectKey: 'a'.repeat(64), serverId: 'godot', registrationRevision: 3,
+        catalogRevision: 5, toolName: 'godot_get_server_info', connectionId: 'local', modelId: 'qwen',
+        maxCalls: 1, expiresAt: new Date(Date.now() + 600_000).toISOString() };
+    h.setMCPOffer(offer);
+    await h.controller.attach('file:///project');
+    assert.equal(h.controller.mcpOffer?.serverId, 'godot');
+    h.controller.edit('Observe', 'Use only the reviewed observation');
+    h.controller.setValidation('npm test');
+    h.controller.acceptMCPObservation(true);
+    assert.equal(h.controller.canStart, false);
+    h.controller.acceptGrant(true);
+    assert.equal(h.controller.canStart, true);
+    await h.controller.start();
+    assert.deepEqual((h.grant as any).mcpObservation, offer);
+    h.setPendingMCP([{ id: 'pending', runId: 'run', taskId: (h.task as any).id,
+        projectKey: offer.projectKey, serverId: 'godot', toolName: offer.toolName,
+        expiresAt: new Date(Date.now() + 60_000).toISOString() }]);
+    await h.controller.refresh();
+    assert.equal(h.controller.pendingMCP.length, 1);
+    await h.controller.decideMCPObservation('run', 'pending', true);
+    assert.deepEqual(h.mcpDecisions, [['handle', 'run', 'pending', true]]);
+    assert.equal(h.controller.pendingMCP.length, 0);
 });

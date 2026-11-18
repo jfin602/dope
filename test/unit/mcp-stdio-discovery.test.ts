@@ -30,7 +30,7 @@ function mock(reply: (request: Record<string, unknown>, child: EventEmitter &
     });
     let closed = false;
     const session = { stdio: child, exited: Promise.resolve(), close: async () => { closed = true; } };
-    return { client: new MCPStdioDiscovery(session as never), get closed() { return closed; } };
+    return { client: new MCPStdioDiscovery(session as never), child, get closed() { return closed; } };
 }
 const response = (child: { stdout: PassThrough }, id: unknown, result: unknown) =>
     child.stdout.write(JSON.stringify({ jsonrpc: '2.0', id, result }) + '\n');
@@ -84,10 +84,29 @@ test('checked observation calls only the pinned tool and caps external output', 
     await assert.rejects(connection.client.observe(discovery, 'mutate'), /unavailable/);
 });
 
-test('observation rejects changed result shape and cannot pass a large payload', async () => {
+test('replayed tool reply closes the MCP session before another call', async () => {
+    let lastCallId: unknown;
+    const connection = mock((request, child) => {
+        if (request.method === 'initialize') response(child, request.id, initialized);
+        if (request.method === 'tools/list') response(child, request.id, { tools: [tool] });
+        if (request.method === 'tools/call') {
+            lastCallId = request.id;
+            response(child, request.id, { content: [{ type: 'text', text: 'first result' }] });
+        }
+    });
+    const discovery = await connection.client.discover(identity);
+    assert.equal(JSON.parse(await connection.client.observe(discovery, 'observe')).content[0], 'first result');
+    assert.ok(lastCallId);
+    response(connection.child, lastCallId,
+        { content: [{ type: 'text', text: 'replayed result' }] });
+    assert.equal(connection.client.status().state, 'unavailable');
+    assert.equal(connection.closed, true);
+    await assert.rejects(connection.client.observe(discovery, 'observe'), /unavailable/);
+});
+
+test('observation rejects changed result shape and bounds a large payload as partial', async () => {
     for (const payload of [
         { content: [{ type: 'image', data: 'bad' }] },
-        { content: [{ type: 'text', text: 'x'.repeat(9000) }] },
         { isError: true, content: [{ type: 'text', text: 'failed' }] }
     ]) {
         const connection = mock((request, child) => {
@@ -99,6 +118,18 @@ test('observation rejects changed result shape and cannot pass a large payload',
         await assert.rejects(connection.client.observe(discovery, 'observe'));
         assert.equal(connection.closed, true);
     }
+    const large = mock((request, child) => {
+        if (request.method === 'initialize') response(child, request.id, initialized);
+        if (request.method === 'tools/list') response(child, request.id, { tools: [tool] });
+        if (request.method === 'tools/call') response(child, request.id,
+            { content: [{ type: 'text', text: 'version: 4.7.2 ' + 'x'.repeat(9000) }] });
+    });
+    const discovered = await large.client.discover(identity);
+    const output = await large.client.observe(discovered, 'observe');
+    assert.ok(Buffer.byteLength(output, 'utf8') <= 8192);
+    assert.equal(JSON.parse(output).truncated, true);
+    assert.match(JSON.parse(output).content[0], /^version: 4\.7\.2 /);
+    assert.equal(large.client.status().state, 'discovered');
 });
 
 test('malformed JSON, malicious schema, wrong request ID and oversized output close the session', async () => {

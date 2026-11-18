@@ -1,8 +1,9 @@
-import type { ExecutionGrant } from './authority';
+import type { ExecutionGrant, WorkMCPObservationReceipt } from './authority';
 import type { WorkDocumentRead } from './contracts';
 
 /** Ephemeral provider observations. The runtime decides what bounded subset to persist. */
 export type AgentExecutionEvent =
+    | { kind: 'mcp-observation'; receipt: WorkMCPObservationReceipt }
     | { kind: 'observation-gap' }
     | { kind: 'reasoning'; text: string }
     | { kind: 'work-observation'; toolId: string; toolName: string;
@@ -20,6 +21,8 @@ export type AgentExecutionEvent =
 
 export interface AgentExecutionRequest {
     projectRoot: string; executionRoot: string; grant: ExecutionGrant; taskId: string;
+    /** Exact Dope run owning any pending one-call approval. */
+    runId?: string;
     connectionId: string; registrationId: string; modelId: string;
     /** Ephemeral Local selection evidence; adapters reject a changed inventory before tool use. */
     selectedLoadedContextTokens?: number; selectedRegistryRevision?: number;

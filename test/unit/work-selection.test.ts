@@ -279,12 +279,17 @@ test('saved WorkItem Local start uses its persisted task ID and separate grant w
         origin: { kind: 'work-item', projectId: 'project', planningMapId: 'map' },
         modelPolicy: { kind: 'exact', connectionId: 'local', modelId: 'qwen' },
         completion: { validation: [{ kind: 'test', label: 'Required', command: 'npm test' }], requireValidationPass: true } };
+    const mcpScope = { projectKey: 'a'.repeat(64), serverId: 'godot', registrationRevision: 1,
+        catalogRevision: 3, toolName: 'godot_get_server_info', connectionId: 'local', modelId: 'qwen',
+        maxCalls: 1 as const, expiresAt: new Date(Date.now() + 600_000).toISOString() };
+    let acceptedGrant: any;
     let starts = 0, authorized: boolean | undefined, target = { connectionId: 'local', modelId: 'qwen',
         label: 'LM Studio · Qwen', locality: 'local' as const, context: 4096 };
     const runtime = { async readTask() { return saved; }, async listTasks() { return [saved]; }, async listRuns() { return []; },
+        async workMCPObservationOffer() { return mcpScope; },
         async codingAgentReady() { return true; }, async start(_handle: string, _project: string, taskId: string,
-            _grant: unknown, hosted: boolean) {
-            assert.equal(taskId, saved.id); starts++; authorized = hosted;
+            grant: unknown, hosted: boolean) {
+            assert.equal(taskId, saved.id); starts++; authorized = hosted; acceptedGrant = grant;
             return { id: 'local-run', taskId, projectId: saved.projectId, status: 'running' };
         }, async readRun() { return { id: 'local-run', taskId: saved.id, projectId: saved.projectId, status: 'running' }; },
         async readSteering() { return undefined; }, async listActions() { return []; }, async readMapImpact() { return undefined; },
@@ -293,10 +298,14 @@ test('saved WorkItem Local start uses its persisted task ID and separate grant w
     const controller = new WorkSelectionController(runtime, () => {}, async () => ({ target, reason: '' }));
     controller.project = 'file:///project'; controller.handle = 'handle'; controller.phase.codingAgentReady = true;
     await controller.select({ kind: 'task', id: saved.id });
+    assert.deepEqual(controller.startMCPOffer, mcpScope);
+    controller.acceptStartMCPObservation(true);
+    assert.equal(controller.acceptedStartGrant, false);
     controller.acceptStartGrant(true);
     assert.equal(controller.startBlockReason, '');
     await controller.startSelectedWorkItemTask();
     assert.equal(starts, 1); assert.equal(authorized, false);
+    assert.deepEqual(acceptedGrant.mcpObservation, mcpScope);
     await controller.select({ kind: 'task', id: saved.id });
     controller.acceptStartGrant(true);
     target = { ...target, connectionId: 'codex', locality: 'hosted' as any };
