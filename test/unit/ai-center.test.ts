@@ -252,7 +252,9 @@ test('MCP registration is global while project selection is independent and off 
     const calls: string[] = [];
     const registry: MCPServerRegistryService = {
         async list() { return catalog; },
-        async mutate(request) { catalog = applyMCPServerRegistryMutation(catalog, request); calls.push(request.mutation.type); return catalog; }
+        async mutate(request) { catalog = applyMCPServerRegistryMutation(catalog, request); calls.push(request.mutation.type); return catalog; },
+        async bridgeCredentialStatus() { return 'missing'; },
+        async replaceBridgeToken() { throw new Error('not used'); }
     };
     const view = (): MCPProjectActivationSnapshot => ({ projectKey: projectRoot,
         preferencesRevision: preferenceRevision, registryRevision: catalog.revision,
@@ -293,7 +295,9 @@ test('MCP controller reports stale revisions and unavailable project context wit
     let catalog: MCPServerRegistrySnapshot = { version: 1, revision: 0, servers: [] };
     let projectKey: string | undefined;
     const registry: MCPServerRegistryService = { async list() { return catalog; },
-        async mutate(request) { catalog = applyMCPServerRegistryMutation(catalog, request); return catalog; } };
+        async mutate(request) { catalog = applyMCPServerRegistryMutation(catalog, request); return catalog; },
+        async bridgeCredentialStatus() { return 'missing'; },
+        async replaceBridgeToken() { throw new Error('not used'); } };
     const activation: MCPProjectActivationService = { async switchProject(root) { projectKey = root; return this.current(); },
         async current() { return { projectKey, preferencesRevision: 0, registryRevision: catalog.revision, servers: [] }; },
         async setEnabled() { throw new Error('private backend error'); } };

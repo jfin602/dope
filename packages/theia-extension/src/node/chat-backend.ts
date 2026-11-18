@@ -55,6 +55,9 @@ import { documentModelStage, promptModelStage, proposalToolError } from './propo
 import { IncrementalDocumentReview } from './incremental-document-review';
 import { DirectPromptStack, IncrementalPromptStack } from './incremental-prompt-stack';
 import { PiConversationFailure } from './pi-conversation-runtime';
+import { MCPChatObservation } from './mcp-chat-observation';
+import { MCPServerRegistryStore } from './mcp-server-registry-store';
+import { MCPProjectPreferencesStore } from './mcp-project-preferences-store';
 import { resolveOperationContextPolicy, trustedOperationForTurn, type OperationContextPolicy } from './operation-context-policy';
 
 function draftInstruction(projectId: string, revision: number, maxSteps?: 2 | 3): string {
@@ -158,7 +161,9 @@ export class ChatBackend implements ChatService {
         private readonly routing?: AIRoleRoutingService, private readonly grounder?: ChatProjectGrounder,
         private readonly planning?: ProjectPlanningActions, private readonly greenfield?: RoadmapGreenfield,
         private readonly bridgePlanning?: VisualPlanningService & { dispose?: () => void },
-        private readonly roadmapStore?: RoadmapStore) {
+        private readonly roadmapStore?: RoadmapStore,
+        private readonly mcpRegistry?: MCPServerRegistryStore,
+        private readonly mcpPreferences?: MCPProjectPreferencesStore) {
         this.nativeStages = roadmapStore ? new RoadmapNativeStageOwner(roadmapStore) : undefined;
         this.unlistenPlanningConflicts = roadmapStore?.onPlanningConflict((root, projectId) =>
             !this.disposed && (this.nativeStages?.hasPending(root, projectId) ||
@@ -477,15 +482,16 @@ export class ChatBackend implements ChatService {
         pending.finish(allowOnce ? 'allow' : 'deny');
     }
     private async requestCommand(root: string, request: ChatTurnRequest, command: string,
-        turn: AbortController, sourceBasis: string): Promise<'granted' | 'denied' | 'expired'> {
+        turn: AbortController, sourceBasis: string,
+        presentation?: { sandbox: string; effect: string }): Promise<'granted' | 'denied' | 'expired'> {
         if (typeof command !== 'string' || !command.trim() || Buffer.byteLength(command, 'utf8') > 2048 ||
             /[\x00-\x08\x0b-\x1f\x7f]/u.test(command)) throw new Error('Command request denied');
         if (this.commandModes.get(request.chatId) === 'allow') return 'granted';
         if (this.commandModes.get(request.chatId) !== 'ask' || this.pendingCommands.has(request.chatId))
             throw new Error('Command request unavailable');
         const preview: ChatCommandPreview = { id: randomUUID(), command, project: root, cwd: root,
-            sandbox: 'Project read-only; private temporary files; no network or private home',
-            effect: 'Runs only inside the bounded Linux sandbox after approval', expiresAt: Date.now() + 60_000 };
+            sandbox: presentation?.sandbox ?? 'Project read-only; private temporary files; no network or private home',
+            effect: presentation?.effect ?? 'Runs only inside the bounded Linux sandbox after approval', expiresAt: Date.now() + 60_000 };
         const digest = createHash('sha256').update(command).digest('hex');
         return new Promise<'granted' | 'denied' | 'expired'>(resolve => {
             let settled = false;
@@ -2448,6 +2454,7 @@ export class ChatBackend implements ChatService {
         let assessmentFailure: string | undefined;
         let assessmentFindingCount = 0;
         const toolEvents: NonNullable<ChatAssistantMessage['execution']['toolEvents']> = [];
+        let mcpObservation: MCPChatObservation | undefined;
         let toolBytes = 0;
         const documentationPages: DocumentationReadPage[] = [];
         const documentationHashes = new Map<string, string>();
@@ -2492,9 +2499,41 @@ export class ChatBackend implements ChatService {
         const projectTools = this.grounder && !noProjectTools ? { root, roadmapTools: nativeRoadmap,
             proposalTools: protectedProposal && !directContinuation, directProposalTools: !!directContinuation,
             assessmentTools: protectedAssessment, planTools: protectedPlan,
+            mcpTools: [] as NonNullable<import('@dope/contracts/lib/model-runtime').ConversationRequest['projectTools']>['mcpTools'],
             operationPolicy: boundOperationPolicy,
             execute: async (name: string, args: unknown, signal?: AbortSignal, toolCallId?: number): Promise<string> => {
                 if (noProjectTools) throw new Error('Project tools prohibited for this Chat turn');
+                if (name.startsWith('mcp_')) {
+                    recordActivity('tool', `${name}: running`);
+                    let status: 'completed' | 'denied' | 'failed' = 'denied';
+                    let brokerExecuted = false;
+                    try {
+                        if (!mcpObservation || signal?.aborted || abort.signal.aborted ||
+                            this.turns.get(key)?.abort !== abort ||
+                            this.leases.get(key)?.token !== request.leaseToken ||
+                            toolEvents.length >= (operationPolicy.discretionary?.run.toolCalls ?? 16))
+                            throw new Error('MCP observation denied: Chat authority changed');
+                        const basis = createHash('sha256').update(JSON.stringify(preview.refs.map(parseChatContextRef))).digest('hex');
+                        const approved = async () => (await this.requestCommand(root, request,
+                            `MCP observation: ${name}`, abort, basis,
+                            { sandbox: 'Contained MCP server; project read-only; bounded loopback bridge',
+                                effect: 'Reads external server information after approval; output is untrusted' })) === 'granted';
+                        const output = await mcpObservation.execute(name, args, approved,
+                            () => { try { return this.active(request.projectHandle); } catch { return undefined; } },
+                            () => { brokerExecuted = true; });
+                        status = 'completed';
+                        return output;
+                    } catch (error) {
+                        status = error instanceof Error && /denied|revoked|unavailable|changed/iu.test(error.message) ?
+                            'denied' : 'failed';
+                        return status === 'denied' ? 'MCP observation denied; no result was accepted' :
+                            'MCP observation failed; no result was accepted';
+                    } finally {
+                        toolEvents.push({ name: name as `mcp_${string}`, status, truncated: false,
+                            brokerExecuted, stage: brokerExecuted ? 'broker' : 'authority' });
+                        recordActivity('tool', `${name}: ${status}`);
+                    }
+                }
                 if (name.startsWith('plan_')) {
                     recordActivity('tool', `${name}: running`);
                     let outcome: 'completed' | 'failed' = 'completed';
@@ -3239,6 +3278,15 @@ export class ChatBackend implements ChatService {
                     startedAt: now } };
             activity = new ChatActivityRecorder(key, assistant.id, assistant.execution.id);
             await mutate({ type: 'begin-assistant', chatId: key, message: assistant });
+            if (projectTools && connection.providerId === 'local' && this.mcpRegistry && this.mcpPreferences &&
+                !nativeRoadmap && !localRoadmap && !protectedProposal && !protectedAssessment &&
+                !protectedPlan && !promptStage && !publicationIntent &&
+                ['chat', 'investigation'].includes(operationPolicy.operation)) {
+                mcpObservation = await MCPChatObservation.open(root,
+                    () => { try { return this.active(request.projectHandle); } catch { return undefined; } },
+                    abort.signal, this.mcpRegistry, this.mcpPreferences, () => abort.abort());
+                if (mcpObservation) projectTools.mcpTools = mcpObservation.descriptors;
+            }
             if (protectedAssessment) {
                 assessmentController = new IncrementalAssessment(this.repository, this.grounder!, root,
                     (assessmentRevision ? priorAssessment!.user.promptDraft : namedDraft)!,
@@ -3350,6 +3398,10 @@ export class ChatBackend implements ChatService {
                 localOnly: localRoadmap,
                 signal: abort.signal,
                 conversation: async target => {
+                    if (mcpObservation && (target.connectionId !== selectedModel?.connectionId ||
+                        target.modelId !== selectedModel?.modelId))
+                        throw new ModelRuntimeFailure('MCP Chat model changed during the turn; choose a model explicitly',
+                            'model-unavailable');
                     const resolvedConnection = (await this.models!.list()).connections.find(item => item.id === target.connectionId);
                     if (connection.providerId === 'local' && resolvedConnection?.providerId !== 'local')
                         throw new ModelRuntimeFailure('Pi Chat cannot switch providers within a turn; choose a model explicitly',
@@ -3937,6 +3989,7 @@ export class ChatBackend implements ChatService {
             }
             throw error;
         } finally {
+            await mcpObservation?.close().catch(() => undefined);
             if (proposalController) {
                 await proposalController.stop().catch(() => undefined);
                 if (!finishedDocument && !finishedPrompt)

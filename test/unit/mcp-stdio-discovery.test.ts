@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
 import { PassThrough } from 'node:stream';
 import { EventEmitter } from 'node:events';
+import { createServer } from 'node:net';
 import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import test from 'node:test';
 import { MCPStdioDiscovery } from '../../packages/theia-extension/lib/node/mcp-stdio-discovery.js';
-import { launchContainedMCPServer } from '../../packages/theia-extension/lib/node/mcp-contained-launch.js';
-import { mcpProjectKey } from '../../packages/theia-extension/lib/node/mcp-project-preferences-store.js';
+import { MCPProjectPreferencesStore, mcpProjectKey } from '../../packages/theia-extension/lib/node/mcp-project-preferences-store.js';
+import { MCPServerRegistryStore } from '../../packages/theia-extension/lib/node/mcp-server-registry-store.js';
+import { MCPProjectActivationBackend } from '../../packages/theia-extension/lib/node/mcp-project-activation-backend.js';
 
 const identity = { serverId: 'fake', registrationRevision: 1, projectKey: 'a'.repeat(64) };
 const initialized = { protocolVersion: '2025-06-18', capabilities: { tools: {} },
@@ -56,14 +58,56 @@ test('bounded stdio handshake and stable manifest detect changed tool metadata',
     });
     await assert.rejects(rejected.client.discover(identity, undefined, first.manifestRevision), /manifest changed/);
     assert.equal(rejected.closed, true);
+    assert.equal(rejected.client.status().state, 'unavailable');
 });
 
-test('malicious schema, wrong request ID and oversized output close the session', async () => {
-    for (const mode of ['schema', 'id', 'large']) {
+test('checked observation calls only the pinned tool and caps external output', async () => {
+    let calls = 0, changed = false;
+    const connection = mock((request, child) => {
+        if (request.method === 'initialize') response(child, request.id, initialized);
+        if (request.method === 'tools/list') response(child, request.id,
+            { tools: [{ ...tool, ...(changed ? { description: 'drift' } : {}) }] });
+        if (request.method === 'tools/call') {
+            calls++;
+            assert.deepEqual(request.params, { name: 'observe', arguments: {} });
+            response(child, request.id, { content: [{ type: 'text', text: 'server observation' }] });
+        }
+    });
+    const discovery = await connection.client.discover(identity);
+    const result = await connection.client.observe(discovery, 'observe');
+    assert.equal(JSON.parse(result).content[0], 'server observation');
+    assert.equal(calls, 1);
+    changed = true;
+    await assert.rejects(connection.client.observe(discovery, 'observe'), /manifest changed/);
+    assert.equal(calls, 1);
+    assert.equal(connection.closed, true);
+    await assert.rejects(connection.client.observe(discovery, 'mutate'), /unavailable/);
+});
+
+test('observation rejects changed result shape and cannot pass a large payload', async () => {
+    for (const payload of [
+        { content: [{ type: 'image', data: 'bad' }] },
+        { content: [{ type: 'text', text: 'x'.repeat(9000) }] },
+        { isError: true, content: [{ type: 'text', text: 'failed' }] }
+    ]) {
+        const connection = mock((request, child) => {
+            if (request.method === 'initialize') response(child, request.id, initialized);
+            if (request.method === 'tools/list') response(child, request.id, { tools: [tool] });
+            if (request.method === 'tools/call') response(child, request.id, payload);
+        });
+        const discovery = await connection.client.discover(identity);
+        await assert.rejects(connection.client.observe(discovery, 'observe'));
+        assert.equal(connection.closed, true);
+    }
+});
+
+test('malformed JSON, malicious schema, wrong request ID and oversized output close the session', async () => {
+    for (const mode of ['json', 'schema', 'id', 'large']) {
         const connection = mock((request, child) => {
             if (request.method === 'initialize') response(child, request.id, initialized);
             if (request.method === 'tools/list') {
-                if (mode === 'large') child.stdout.write('x'.repeat(256 * 1024 + 2));
+                if (mode === 'json') child.stdout.write('{invalid\n');
+                else if (mode === 'large') child.stdout.write('x'.repeat(256 * 1024 + 2));
                 else response(child, mode === 'id' ? 999 : request.id,
                     { tools: [{ ...tool, inputSchema: { type: 'string' } }] });
             }
@@ -82,10 +126,28 @@ test('cancelled discovery closes the session before a result', async () => {
     assert.equal(connection.closed, true);
 });
 
+test('unsupported negotiated protocol version closes discovery before tool listing', async () => {
+    let listed = false;
+    const connection = mock((request, child) => {
+        if (request.method === 'initialize')
+            response(child, request.id, { ...initialized, protocolVersion: '2024-11-05' });
+        if (request.method === 'tools/list') listed = true;
+    });
+    await assert.rejects(connection.client.discover(identity), /Invalid MCP initialize result/);
+    assert.equal(listed, false);
+    assert.equal(connection.closed, true);
+});
+
 test('actual isolated fake server completes MCP initialize and tools/list with no startup project write', async () => {
+    const listener = createServer();
+    await new Promise<void>(resolve => listener.listen(0, '127.0.0.1', resolve));
+    const bridgePort = (listener.address() as { port: number }).port;
+    await new Promise<void>(resolve => listener.close(() => resolve()));
     const temporary = await mkdtemp(join(process.cwd(), '.dope-mcp-protocol-'));
     const installRoot = join(temporary, 'tools', 'fake');
     const projectRoot = join(temporary, 'project');
+    const otherRoot = join(temporary, 'other-project');
+    const global = join(temporary, 'global');
     const command = join(installRoot, 'bin', 'fake-mcp');
     const script = `#!/usr/bin/python3
 import json, os, socket, sys
@@ -105,17 +167,50 @@ for line in sys.stdin:
 `;
     try {
         await mkdir(join(installRoot, 'bin'), { recursive: true });
-        await mkdir(projectRoot);
+        await mkdir(projectRoot); await mkdir(otherRoot); await mkdir(global, { mode: 0o700 });
         await writeFile(command, script); await chmod(command, 0o700);
-        const session = await launchContainedMCPServer({ command, installRoot, projectRoot,
-            projectKey: await mcpProjectKey(projectRoot), bridgePort: 9081,
-            bridgeToken: 'a'.repeat(40), environment: { bridgeUrl: 'GODOT_MCP_BRIDGE_URL',
-                bridgeToken: 'GODOT_MCP_BRIDGE_TOKEN', projectRoot: 'GODOT_MCP_PROJECT_DIR' } });
-        const client = new MCPStdioDiscovery(session);
+        const token = 'test-only-secure-bridge-token-with-40-chars';
+        const passwords = new Map<string, string>();
+        const registry = new MCPServerRegistryStore(global, async () => ({
+            getPassword: async (_service, account) => passwords.get(account),
+            setPassword: async (_service, account, secret) => { passwords.set(account, secret); },
+            deletePassword: async (_service, account) => { passwords.delete(account); },
+            findCredentials: async () => [] }));
+        const preferences = new MCPProjectPreferencesStore(global);
+        let trustedRoot = otherRoot;
+        const activation = new MCPProjectActivationBackend(preferences, registry,
+            { notifyMCPProjectActivationChanged() {} }, async () => trustedRoot);
         try {
-            const found = await client.discover({ ...identity, projectKey: await mcpProjectKey(projectRoot) });
-            assert.deepEqual(found.tools.map(item => item.name), ['observe']);
-            await assert.rejects(import('node:fs/promises').then(fs => fs.access(join(projectRoot, 'new-file'))));
-        } finally { await client.close(); }
+            await registry.mutate({ version: 1, expectedRevision: 0, mutation: { type: 'create',
+                server: { version: 1, id: 'fake', name: 'Fake', lifecycle: 'installed',
+                    configStatus: 'configured', config: { transport: 'stdio', command, args: [] } } } });
+            await registry.replaceBridgeToken('fake', 1, token);
+            const registered = await registry.mutate({ version: 1, expectedRevision: 2,
+                mutation: { type: 'update', id: 'fake', server: {
+                    ...(await registry.read()).servers[0], config: { transport: 'stdio', command, args: [],
+                        launch: { mode: 'isolated-loopback-bridge', installRoot, bridgePort,
+                            environment: { bridgeUrl: 'GODOT_MCP_BRIDGE_URL',
+                                bridgeToken: 'GODOT_MCP_BRIDGE_TOKEN', projectRoot: 'GODOT_MCP_PROJECT_DIR' } } } } } });
+            const selected = await activation.switchProject(projectRoot);
+            await activation.setEnabled({ projectKey: selected.projectKey!, serverId: 'fake',
+                registrationRevision: registered.servers[0].registrationRevision,
+                expectedRevision: selected.preferencesRevision, enabled: true });
+            await assert.rejects(activation.launchContained('fake'), /active project mismatch/);
+            trustedRoot = projectRoot;
+            const session = await activation.launchContained('fake');
+            const client = new MCPStdioDiscovery(session);
+            try {
+                const found = await client.discover({ serverId: 'fake',
+                    registrationRevision: registered.servers[0].registrationRevision,
+                    projectKey: await mcpProjectKey(projectRoot) });
+                assert.deepEqual(found.tools.map(item => item.name), ['observe']);
+                assert.equal(client.status().state, 'discovered');
+                await assert.rejects(import('node:fs/promises').then(fs => fs.access(join(projectRoot, 'new-file'))));
+                await activation.switchProject(otherRoot);
+                trustedRoot = otherRoot;
+                await session.exited;
+                assert.equal(client.status().state, 'unavailable');
+            } finally { await client.close(); }
+        } finally { activation.dispose(); preferences.dispose(); registry.dispose(); }
     } finally { await rm(temporary, { recursive: true, force: true }); }
 });

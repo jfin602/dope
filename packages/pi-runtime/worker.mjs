@@ -17,6 +17,7 @@ let isolatedDir;
 let workMode = false;
 let workProcessAvailable = true;
 let chatToolsMode = false;
+let mcpChatTools = [];
 let roadmapToolsMode = false;
 let roadmapGenerationMode = false;
 let proposalToolsMode = false;
@@ -431,10 +432,11 @@ const ROADMAP_GENERATION_TOOLS = {
     }, { additionalProperties: false }), { minItems: 1, maxItems: 12 }) }
 };
 function chatTools() {
-  return Object.entries(roadmapGenerationMode ? ROADMAP_GENERATION_TOOLS :
+  const builtins = Object.entries(roadmapGenerationMode ? ROADMAP_GENERATION_TOOLS :
     roadmapToolsMode ? ROADMAP_TOOLS : directProposalToolsMode ? DIRECT_PROPOSAL_TOOLS :
     proposalToolsMode ? PROPOSAL_TOOLS :
-    assessmentToolsMode ? ASSESSMENT_TOOLS : planToolsMode ? PLAN_TOOLS : CHAT_TOOLS).map(([name, properties]) => ({
+    assessmentToolsMode ? ASSESSMENT_TOOLS : planToolsMode ? PLAN_TOOLS : CHAT_TOOLS);
+  return [...builtins, ...mcpChatTools.map(tool => [tool.name, tool.parameters])].map(([name, properties]) => ({
     name, label: name, description: name === 'run_command' ?
       'Run an eligible read-only project investigation command in an isolated Linux sandbox. The project owner may need to approve it. Never claim execution without a tool result.' :
       name === 'list_files' ? 'List one project directory. Start with path "" or "." for the project root. Continue a partial result with nextOffset and expectedResultHash; narrow an omitted directory. Listings do not prove file contents.' :
@@ -464,6 +466,7 @@ function chatTools() {
       name === 'plan_stage_closeout' ? 'Submit the separate final manual T3 closeout.' :
       name === 'plan_stage_efficiency' ? 'Submit one numbered Prompt Efficiency Gate finding, from 1 to 10.' :
       name === 'plan_finish' ? 'Seal only a complete validated Plan. Final prose cannot replace this receipt.' :
+      mcpChatTools.find(tool => tool.name === name)?.description ??
       'Search eligible project source contents for a symbol or phrase. Protected entries are excluded.',
     parameters: name === 'proposal_stage_document' || name === 'proposal_stage_prompt' ||
       name === 'proposal_stage_file' || name === 'proposal_replace_file' ?
@@ -654,6 +657,7 @@ async function dispose() {
   turnToolAcks = 0;
   failedToolStart = undefined;
   acceptedToolIds.clear();
+  mcpChatTools = [];
   if (isolatedDir) {
     await rm(isolatedDir, { recursive: true, force: true });
     isolatedDir = undefined;
@@ -706,6 +710,17 @@ export async function dispatch(message) {
           !proposalToolsMode && !directProposalToolsMode && !roadmapToolsMode && !roadmapGenerationMode;
         planToolsMode = chatToolsMode && message.planTools === true &&
           !assessmentToolsMode && !proposalToolsMode && !directProposalToolsMode && !roadmapToolsMode && !roadmapGenerationMode;
+        const specialMode = roadmapToolsMode || roadmapGenerationMode || proposalToolsMode ||
+          directProposalToolsMode || assessmentToolsMode || planToolsMode;
+        if (message.mcpTools !== undefined && (!chatToolsMode || specialMode ||
+            !Array.isArray(message.mcpTools) || message.mcpTools.length > 8 ||
+            message.mcpTools.some(tool => !tool || typeof tool !== 'object' ||
+              !/^mcp_[a-z][a-z0-9_]{0,79}$/.test(tool.name) ||
+              typeof tool.description !== 'string' || tool.description.length > 300 ||
+              JSON.stringify(tool.parameters) !== JSON.stringify({ type: 'object', properties: {}, additionalProperties: false })) ||
+            new Set(message.mcpTools.map(tool => tool.name)).size !== message.mcpTools.length))
+          throw new Error('Invalid MCP Chat manifest');
+        mcpChatTools = message.mcpTools ?? [];
         if (message.operationPolicy !== undefined) {
           if (!chatToolsMode) throw new WorkerOriginError('policy_invalid', 'operation_policy');
           const operations = assessmentToolsMode ? ['prompt-ass'] : planToolsMode ? ['prompt-plan'] : directProposalToolsMode ?
@@ -717,7 +732,8 @@ export async function dispatch(message) {
         const chatToolNames = Object.keys(roadmapGenerationMode ? ROADMAP_GENERATION_TOOLS :
           roadmapToolsMode ? ROADMAP_TOOLS : directProposalToolsMode ? DIRECT_PROPOSAL_TOOLS :
           proposalToolsMode ? PROPOSAL_TOOLS :
-          assessmentToolsMode ? ASSESSMENT_TOOLS : planToolsMode ? PLAN_TOOLS : CHAT_TOOLS);
+          assessmentToolsMode ? ASSESSMENT_TOOLS : planToolsMode ? PLAN_TOOLS : CHAT_TOOLS)
+          .concat(mcpChatTools.map(tool => tool.name));
         const result = await createAgentSession({
           cwd: message.cwd, agentDir: isolatedDir, model: message.model, modelRuntime,
           thinkingLevel,

@@ -162,8 +162,14 @@ test('credential references require OS secure storage and never persist the secr
             await assert.rejects(missing.mutate({ version: 1, expectedRevision: 0,
                 mutation: { type: 'create', server: configured } }), /secure storage unavailable/);
             assert.deepEqual(await readdir(directory), []);
+            await missing.mutate(create('godot', 0));
+            await assert.rejects(missing.replaceBridgeToken('godot', 1,
+                'test-only-secure-bridge-token-with-40-chars'), /secure storage unavailable/);
+            assert.equal((await missing.read()).revision, 1);
         } finally { missing.dispose(); }
-        const secure = new MCPServerRegistryStore(directory, async () => ({
+        const secureDirectory = join(directory, 'secure');
+        await mkdir(secureDirectory, { mode: 0o700 });
+        const secure = new MCPServerRegistryStore(secureDirectory, async () => ({
             getPassword: async () => 'sensitive-value', setPassword: async () => {},
             deletePassword: async () => {}, findCredentials: async () => [] }));
         try {
@@ -172,5 +178,42 @@ test('credential references require OS secure storage and never persist the secr
             assert.ok(bytes.includes('"account": "godot"'));
             assert.ok(!bytes.includes('sensitive-value'));
         } finally { secure.dispose(); }
+    });
+});
+
+test('explicit bridge-token setup is revision-safe, secret-free in catalog and rotation requires disablement', async () => {
+    await temporary(async directory => {
+        const passwords = new Map<string, string>();
+        const store = new MCPServerRegistryStore(directory, async () => ({
+            getPassword: async (_service, account) => passwords.get(account),
+            setPassword: async (_service, account, secret) => { passwords.set(account, secret); },
+            deletePassword: async (_service, account) => { passwords.delete(account); },
+            findCredentials: async () => [] }));
+        const firstToken = 'first-secure-bridge-token-with-thirty-two-chars';
+        const secondToken = 'second-secure-bridge-token-with-thirty-two-chars';
+        try {
+            await store.mutate(create('godot', 0));
+            assert.equal(await store.bridgeCredentialStatus('godot'), 'missing');
+            await assert.rejects(store.replaceBridgeToken('godot', 0, firstToken), /Stale/);
+            await assert.rejects(store.replaceBridgeToken('godot', 1, 'weak'), /Invalid/);
+            const configured = await store.replaceBridgeToken('godot', 1, firstToken);
+            assert.equal(configured.revision, 2);
+            assert.equal(await store.bridgeCredentialStatus('godot'), 'available');
+            assert.ok(!(await readFile(store.path, 'utf8')).includes(firstToken));
+            const launch = { mode: 'isolated-loopback-bridge' as const,
+                installRoot: '/home/user/.local/share/uv/tools/godot-editor-mcp', bridgePort: 9081,
+                environment: { bridgeUrl: 'MCP_BRIDGE_URL', bridgeToken: 'MCP_BRIDGE_TOKEN',
+                    projectRoot: 'MCP_PROJECT_ROOT' } };
+            await store.mutate({ version: 1, expectedRevision: 2, mutation: { type: 'update', id: 'godot',
+                server: { ...configured.servers[0], config: { ...configured.servers[0].config, launch } } } });
+            await assert.rejects(store.replaceBridgeToken('godot', 3, secondToken), /Disable/);
+            assert.equal(await store.readBridgeToken('godot'), firstToken);
+            const disabled = await store.mutate({ version: 1, expectedRevision: 3,
+                mutation: { type: 'update', id: 'godot',
+                    server: { ...(await store.read()).servers[0], lifecycle: 'disabled' } } });
+            await store.replaceBridgeToken('godot', disabled.revision, secondToken);
+            assert.equal(await store.readBridgeToken('godot'), secondToken);
+            assert.ok(!(await readFile(store.path, 'utf8')).includes(secondToken));
+        } finally { store.dispose(); }
     });
 });

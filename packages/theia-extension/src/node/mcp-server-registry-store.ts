@@ -64,6 +64,40 @@ export class MCPServerRegistryStore {
             throw new Error('MCP bridge credential unavailable');
         return token;
     }
+    async bridgeCredentialStatus(serverId: string): Promise<'available' | 'missing' | 'unavailable'> {
+        const server = (await this.read()).servers.find(item => item.id === serverId);
+        if (!server) throw new Error('Unknown MCP server');
+        const secure = await this.secureStore().catch(() => undefined);
+        if (!secure) return 'unavailable';
+        try { return await secure.getPassword(credentialService, serverId) ? 'available' : 'missing'; }
+        catch { return 'unavailable'; }
+    }
+    /** Only inert or globally disabled records can receive a token, so rotation cannot race an active session. */
+    async replaceBridgeToken(serverId: string, expectedRevision: number, secret: string): Promise<MCPServerRegistrySnapshot> {
+        if (typeof secret !== 'string' || secret.length < 32 || secret.length > 256 ||
+            /[\x00-\x1f\x7f]/u.test(secret)) throw new Error('Invalid MCP bridge token');
+        return this.locked(async () => {
+            const existing = await this.readDisk();
+            if (!existing && await this.safeRead(this.markerPath) !== undefined)
+                throw new Error('Missing initialized MCP registry; restore it manually');
+            const current = existing ?? empty();
+            if (current.revision !== expectedRevision) throw new Error('Stale MCP registry revision');
+            const server = current.servers.find(item => item.id === serverId);
+            if (!server || (server.lifecycle !== 'disabled' && server.config.launch))
+                throw new Error('Disable the configured MCP server before changing its token');
+            const secure = await this.secureStore().catch(() => undefined);
+            if (!secure) throw new Error('OS secure storage unavailable');
+            const next = applyMCPServerRegistryMutation(current, { version: MCP_SERVER_REGISTRY_VERSION,
+                expectedRevision, mutation: { type: 'update', id: serverId,
+                    server: { ...server, credential: { source: 'secure', account: serverId },
+                        configStatus: 'configured' } } });
+            try { await secure.setPassword(credentialService, serverId, secret); }
+            catch { throw new Error('OS secure storage unavailable'); }
+            await this.replace(next);
+            this.publish(next);
+            return next;
+        });
+    }
     private async safeRead(path: string): Promise<string | undefined> {
         try {
             const handle = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW);

@@ -46,6 +46,7 @@ export class MCPStdioDiscovery {
     private pending?: { id: number; resolve: (value: unknown) => void; reject: (error: Error) => void;
         timer: NodeJS.Timeout };
     private stopped = false;
+    private manifestItems?: unknown[];
     private statusValue: MCPConnectionStatus = { transport: 'stdio', state: 'connecting',
         exitCode: null, signal: null };
     private readonly child: ChildProcess;
@@ -95,8 +96,8 @@ export class MCPStdioDiscovery {
         if (pending) { clearTimeout(pending.timer); pending.reject(new Error(reason)); }
         void this.session.close();
     }
-    private request(method: 'initialize' | 'tools/list', params: Record<string, unknown>,
-        signal?: AbortSignal): Promise<unknown> {
+    private request(method: 'initialize' | 'tools/list' | 'tools/call', params: Record<string, unknown>,
+        signal?: AbortSignal, onSend?: () => void): Promise<unknown> {
         if (this.stopped || this.pending || signal?.aborted || !this.child.stdin?.writable)
             return Promise.reject(new Error('MCP discovery unavailable'));
         const id = this.nextId++;
@@ -108,6 +109,7 @@ export class MCPStdioDiscovery {
             this.pending = { id, resolve: done, reject: failed, timer };
             signal?.addEventListener('abort', abort, { once: true });
             const wire = JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n';
+            onSend?.();
             this.child.stdin!.write(wire, error => { if (error) this.fail('MCP request write failed'); });
         });
     }
@@ -123,9 +125,10 @@ export class MCPStdioDiscovery {
             this.statusValue = { ...this.statusValue, ...identity };
             const initialized = await this.request('initialize', { protocolVersion: PROTOCOL_VERSION,
                 capabilities: {}, clientInfo: { name: 'dope', version: '0.13.11' } }, signal);
-            if (!record(initialized) || !boundedString(initialized.protocolVersion, 32) ||
+            if (!record(initialized) || initialized.protocolVersion !== PROTOCOL_VERSION ||
                 !record(initialized.capabilities) || !record(initialized.serverInfo) ||
-                !boundedString(initialized.serverInfo.name, 120)) throw new Error('Invalid MCP initialize result');
+                !boundedString(initialized.serverInfo.name, 120) ||
+                !boundedString(initialized.serverInfo.version, 120)) throw new Error('Invalid MCP initialize result');
             this.notifyInitialized();
             const tools: MCPDiscoveredTool[] = [];
             const manifestItems: unknown[] = [];
@@ -158,11 +161,43 @@ export class MCPStdioDiscovery {
                     serverInfo: initialized.serverInfo, tools: manifestItems })).digest('hex');
             if (approvedManifestRevision && manifestRevision !== approvedManifestRevision)
                 throw new Error('MCP tool manifest changed; renewed approval required');
+            this.manifestItems = manifestItems;
             this.statusValue = { ...this.statusValue, state: 'discovered', manifestRevision };
             return { transport: 'stdio', ...identity, protocolVersion: initialized.protocolVersion,
                 tools, manifestRevision };
         } catch (error) {
             this.fail('MCP discovery failed');
+            throw error;
+        }
+    }
+    /** One checked zero-argument observation. Re-list before the call; a changed manifest closes the session. */
+    async observe(discovery: MCPDiscovery, toolName: string, signal?: AbortSignal,
+        onDispatch?: () => void): Promise<string> {
+        if (this.stopped || this.statusValue.state !== 'discovered' ||
+            this.statusValue.manifestRevision !== discovery.manifestRevision ||
+            this.statusValue.serverId !== discovery.serverId ||
+            this.statusValue.projectKey !== discovery.projectKey ||
+            this.statusValue.registrationRevision !== discovery.registrationRevision ||
+            !discovery.tools.some(tool => tool.name === toolName))
+            throw new Error('MCP observation unavailable');
+        try {
+            const listed = await this.request('tools/list', {}, signal);
+            if (!record(listed) || !Array.isArray(listed.tools) || listed.nextCursor !== undefined ||
+                !this.manifestItems ||
+                JSON.stringify(listed.tools) !== JSON.stringify(this.manifestItems))
+                throw new Error('MCP tool manifest changed');
+            const result = await this.request('tools/call', { name: toolName, arguments: {} }, signal, onDispatch);
+            if (!record(result) || result.isError === true || !Array.isArray(result.content) ||
+                result.content.length > 8 || result.content.some(item => !record(item) ||
+                    item.type !== 'text' || typeof item.text !== 'string'))
+                throw new Error('Invalid MCP observation result');
+            const output = JSON.stringify({ serverId: discovery.serverId,
+                manifestRevision: discovery.manifestRevision,
+                content: result.content.map(item => (item as { text: string }).text) });
+            if (Buffer.byteLength(output, 'utf8') > 8192) throw new Error('MCP observation output limit');
+            return output;
+        } catch (error) {
+            this.fail('MCP observation failed');
             throw error;
         }
     }

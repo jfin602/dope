@@ -246,6 +246,7 @@ export async function* piConversation(selection: ModelSelection, request: Omit<C
                 ...(request.projectTools.directProposalTools ? { directProposalTools: true } : {}),
                 ...(request.projectTools.assessmentTools ? { assessmentTools: true } : {}),
                 ...(request.projectTools.planTools ? { planTools: true } : {}) } : {}),
+                ...(request.projectTools?.mcpTools ? { mcpTools: request.projectTools.mcpTools } : {}),
                 operationPolicy: request.projectTools?.operationPolicy,
                 reasoningMode: request.controls?.['reasoning.effort'] });
         if (request.signal?.aborted) throw new ModelRuntimeFailure('Conversation cancelled', 'cancelled');

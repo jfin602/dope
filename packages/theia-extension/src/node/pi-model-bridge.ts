@@ -50,6 +50,7 @@ export class PiModelBridge {
         cwd: string, options: { tools?: boolean; chatTools?: boolean; roadmapTools?: boolean;
             roadmapGeneration?: boolean; proposalTools?: boolean; directProposalTools?: boolean;
             assessmentTools?: boolean; planTools?: boolean;
+            mcpTools?: NonNullable<NonNullable<ConversationRequest['projectTools']>['mcpTools']>;
             operationPolicy?: NonNullable<ConversationRequest['projectTools']>['operationPolicy'];
             reasoningMode?: string; workProcessAvailable?: boolean } = {}): Promise<PiLocalBinding> {
         if (!selection.connectionId?.trim() || !selection.modelId?.trim())
@@ -161,7 +162,7 @@ export class PiModelBridge {
             options.tools ? await host.openWorkSession(modelSpec, cwd, credential, thinkingLevel,
                 options.workProcessAvailable !== false) : options.chatTools ?
                 await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, false, false, false,
-                    options.operationPolicy) :
+                    options.operationPolicy, false, false, options.mcpTools) :
                 await host.openNoToolSession(modelSpec, cwd, credential, thinkingLevel);
         const expected = options.tools ? ['edit_file', 'list_files', 'read_command_output', 'read_file',
             ...(options.workProcessAvailable === false ? [] : ['run_command'])] :
@@ -178,8 +179,19 @@ export class PiModelBridge {
                     'plan_stage_efficiency', 'plan_finish'] :
                 options.roadmapTools ? ['roadmap_cancel', 'roadmap_read', 'roadmap_stage'] :
                 ['list_files', 'read_file', 'run_command', 'search_paths', 'search_text'] : [];
+        const offeredMCP = options.mcpTools?.map(tool => tool.name) ?? [];
+        if (offeredMCP.length > 8 || offeredMCP.some(name => !/^mcp_[a-z][a-z0-9_]{0,79}$/u.test(name) ||
+            expected.includes(name)) || new Set(offeredMCP).size !== offeredMCP.length ||
+            offeredMCP.length && (!options.chatTools || options.tools || options.roadmapTools ||
+                options.roadmapGeneration || options.proposalTools || options.directProposalTools ||
+                options.assessmentTools || options.planTools ||
+                !['chat', 'investigation'].includes(options.operationPolicy?.snapshot.operation ?? '')))
+            throw unavailable('MCP Chat tool boundary invalid');
+        const actualBuiltins = opened.tools?.filter(name => !offeredMCP.includes(name));
+        const actualMCP = opened.tools?.filter(name => offeredMCP.includes(name));
         if (opened.version !== '1.4.0' || opened.resources !== 'isolated' ||
-            JSON.stringify(opened.tools?.slice().sort()) !== JSON.stringify(expected.slice().sort()))
+            JSON.stringify(actualBuiltins?.slice().sort()) !== JSON.stringify(expected.slice().sort()) ||
+            JSON.stringify(actualMCP?.slice().sort()) !== JSON.stringify(offeredMCP.slice().sort()))
             throw unavailable('Pi tool boundary changed; restart Dope');
         return { connectionId: selection.connectionId, modelId: selection.modelId,
             registryRevision: latest.registry.revision, endpoint,

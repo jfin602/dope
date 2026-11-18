@@ -90,6 +90,8 @@ export interface ConversationRequest {
     projectTools?: { root: string; roadmapTools?: boolean; roadmapGeneration?: boolean; proposalTools?: boolean;
         directProposalTools?: boolean;
         assessmentTools?: boolean; planTools?: boolean;
+        mcpTools?: { name: string; description: string; parameters: { type: 'object';
+            properties: Record<string, never>; additionalProperties: false } }[];
         operationPolicy?: { commandId: string; modelId: string; snapshot: {
             schemaVersion: 1; mode: 'managed' | 'unmanaged';
             operation: 'chat' | 'investigation' | 'docs-review' | 'prompt-ass' | 'prompt-plan' |

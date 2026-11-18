@@ -133,6 +133,7 @@ export class PiRuntimeHost {
     private readonly activeTools = new Map<number, { requestId: number; name: string; startedAt: number }>();
     private lastConfirmed?: PiToolFailureDetail['lastConfirmed'];
     private paused?: { id: number; segmentIndex: number; maxOutputTokens: number; text: string };
+    private mcpToolNames = new Set<string>();
 
     constructor(private readonly workerPath = resolvePiWorkerPath(),
         private readonly executable = process.execPath) {}
@@ -193,10 +194,18 @@ export class PiRuntimeHost {
     openChatToolsSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string,
         thinkingLevel?: string, roadmapTools = false, roadmapGeneration = false, proposalTools = false,
         assessmentTools = false, operationPolicy?: NonNullable<ConversationRequest['projectTools']>['operationPolicy'],
-        planTools = false, directProposalTools = false):
+        planTools = false, directProposalTools = false,
+        mcpTools: NonNullable<NonNullable<ConversationRequest['projectTools']>['mcpTools']> = []):
         Promise<{ version: string; tools: string[]; resources: string }> {
+        if (mcpTools.length > 8 || mcpTools.some(tool => !/^mcp_[a-z][a-z0-9_]{0,79}$/u.test(tool.name) ||
+            offeredToolNames.has(tool.name) || tool.description.length > 300 ||
+            JSON.stringify(tool.parameters) !== JSON.stringify({ type: 'object', properties: {}, additionalProperties: false })) ||
+            new Set(mcpTools.map(tool => tool.name)).size !== mcpTools.length)
+            return Promise.reject(new Error('Invalid MCP Chat manifest'));
+        this.mcpToolNames = new Set(mcpTools.map(tool => tool.name));
         return this.request({ type: 'open', mode: 'chat-tools', model, cwd, roadmapTools, roadmapGeneration,
             proposalTools, assessmentTools, planTools, directProposalTools,
+            ...(mcpTools.length ? { mcpTools } : {}),
             ...(operationPolicy ? { operationPolicy } : {}),
             ...(credential ? { credential } : {}), thinkingLevel });
     }
@@ -398,7 +407,7 @@ export class PiRuntimeHost {
                 if (record.tool) {
                     if (!pending.onTool || !Number.isSafeInteger(record.tool.id) || record.tool.id < 1 ||
                         typeof record.tool.name !== 'string') throw new PiWorkerFailure('tool_reply_invalid');
-                    if (!offeredToolNames.has(record.tool.name))
+                    if (!offeredToolNames.has(record.tool.name) && !this.mcpToolNames.has(record.tool.name))
                         throw new PiWorkerFailure('model_tool_call_invalid');
                     if (this.seenToolIds.has(record.tool.id)) throw new PiWorkerFailure('tool_reply_duplicate');
                     this.seenToolIds.add(record.tool.id);

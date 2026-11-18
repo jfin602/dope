@@ -119,7 +119,7 @@ export interface ChatExecution {
         'proposal_stage_file' | 'proposal_replace_file' | 'proposal_finish' |
         'assessment_status' | 'assessment_stage' | 'assessment_finish' |
         'plan_status' | 'plan_stage_step' | 'plan_correct_step' | 'plan_stage_closeout' |
-        'plan_stage_efficiency' | 'plan_finish';
+        'plan_stage_efficiency' | 'plan_finish' | `mcp_${string}`;
         status: 'completed' | 'failed' | 'denied'; truncated: boolean;
         code?: string; stage?: string; brokerExecuted?: boolean;
         assessmentOutcome?: 'advanced' | 'source-page' | 'idempotent' | 'status' |
@@ -656,7 +656,8 @@ function parseExecution(value: unknown): ChatExecution {
                     previousFindingsPreserved: detail.previousFindingsPreserved,
                     acceptedFindings: detail.acceptedFindings as number };
             }
-            return { name: choice(event.name, ['read_file', 'list_files', 'search_paths', 'search_text', 'run_command',
+            return { name: typeof event.name === 'string' && /^mcp_[a-z][a-z0-9_]{0,79}$/u.test(event.name) ?
+                event.name as `mcp_${string}` : choice(event.name, ['read_file', 'list_files', 'search_paths', 'search_text', 'run_command',
                 'dope_read', 'dope_list', 'dope_search_paths', 'dope_search_text', 'dope_command',
                 'roadmap_read', 'roadmap_stage', 'roadmap_cancel', 'roadmap_phase', 'roadmap_finish',
                 'proposal_status', 'proposal_stage_document', 'proposal_stage_prompt',

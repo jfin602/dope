@@ -17,6 +17,7 @@ export class MCPProjectActivationBackend implements MCPProjectActivationService 
     private readonly unlistenRegistry: () => void;
     constructor(private readonly preferences: MCPProjectPreferencesStore,
         private readonly registry: MCPServerRegistryStore, private readonly client: MCPProjectActivationClient,
+        /** Supplied only by the backend operation owner for this connection, never by global recent-workspace state. */
         private readonly trustedActiveRoot?: () => Promise<string | undefined>) {
         this.unlistenPreferences = preferences.onChange(() => this.revoke('selection-changed'));
         this.unlistenRegistry = registry.onChange(() => this.revoke('registry-changed'));

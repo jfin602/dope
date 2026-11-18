@@ -29,8 +29,6 @@ import { MCPServerRegistryBackend } from './mcp-server-registry-backend';
 import { mcpServerRegistryServicePath, type MCPServerRegistryClient } from '@dope/contracts/lib/mcp-server-registry-service';
 import { MCPProjectPreferencesStore } from './mcp-project-preferences-store';
 import { MCPProjectActivationBackend } from './mcp-project-activation-backend';
-import { WorkspaceServer } from '@theia/workspace/lib/common/workspace-protocol';
-import { fileURLToPath } from 'node:url';
 import { mcpProjectActivationServicePath, type MCPProjectActivationClient } from '@dope/contracts/lib/mcp-project-activation-service';
 import { AIRolePolicyStore } from './ai-role-policy-store';
 import { AIRoleRoutingService } from './ai-role-routing';
@@ -379,13 +377,10 @@ export default new ContainerModule(bind => {
     bind(MCPProjectPreferencesStore).toSelf().inSingletonScope();
     bind(ConnectionHandler).toDynamicValue(context => new RpcConnectionHandler<MCPProjectActivationClient>(
         mcpProjectActivationServicePath, client => {
+            // AI Center selection is connection-scoped. It cannot launch a server:
+            // the global recent-workspace value is not an active-project authority.
             const backend = new MCPProjectActivationBackend(context.container.get(MCPProjectPreferencesStore),
-                context.container.get(MCPServerRegistryStore), client, async () => {
-                    const uri = await context.container.get<WorkspaceServer>(WorkspaceServer)
-                        .getMostRecentlyUsedWorkspace();
-                    if (!uri || !uri.startsWith('file://')) return undefined;
-                    try { return fileURLToPath(uri); } catch { return undefined; }
-                });
+                context.container.get(MCPServerRegistryStore), client);
             client.onDidCloseConnection(() => backend.dispose());
             return backend;
         })).inSingletonScope();
@@ -444,7 +439,8 @@ export default new ContainerModule(bind => {
             context.container.get(AIRoleRoutingService), context.container.get(ChatProjectGrounder),
             actions, context.container.get(RoadmapGreenfield),
             new VisualPlanningBackend(context.container.get(PlanningStore), context.container.get(SoftwareMapIndex),
-                context.container.get(RoadmapStore)), context.container.get(RoadmapStore));
+                context.container.get(RoadmapStore)), context.container.get(RoadmapStore),
+            context.container.get(MCPServerRegistryStore), context.container.get(MCPProjectPreferencesStore));
         client.onDidCloseConnection(() => { backend.dispose(); dispose(); });
         return backend;
     })).inSingletonScope();

@@ -9,5 +9,9 @@ export class MCPServerRegistryBackend implements MCPServerRegistryService {
     }
     list() { return this.store.read(); }
     mutate(request: MCPServerRegistryMutationRequest) { return this.store.mutate(request); }
+    bridgeCredentialStatus(serverId: string) { return this.store.bridgeCredentialStatus(serverId); }
+    replaceBridgeToken(serverId: string, expectedRevision: number, secret: string) {
+        return this.store.replaceBridgeToken(serverId, expectedRevision, secret);
+    }
     dispose(): void { this.unlisten(); }
 }

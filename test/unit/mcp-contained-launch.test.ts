@@ -9,7 +9,14 @@ import { MCPProjectPreferencesStore } from '../../packages/theia-extension/lib/n
 import { MCPServerRegistryStore } from '../../packages/theia-extension/lib/node/mcp-server-registry-store.js';
 import { MCPProjectActivationBackend } from '../../packages/theia-extension/lib/node/mcp-project-activation-backend.js';
 
-const port = 9081;
+let port = 0;
+async function availablePort(): Promise<number> {
+    const listener = createServer();
+    await new Promise<void>(resolve => listener.listen(0, '127.0.0.1', resolve));
+    const selected = (listener.address() as { port: number }).port;
+    await new Promise<void>(resolve => listener.close(() => resolve()));
+    return selected;
+}
 const token = 'canary-token-with-at-least-thirty-two-characters';
 const environment = { bridgeUrl: 'GODOT_MCP_BRIDGE_URL', bridgeToken: 'GODOT_MCP_BRIDGE_TOKEN',
     projectRoot: 'GODOT_MCP_PROJECT_DIR' };
@@ -23,7 +30,10 @@ try: root.joinpath('new-file').write_text('bad')
 except OSError: checks['project_write_denied']=True
 checks['secret_denied']=not root.joinpath('.env').is_file()
 checks['outside_denied']=not pathlib.Path(__HOST_SECRET__).is_file()
+checks['symlink_escape_denied']=not root.joinpath('link-out').is_file()
 try: pathlib.Path(__HOST_SECRET__).write_text('intrusion')
+except OSError: pass
+try: root.joinpath('link-out').write_text('intrusion')
 except OSError: pass
 checks['egress_denied']=False
 try: socket.create_connection(('1.1.1.1',80),timeout=.2)
@@ -54,6 +64,7 @@ async function bridgeRequest(message: string): Promise<string> {
 }
 
 test('private bridge is authenticated, confined, bounded and revoked on project switch', async () => {
+    port = await availablePort();
     const base = process.cwd();
     await mkdir(base, { recursive: true });
     const temporary = await mkdtemp(join(base, 'dope-mcp-canary-'));
@@ -70,6 +81,7 @@ test('private bridge is authenticated, confined, bounded and revoked on project 
         await writeFile(hostSecret, 'host-secret');
         await writeFile(join(projectRoot, 'visible'), 'project-data');
         await writeFile(join(projectRoot, '.env'), 'project-secret');
+        await symlink(hostSecret, join(projectRoot, 'link-out'));
         const projectKey = await mcpProjectKey(projectRoot);
         await assert.rejects(launchContainedMCPServer({ command, installRoot, projectRoot,
             projectKey: '0'.repeat(64), bridgePort: port, bridgeToken: token, environment }), /project identity changed/);
@@ -100,6 +112,7 @@ test('private bridge is authenticated, confined, bounded and revoked on project 
 });
 
 test('trusted project switch revokes the registered server session', async () => {
+    port = await availablePort();
     const base = process.cwd();
     await mkdir(base, { recursive: true });
     const temporary = await mkdtemp(join(base, 'dope-mcp-switch-'));
@@ -122,6 +135,8 @@ test('trusted project switch revokes the registered server session', async () =>
     let trustedRoot = otherRoot;
     const activation = new MCPProjectActivationBackend(preferences, registry,
         { notifyMCPProjectActivationChanged() {} }, async () => trustedRoot);
+    const noRootAuthority = new MCPProjectActivationBackend(preferences, registry,
+        { notifyMCPProjectActivationChanged() {} });
     try {
         const saved = await registry.mutate({ version: 1, expectedRevision: 0, mutation: { type: 'create',
             server: { version: 1, id: 'fake', name: 'Fake', lifecycle: 'installed', configStatus: 'configured',
@@ -132,6 +147,8 @@ test('trusted project switch revokes the registered server session', async () =>
         await activation.setEnabled({ projectKey: current.projectKey!, serverId: 'fake',
             registrationRevision: saved.servers[0].registrationRevision,
             expectedRevision: current.preferencesRevision, enabled: true });
+        await noRootAuthority.switchProject(projectRoot);
+        await assert.rejects(noRootAuthority.launchContained('fake'), /No trusted active MCP project/);
         await assert.rejects(activation.launchContained('fake'), /active project mismatch/);
         trustedRoot = projectRoot;
         const session = await activation.launchContained('fake');
@@ -152,12 +169,13 @@ test('trusted project switch revokes the registered server session', async () =>
             await assert.rejects(bridgeRequest(token));
         } finally { await second.close(); }
     } finally {
-        activation.dispose(); registry.dispose(); preferences.dispose();
+        noRootAuthority.dispose(); activation.dispose(); registry.dispose(); preferences.dispose();
         await rm(temporary, { recursive: true, force: true });
     }
 });
 
 test('lifetime expiry and early child exit release the host port and private socket', async () => {
+    port = await availablePort();
     const base = process.cwd();
     await mkdir(base, { recursive: true });
     const temporary = await mkdtemp(join(base, 'dope-mcp-exit-'));
@@ -189,6 +207,7 @@ test('lifetime expiry and early child exit release the host port and private soc
 });
 
 test('occupied host port and executable escape fail closed without replacing the listener', async () => {
+    port = await availablePort();
     const base = process.cwd();
     await mkdir(base, { recursive: true });
     const temporary = await mkdtemp(join(base, 'dope-mcp-deny-'));

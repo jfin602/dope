@@ -58,6 +58,7 @@ export class AICenterWidget extends BaseWidget {
     private surface: 'connections' | 'models' | 'roles' | 'mcp' = 'connections';
     private editing = false;
     private mcpEditing?: string;
+    private mcpTokenEditing?: string;
     private modelsOpen = false;
     private mcpWorkspaceRequest = 0;
     private returnToChat?: () => void;
@@ -243,6 +244,8 @@ export class AICenterWidget extends BaseWidget {
             if (server.configStatus === 'needs-credential') row.append(element('p',
                 'Secure credential is missing or needs repair. Project enablement is unavailable until the global configuration is repaired.'));
             if (view?.state === 'unavailable') row.append(element('p', 'Connection unavailable. Check the executable and transport, then refresh.'));
+            if (server.config.launch) row.append(element('p',
+                `Bridge token: ${this.mcp.credentialStatuses.get(server.id) ?? 'unavailable'} · Connection health: not checked here`));
             const actions = element('div', undefined, 'dope-ai-actions');
             const toggle = button(enabled ? 'Disable for this project' : 'Enable for this project',
                 () => void this.mcp.setEnabled(server, !enabled),
@@ -252,7 +255,29 @@ export class AICenterWidget extends BaseWidget {
                 button('Remove global server', () => {
                     if (window.confirm(`Remove ${server.name} from the global MCP catalog?`)) void this.mcp.remove(server.id);
                 }, this.mcp.busy));
+            if (!server.config.launch || server.lifecycle === 'disabled')
+                actions.append(button('Set bridge token', () => {
+                    this.mcpTokenEditing = this.mcpTokenEditing === server.id ? undefined : server.id;
+                    this.render();
+                }, this.mcp.busy));
             row.append(actions);
+            if (this.mcpTokenEditing === server.id) {
+                const tokenForm = element('form');
+                tokenForm.setAttribute('aria-label', `Set secure bridge token for ${server.name}`);
+                const secret = field(tokenForm, 'Bridge token (stored only in OS secure storage)', 'bridgeToken', '', true);
+                secret.required = true; secret.minLength = 32; secret.maxLength = 256;
+                const submit = button('Save bridge token', () => {}, this.mcp.busy);
+                submit.type = 'submit'; tokenForm.append(submit);
+                tokenForm.addEventListener('submit', event => {
+                    event.preventDefault();
+                    void this.mcp.setBridgeToken(server, secret.value).then(saved => {
+                        secret.value = '';
+                        if (saved) this.mcpTokenEditing = undefined;
+                        this.render();
+                    });
+                });
+                row.append(tokenForm);
+            }
             if (this.mcpEditing === server.id) this.renderMCPForm(row, server);
             section.append(row);
         }
@@ -286,7 +311,7 @@ export class AICenterWidget extends BaseWidget {
             option.value = optionValue; option.selected = optionValue === (existing?.lifecycle ?? 'installed'); lifecycle.append(option);
         }
         lifecycleLabel.append(lifecycle); form.append(lifecycleLabel);
-        form.append(element('p', 'This registry supports an existing local stdio executable with no arguments. Isolated bridge launch requires a narrow installation root, loopback port, three reviewed environment variable names and an existing secure bridge-token credential. Credential setup and connection health remain unavailable until P5.'));
+        form.append(element('p', 'Register the executable first. Then set its bridge token in OS secure storage and edit the server to add an isolated launch profile. A configured server must be disabled globally before its token can be rotated. Connection checks occur only when explicitly requested by an authorized operation.'));
         const save = button(existing ? 'Save global server' : 'Register existing server', () => {}, this.mcp.busy);
         save.type = 'submit'; form.append(save);
         form.append(button('Cancel', () => { this.mcpEditing = undefined; this.render(); }));
@@ -296,6 +321,10 @@ export class AICenterWidget extends BaseWidget {
             const portValue = value(form, 'bridgePort').trim();
             if (!!rootValue !== !!portValue) {
                 this.mcp.message = 'Enter both installation root and bridge port, or leave both empty.';
+                this.render(); return;
+            }
+            if (rootValue && !existing?.credential) {
+                this.mcp.message = 'Register the server without a launch profile, set its secure bridge token, then edit the launch profile.';
                 this.render(); return;
             }
             const server: MCPServer = { version: 1, registrationRevision: existing?.registrationRevision ?? 1,

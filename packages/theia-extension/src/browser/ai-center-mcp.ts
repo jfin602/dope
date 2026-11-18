@@ -7,6 +7,7 @@ import type { MCPProjectActivationService, MCPProjectActivationSnapshot } from '
 export class AICenterMCPController {
     registry?: MCPServerRegistrySnapshot;
     project?: MCPProjectActivationSnapshot;
+    credentialStatuses = new Map<string, 'available' | 'missing' | 'unavailable'>();
     message = '';
     busy = false;
     private serial = 0;
@@ -36,9 +37,12 @@ export class AICenterMCPController {
         const serial = ++this.serial;
         try {
             const [registry, project] = await Promise.all([this.servers.list(), this.activation.current()]);
+            const statuses = await Promise.all(registry.servers.map(async server => [server.id,
+                await this.servers.bridgeCredentialStatus(server.id).catch(() => 'unavailable' as const)] as const));
             if (serial !== this.serial) return;
             this.registry = registry;
             this.project = project;
+            this.credentialStatuses = new Map(statuses);
             this.message = '';
         } catch {
             if (serial !== this.serial) return;
@@ -78,6 +82,12 @@ export class AICenterMCPController {
         return this.run(() => this.servers.mutate({ version: MCP_SERVER_REGISTRY_VERSION,
             expectedRevision: this.registry?.revision ?? -1, mutation: { type: 'remove', id } }),
         'Server could not be removed. Refresh the catalog and retry.', 'Server removed from the global catalog.');
+    }
+
+    async setBridgeToken(server: MCPServer, secret: string): Promise<boolean> {
+        return this.run(() => this.servers.replaceBridgeToken(server.id, this.registry?.revision ?? -1, secret),
+            'Bridge token could not be saved. Disable a configured server before rotating its token, then refresh and retry.',
+            'Bridge token saved in OS secure storage. Review the launch profile before enabling this project.');
     }
 
     async setEnabled(server: MCPServer, enabled: boolean): Promise<boolean> {
