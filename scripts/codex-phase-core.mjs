@@ -195,6 +195,7 @@ export function buildPlan(entries, folderName) {
     /^c(0|[1-9]\d*)-([a-z0-9]+(?:-[a-z0-9]+)*)$/.exec(folderName);
   const namedCorrection = !correctionFolderMatch &&
     /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(folderName) &&
+    !/^(?:p\d|c\d|c-\d|phase-\d)/.test(folderName) &&
     folderName.length >= 3 && folderName.length <= 32 &&
     !['drafts', 'docs', 'tasks', 'prompt-ass', 'prompt-plan', 'prompt-write',
       'readme', 'index', 'new', 'current', 'latest', 'null', 'undefined'].includes(folderName);
@@ -439,6 +440,25 @@ export function assertPostPrompt({
   if (packageLockExists) throw new Error('package-lock.json was created.');
   if (!coherent)
     throw new Error('Repository state is not coherent enough to continue.');
+}
+
+export function assertImplementationVerdict(finalResponse, promptNumber) {
+  const response = String(finalResponse ?? '').replace(/\r\n/g, '\n').trimEnd();
+  const fields = [...response.matchAll(/^PHASE_VERDICT:[^\r\n]*$/gm)];
+  if (fields.length !== 1 || !response.endsWith(fields[0][0])) {
+    throw new Error(
+      `P${promptNumber} has no single final PHASE_VERDICT receipt; completion is blocked.`,
+    );
+  }
+  const verdict = fields[0][0].slice('PHASE_VERDICT:'.length).trim();
+  if (!['PASS', 'PARTIAL', 'NOT GREEN', 'BLOCKED'].includes(verdict)) {
+    throw new Error(
+      `P${promptNumber} has an invalid PHASE_VERDICT receipt; completion is blocked.`,
+    );
+  }
+  if (verdict !== 'PASS') {
+    throw new Error(`P${promptNumber} reported ${verdict}; completion is blocked.`);
+  }
 }
 
 export function interpretEvent(event, verbose = false) {

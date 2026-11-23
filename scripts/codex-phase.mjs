@@ -14,6 +14,7 @@ import { createInterface } from 'node:readline/promises';
 import { fileURLToPath } from 'node:url';
 import {
   applyEventObservation,
+  assertImplementationVerdict,
   assertPostPrompt,
   assertVersionCompatible,
   buildPlan,
@@ -433,6 +434,14 @@ If the task asks you to report a commit or tree identity, do not create
 a commit yourself. Report the pre-task HEAD and implementation result.
 The runner will create the authoritative implementation commit after
 your turn completes.
+
+End your final response with exactly one line in this form:
+PHASE_VERDICT: PASS | PARTIAL | NOT GREEN | BLOCKED
+Choose the one truthful result. PASS means every required implementation
+and acceptance check for this prompt passed. If anything remains blocked,
+unverified or incomplete, report the corresponding non-PASS verdict.
+The runner stops before staging or committing unless the final verdict
+is an unambiguous PASS.
 
 The task instructions remain authoritative except where they conflict
 with this runner-owned Git commit boundary.`;
@@ -924,6 +933,13 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
     await packageVersion(rootDirectory),
     { allowDirtyNextVersion: dirtyTreeAccepted },
   );
+  for (const completed of resume.completed) {
+    const message = successfulGit(
+      runGit(['show', '-s', '--format=%B', completed.commitSha]),
+      `Unable to inspect P${completed.prompt.number} completion receipt`,
+    );
+    assertImplementationVerdict(message, completed.prompt.number);
+  }
   if (dirtyTreeAccepted && !resume.nextPrompt) {
     throw new Error(
       'Dirty working tree continuation requires a pending implementation prompt; clean or checkpoint the tree before closeout.',
@@ -1153,6 +1169,7 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
       ),
       coherent: conflicts.status === 0,
     });
+    assertImplementationVerdict(result.finalResponse, prompt.number);
     if (interrupted) throw new Error(interruptionMessage);
     const commit = await commitPromptChanges(
       {

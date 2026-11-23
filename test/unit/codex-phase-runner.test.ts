@@ -22,6 +22,7 @@ import * as cli from '../../scripts/codex-phase.mjs';
 const {
   MODEL_CONFIGS,
   applyEventObservation,
+  assertImplementationVerdict,
   assertPostPrompt,
   assertVersionCompatible,
   buildPlan,
@@ -78,6 +79,8 @@ const directTestLauncher = Object.freeze({
   identity: 'injected test launcher',
 });
 const compatibleCodexVersion = 'codex-cli 0.147.0';
+const passedResponse = (message: string) =>
+  `${message.trimEnd()}\n\nPHASE_VERDICT: PASS\n`;
 
 const resolveTestNpmLauncher = (
   checkLauncher: (launcher: {
@@ -350,7 +353,7 @@ const commitRoadmapCompletion = async (
     `completed ${number}\n`,
   );
   gitResult(rootDirectory, ['add', '-A']);
-  gitResult(rootDirectory, ['commit', '--quiet', '-m', `0.8.${number}`]);
+  gitResult(rootDirectory, ['commit', '--quiet', '-m', `0.8.${number}`, '-m', passedResponse(`completed ${number}`)]);
   return gitResult(rootDirectory, ['rev-parse', 'HEAD']);
 };
 
@@ -367,7 +370,7 @@ const commitPost2RoadmapCompletion = async (
     `completed ${number}\n`,
   );
   gitResult(rootDirectory, ['add', '-A']);
-  gitResult(rootDirectory, ['commit', '--quiet', '-m', `2.1.${number}`]);
+  gitResult(rootDirectory, ['commit', '--quiet', '-m', `2.1.${number}`, '-m', passedResponse(`completed ${number}`)]);
   return gitResult(rootDirectory, ['rev-parse', 'HEAD']);
 };
 
@@ -838,6 +841,106 @@ test('version and package-lock invariants fail closed', () => {
       }),
     /Expected unchanged package version 0\.10\.0/,
   );
+});
+
+test('implementation verdict requires one final PASS receipt', () => {
+  assert.doesNotThrow(() =>
+    assertImplementationVerdict(passedResponse('Verified work.'), 1),
+  );
+  for (const verdict of ['PARTIAL', 'BLOCKED', 'NOT GREEN']) {
+    assert.throws(
+      () => assertImplementationVerdict(`Work stopped.\nPHASE_VERDICT: ${verdict}\n`, 1),
+      new RegExp(`P1 reported ${verdict}; completion is blocked`),
+    );
+  }
+  for (const response of [
+    '',
+    'P1 is BLOCKED.',
+    'PHASE_VERDICT: PASS\nPHASE_VERDICT: PASS',
+    'PHASE_VERDICT: PASS\nFurther unverified claims.',
+    'PHASE_VERDICT: GREEN',
+  ]) {
+    assert.throws(
+      () => assertImplementationVerdict(response, 1),
+      /completion is blocked/,
+    );
+  }
+});
+
+test('non-green or missing verdict stops before staging and the next prompt', async () => {
+  const responses = [
+    'Verdict: PARTIAL.\nPHASE_VERDICT: PARTIAL\n',
+    'Verdict: BLOCKED.\nPHASE_VERDICT: BLOCKED\n',
+    'Verdict: NOT GREEN.\nPHASE_VERDICT: NOT GREEN\n',
+    'Verdict: BLOCKED.\n',
+    'PHASE_VERDICT: PASS\nPHASE_VERDICT: BLOCKED\n',
+  ];
+  for (const response of responses) {
+    const rootDirectory = await createCorrectionRepository(2);
+    const baseline = gitResult(rootDirectory, ['rev-parse', 'HEAD']);
+    const calls: number[] = [];
+    try {
+      await assert.rejects(
+        runCli(['c10-single-publication'], {
+          rootDirectory,
+          stdout: testOutput(false),
+          resolveLauncher: async () => ({
+            launcher: directTestLauncher,
+            version: compatibleCodexVersion,
+          }),
+          runCodexProcess: async (parsedPrompt: { number: number }, runDirectory: string) => {
+            calls.push(parsedPrompt.number);
+            await writeFile(path.join(rootDirectory, 'blocked-evidence.md'), response);
+            await writeFile(path.join(runDirectory, 'P1.final.txt'), response);
+            return { code: 0, signal: null, finalResponse: response, stderr: '', childArgs: [] };
+          },
+        }),
+        /completion is blocked/,
+      );
+      assert.deepEqual(calls, [1]);
+      assert.equal(gitResult(rootDirectory, ['rev-parse', 'HEAD']), baseline);
+      assert.match(gitResult(rootDirectory, ['status', '--porcelain=v1']), /\?\? blocked-evidence\.md/);
+      assert.equal(gitResult(rootDirectory, ['diff', '--cached', '--name-only']), '');
+      const [runName] = await readdir(path.join(rootDirectory, '.codex-runs', 'c10-single-publication'));
+      assert.equal(
+        await readFile(path.join(rootDirectory, '.codex-runs', 'c10-single-publication', runName!, 'P1.final.txt'), 'utf8'),
+        response,
+      );
+    } finally {
+      await rm(rootDirectory, { recursive: true, force: true });
+    }
+  }
+});
+
+test('resume rejects a matching phase commit without a PASS receipt', async () => {
+  const rootDirectory = await createCorrectionRepository(2);
+  let calls = 0;
+  try {
+    await writeFile(path.join(rootDirectory, 'partial-work.txt'), 'partial\n');
+    gitResult(rootDirectory, ['add', '-A']);
+    gitResult(rootDirectory, [
+      'commit', '--quiet', '-m', 'c10-single-publication/P1: Correction 1',
+      '-m', 'PHASE_VERDICT: PARTIAL',
+    ]);
+    await assert.rejects(
+      runCli(['c10-single-publication'], {
+        rootDirectory,
+        stdout: testOutput(false),
+        resolveLauncher: async () => ({
+          launcher: directTestLauncher,
+          version: compatibleCodexVersion,
+        }),
+        runCodexProcess: async () => {
+          calls += 1;
+          throw new Error('must not start');
+        },
+      }),
+      /P1 reported PARTIAL; completion is blocked/,
+    );
+    assert.equal(calls, 0);
+  } finally {
+    await rm(rootDirectory, { recursive: true, force: true });
+  }
 });
 
 test('structured event lines are appended and observed in arrival order', async () => {
@@ -1660,8 +1763,8 @@ test('phase loop commits each prompt before the next starts with exact multiline
   const codexCalls: number[] = [];
   const gitInvocations: Array<{ arguments: string[]; shell: boolean }> = [];
   const responses = new Map([
-    [1, 'Implemented P1.\n\nDetails: café — 東京\n'],
-    [2, 'Implemented P2.\nSecond line.'],
+    [1, passedResponse('Implemented P1.\n\nDetails: café — 東京\n')],
+    [2, passedResponse('Implemented P2.\nSecond line.')],
   ]);
   try {
     const result = await runCli(['p8'], {
@@ -2148,7 +2251,7 @@ test('roadmap resume skips a proven prefix across unrelated commits and records 
         return {
           code: 0,
           signal: null,
-          finalResponse: 'completed P3',
+          finalResponse: passedResponse('completed P3'),
           stderr: '',
           childArgs: [],
         };
@@ -2215,7 +2318,7 @@ test('roadmap resume after P1 starts P2 even when an unrelated commit is newer',
         return {
           code: 0,
           signal: null,
-          finalResponse: 'done',
+          finalResponse: passedResponse('done'),
           stderr: '',
           childArgs: [],
         };
@@ -2270,7 +2373,7 @@ test('browser-required implementation prompts stop before Codex and preserve the
           calls.push(parsedPrompt.number);
           await writeFile(path.join(rootDirectory, 'package.json'), `${JSON.stringify({ name: 'phase-test', version: '0.8.1' })}\n`);
           await writeFile(path.join(rootDirectory, 'P1-complete.txt'), 'done\n');
-          return { code: 0, signal: null, finalResponse: 'done', stderr: '', childArgs: [] };
+          return { code: 0, signal: null, finalResponse: passedResponse('done'), stderr: '', childArgs: [] };
         },
       }),
       /P2 requires browser execution\. Run this prompt manually in the Codex app with browser enabled\. Prompt: docs\/tasks\/p8\/P2-task-2\.txt/,
@@ -2320,7 +2423,7 @@ test('browser-required closeouts are blocked by --closeout without a Codex invoc
         },
         runCodexProcess: async (parsedPrompt: { number: number }) => {
           calls.push(parsedPrompt.number);
-          return { code: 0, signal: null, finalResponse: 'done', stderr: '', childArgs: [] };
+          return { code: 0, signal: null, finalResponse: passedResponse('done'), stderr: '', childArgs: [] };
         },
       }),
       /P1 requires browser execution\. Run this prompt manually in the Codex app with browser enabled/,
@@ -2348,6 +2451,8 @@ test('correction resume uses the exact subject and tolerates a newer unrelated c
       '--quiet',
       '-m',
       'c10-single-publication/P1: Correction 1',
+      '-m',
+      passedResponse('completed correction 1'),
     ]);
     await commitUnrelated(rootDirectory, 'unrelated-correction-docs');
     await runCli(['c10-single-publication'], {
@@ -2363,7 +2468,7 @@ test('correction resume uses the exact subject and tolerates a newer unrelated c
         return {
           code: 0,
           signal: null,
-          finalResponse: 'done',
+          finalResponse: passedResponse('done'),
           stderr: '',
           childArgs: [],
         };
@@ -2482,7 +2587,7 @@ test('dirty working tree decision can continue the pending prompt from partial w
         return {
           code: 0,
           signal: null,
-          finalResponse: 'continued dirty work\n',
+          finalResponse: passedResponse('continued dirty work\n'),
           stderr: '',
           childArgs: [],
         };
@@ -2539,8 +2644,8 @@ test('correction loop commits multiple prompts at one unchanged version and leav
   const output = testOutput(false);
   const codexCalls: number[] = [];
   const responses = new Map([
-    [1, 'First correction response\nwith `code` and Unicode café.\n'],
-    [2, 'Second correction response\n\nExact trailing newline.\n'],
+    [1, passedResponse('First correction response\nwith `code` and Unicode café.\n')],
+    [2, passedResponse('Second correction response\n\nExact trailing newline.\n')],
   ]);
   try {
     const result = await runCli(['c10-single-publication'], {
@@ -2660,7 +2765,7 @@ test('correction version mutation fails before commit and blocks every later pro
           return {
             code: 0,
             signal: null,
-            finalResponse: 'must not commit',
+            finalResponse: passedResponse('must not commit'),
             stderr: '',
             childArgs: [],
           };
@@ -2756,7 +2861,7 @@ test('correction post-commit version mismatch fails closed before the next promp
           return {
             code: 0,
             signal: null,
-            finalResponse: 'committed response\n',
+            finalResponse: passedResponse('committed response\n'),
             stderr: '',
             childArgs: [],
           };
@@ -2813,7 +2918,7 @@ test('capacity retry keeps partial dirty work and continues the same prompt', as
         return {
           code: 0,
           signal: null,
-          finalResponse: 'continued from dirty tree\n',
+          finalResponse: passedResponse('continued from dirty tree\n'),
           stderr: '',
           childArgs: [],
           finalResponseFile: 'P1.retry-1.final.txt',
@@ -3023,7 +3128,7 @@ test('commit failure prevents every later implementation prompt', async () => {
           return {
             code: 0,
             signal: null,
-            finalResponse: 'done',
+            finalResponse: passedResponse('done'),
             stderr: '',
             childArgs: [],
           };
@@ -3091,7 +3196,7 @@ test('commit verification and dirty-tree failures prevent every later prompt', a
             return {
               code: 0,
               signal: null,
-              finalResponse: 'done\n',
+              finalResponse: passedResponse('done\n'),
               stderr: '',
               childArgs: [],
             };
@@ -3131,7 +3236,7 @@ test('package-lock creation fails before commit and prevents later prompts', asy
           return {
             code: 0,
             signal: null,
-            finalResponse: 'done',
+            finalResponse: passedResponse('done'),
             stderr: '',
             childArgs: [],
           };
@@ -3219,7 +3324,7 @@ test('auto-run closeout executes after implementation commits and ends terminal 
             return {
               code: 0,
               signal: null,
-              finalResponse: 'implementation response',
+              finalResponse: passedResponse('implementation response'),
               stderr: '',
               childArgs: [],
             };
@@ -3443,7 +3548,7 @@ test('auto-run closeout enforces normalized phase and correction version boundar
             return {
               code: 0,
               signal: null,
-              finalResponse: 'review',
+              finalResponse: parsedPrompt.number === 1 ? passedResponse('implementation') : 'review',
               stderr: '',
               childArgs: [],
             };
@@ -3515,7 +3620,7 @@ test('auto-run closeout rejects HEAD drift, lockfiles, invalid versions, and inc
             return {
               code: 0,
               signal: null,
-              finalResponse: 'captured review',
+              finalResponse: parsedPrompt.number === 1 ? passedResponse('implementation') : 'captured review',
               stderr: '',
               childArgs: [],
             };
@@ -3565,7 +3670,7 @@ test('runner-level closeout failure after a captured response stays nonzero and 
             code: 0,
             signal: null,
             finalResponse:
-              parsedPrompt.number === 2 ? response : 'implementation',
+              parsedPrompt.number === 2 ? response : passedResponse('implementation'),
             stderr: '',
             childArgs: [],
           };
