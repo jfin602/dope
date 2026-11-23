@@ -332,10 +332,23 @@ export async function resolveCodexLauncher({
   );
 }
 
-export function buildCodexArguments(prompt, rootDirectory, finalFile) {
+export function buildCodexArguments(
+  prompt,
+  rootDirectory,
+  finalFile,
+  { allowSandboxNetwork = false } = {},
+) {
   return [
     'exec',
     '--json',
+    ...(allowSandboxNetwork
+      ? [
+          '--sandbox',
+          'workspace-write',
+          '-c',
+          'sandbox_workspace_write.network_access=true',
+        ]
+      : []),
     '--model',
     prompt.model,
     '-c',
@@ -464,6 +477,7 @@ export async function runCodex(
     verbose = false,
     capacityRetryAttempt = 0,
     dirtyTreeContinuation = false,
+    allowSandboxNetwork = false,
   } = {},
 ) {
   if (!launcher) throw new Error('A resolved Codex launcher is required.');
@@ -471,7 +485,9 @@ export async function runCodex(
   const eventsFile = path.join(runDirectory, `P${prompt.number}${retrySuffix}.events.jsonl`);
   const finalFile = path.join(runDirectory, `P${prompt.number}${retrySuffix}.final.txt`);
   await Promise.all([writeFile(eventsFile, ''), writeFile(finalFile, '')]);
-  const childArgs = buildCodexArguments(prompt, rootDirectory, finalFile);
+  const childArgs = buildCodexArguments(prompt, rootDirectory, finalFile, {
+    allowSandboxNetwork,
+  });
   const child = spawnProcess(
     launcher.command,
     launcherArguments(launcher, childArgs),
@@ -559,6 +575,7 @@ export async function runCodexWithCapacityRetries(
     isInterrupted = () => false,
     interruptionMessage = 'Phase run was interrupted.',
     dirtyTreeContinuation = false,
+    allowSandboxNetwork = false,
   } = {},
 ) {
   let retryAttempt = 0;
@@ -569,6 +586,7 @@ export async function runCodexWithCapacityRetries(
       rootDirectory,
       capacityRetryAttempt: retryAttempt,
       dirtyTreeContinuation,
+      allowSandboxNetwork,
     });
     if (result?.signal || isInterrupted()) {
       return { ...result, capacityRetries: retryAttempt };
@@ -838,32 +856,31 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
   closeoutFinalResponsePrinted = false;
   let verbose = false;
   let closeoutAutoRun = false;
+  let allowSandboxNetwork = false;
+  const usage =
+    'Usage: npm run codex:phase -- <task-folder> [--verbose] [--closeout] [--allow-sandbox-network]';
   const positional = [];
   for (const argument of argv) {
     if (argument === '--verbose') {
       if (verbose)
-        throw new Error(
-          'Usage: npm run codex:phase -- <task-folder> [--verbose] [--closeout]',
-        );
+        throw new Error(usage);
       verbose = true;
     } else if (argument === '--closeout') {
       if (closeoutAutoRun)
-        throw new Error(
-          'Usage: npm run codex:phase -- <task-folder> [--verbose] [--closeout]',
-        );
+        throw new Error(usage);
       closeoutAutoRun = true;
+    } else if (argument === '--allow-sandbox-network') {
+      if (allowSandboxNetwork)
+        throw new Error('Duplicate --allow-sandbox-network option.');
+      allowSandboxNetwork = true;
     } else if (argument.startsWith('-')) {
-      throw new Error(
-        'Usage: npm run codex:phase -- <task-folder> [--verbose] [--closeout]',
-      );
+      throw new Error(usage);
     } else {
       positional.push(argument);
     }
   }
   if (positional.length !== 1) {
-    throw new Error(
-      'Usage: npm run codex:phase -- <task-folder> [--verbose] [--closeout]',
-    );
+    throw new Error(usage);
   }
 
   const folderName = positional[0];
@@ -1129,6 +1146,7 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
           launcher,
           verbose,
           rootDirectory,
+          allowSandboxNetwork,
           maxRetries: capacityMaxRetries,
           retrySeconds: capacityRetrySeconds,
           sleepFunction: capacityRetrySleep,
@@ -1278,6 +1296,7 @@ export async function runCli(argv = process.argv.slice(2), dependencies = {}) {
           launcher,
           verbose,
           rootDirectory,
+          allowSandboxNetwork,
           maxRetries: capacityMaxRetries,
           retrySeconds: capacityRetrySeconds,
           sleepFunction: capacityRetrySleep,

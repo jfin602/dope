@@ -3771,3 +3771,61 @@ test('GPT-6 Sol tasks require Codex CLI 0.155.0 or newer', () => {
     /Cannot verify GPT-6 compatibility.*>= 0\.155\.0/,
   );
 });
+
+test('sandbox networking is opt-in and retains workspace-write isolation', () => {
+  const entry = prompt(1, { config: 'Sol High' });
+  const parsed = parsePrompt(entry.filename, entry.text);
+  const defaults = buildCodexArguments(parsed, '/repo', '/run/final.txt');
+  const networked = buildCodexArguments(parsed, '/repo', '/run/final.txt', {
+    allowSandboxNetwork: true,
+  });
+  assert.equal(defaults.includes('--sandbox'), false);
+  assert.equal(defaults.includes('sandbox_workspace_write.network_access=true'), false);
+  assert.deepEqual(networked.slice(0, 6), [
+    'exec',
+    '--json',
+    '--sandbox',
+    'workspace-write',
+    '-c',
+    'sandbox_workspace_write.network_access=true',
+  ]);
+  assert.deepEqual(networked.slice(6), defaults.slice(2));
+});
+
+test('runner forwards explicit sandbox networking to the pending worker', async () => {
+  const rootDirectory = await createCorrectionRepository(1);
+  const baseline = gitResult(rootDirectory, ['rev-parse', 'HEAD']);
+  let seenNetwork: boolean | undefined;
+  try {
+    await assert.rejects(
+      runCli(['c10-single-publication', '--allow-sandbox-network'], {
+        rootDirectory,
+        stdout: testOutput(false),
+        resolveLauncher: async () => ({
+          launcher: directTestLauncher,
+          version: compatibleCodexVersion,
+        }),
+        runCodexProcess: async (
+          _parsedPrompt: unknown,
+          _runDirectory: string,
+          _onEvent: unknown,
+          options: { allowSandboxNetwork?: boolean },
+        ) => {
+          seenNetwork = options.allowSandboxNetwork;
+          return {
+            code: 0,
+            signal: null,
+            finalResponse: 'Local fixture unavailable.\nPHASE_VERDICT: BLOCKED',
+            stderr: '',
+            childArgs: [],
+          };
+        },
+      }),
+      /completion is blocked/,
+    );
+    assert.equal(seenNetwork, true);
+    assert.equal(gitResult(rootDirectory, ['rev-parse', 'HEAD']), baseline);
+  } finally {
+    await rm(rootDirectory, { recursive: true, force: true });
+  }
+});
