@@ -1,0 +1,17 @@
+TASK: c14-work-redesign / P3 — Persistence, compatibility and security integration
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: no.
+
+ENTRY
+Require verified P1 and P2 source/tests. Read BOOT.md, AGENTS.md, docs/workflow.md, Work UX contract and plan; inspect actual local checkout, dirty state, history/candidate/grant/Roadmap owners and prior tests.
+
+GOAL — T2
+Integrate durable session reopen/restart, FIFO pending queue recovery, interrupt/resume across safe boundaries, completed follow-up and explicit fork with new reviewed configuration. Preserve existing AgentTask/AgentRun/WorkItem/Prompt Stack associations, approvals, isolated execution workspace, candidate validation/promotion, history and source-bound Roadmap evidence. Legacy partial transcripts show evidence unavailable; never fabricate turns. Ensure no duplicate worker, lost event, unauthorized action or silent model/tool/sandbox change.
+
+VERIFY
+Focused integration tests for restart, old records, queue/interrupt, follow-up/fork, grant denial, candidate review and Roadmap non-award; changed-package builds and relevant type checks. Record exact commands/outcomes. No GUI or Phase GREEN inference.
+
+GENERAL
+Bounded fixes only; do not rewrite historical qualification or source snapshots, self-commit, auto-run P4 or advance version outside established runner policy.
