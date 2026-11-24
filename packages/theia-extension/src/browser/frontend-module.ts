@@ -29,6 +29,7 @@ import { ThemeService } from '@theia/core/lib/browser/theming';
 import { CoreMarkdownRenderer, type MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
 import { dopeDarkTheme } from './dope-theme';
 import './dope.css';
+import { DopeTooltipContribution } from './dope-tooltip';
 import { DopeWindowTitleService, ProjectMindWidget, PROJECT_MIND_ID } from './dope-workbench';
 import { openProjectMindOwner } from './project-mind-navigation';
 import { SoftwareMapService, softwareMapServicePath } from '@dope/software-map';
@@ -167,6 +168,8 @@ class RightHistoryLauncher extends AbstractViewContribution<HistoryWidget> imple
 }
 
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
+    bind(DopeTooltipContribution).toSelf().inSingletonScope();
+    bind(FrontendApplicationContribution).toService(DopeTooltipContribution);
     rebind(EditorWidgetFactory).to(NativeDocumentEditorWidgetFactory).inSingletonScope();
     rebind(EditorPreviewWidgetFactory).to(NativeDocumentPreviewWidgetFactory).inSingletonScope();
     bind(ProposalDocumentResources).toSelf().inSingletonScope();
@@ -259,6 +262,30 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(FrontendApplicationContribution).toService(RightWorkLauncher);
     bind(FrontendApplicationContribution).toService(RightHistoryLauncher);
     bind(TabBarToolbarContribution).toConstantValue({ registerToolbarItems: (registry: TabBarToolbarRegistry) => {
+        registry.registerItem({ id: 'dope.work.new', command: 'dope.work.new', icon: codicon('add'),
+            tooltip: 'New Work', group: 'navigation',
+            isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canCreateWorkFromToolbar,
+            onDidChange: ChatPanelWidget.onDidChangeToolbar });
+        registry.registerItem({ id: 'dope.work.back', command: 'dope.work.back', icon: codicon('arrow-left'),
+            tooltip: 'Back to Work list', group: 'navigation',
+            isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canBackFromWorkComposer,
+            onDidChange: ChatPanelWidget.onDidChangeToolbar });
+        registry.registerItem({ id: 'dope.chat.aiCenter', command: 'dope.chat.aiCenter', icon: codicon('sparkle'),
+            tooltip: 'AI Center', group: 'navigation',
+            isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canShowChatSelectorActions,
+            onDidChange: ChatPanelWidget.onDidChangeToolbar });
+        registry.registerItem({ id: 'dope.chat.skills', command: 'dope.chat.skills', icon: codicon('mortar-board'),
+            tooltip: 'Skills', group: 'navigation',
+            isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canShowChatSelectorActions,
+            onDidChange: ChatPanelWidget.onDidChangeToolbar });
+        registry.registerItem({ id: 'dope.chat.newFolder', command: 'dope.chat.newFolder', icon: codicon('new-folder'),
+            tooltip: 'New Folder', group: 'navigation',
+            isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canShowChatSelectorActions,
+            onDidChange: ChatPanelWidget.onDidChangeToolbar });
+        registry.registerItem({ id: 'dope.chat.newChat', command: 'dope.chat.newChat', icon: codicon('add'),
+            tooltip: 'New Chat', group: 'navigation',
+            isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canShowChatSelectorActions,
+            onDidChange: ChatPanelWidget.onDidChangeToolbar });
         registry.registerItem({ id: 'dope.chat.back', command: 'dope.chat.back', icon: codicon('arrow-left'),
             tooltip: 'Back to Chats', group: 'navigation',
             isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canBackToChats,
@@ -277,6 +304,30 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             onDidChange: ChatPanelWidget.onDidChangeToolbar });
     } });
     bind(CommandContribution).toConstantValue({ registerCommands: (commands: CommandRegistry) => {
+        commands.registerCommand({ id: 'dope.work.new', label: 'New Work' }, {
+            execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) widget.newWorkFromToolbar(); },
+            isEnabled: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canCreateWorkFromToolbar
+        });
+        commands.registerCommand({ id: 'dope.work.back', label: 'Back to Work list' }, {
+            execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) widget.backFromWorkComposer(); },
+            isEnabled: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canBackFromWorkComposer
+        });
+        commands.registerCommand({ id: 'dope.chat.aiCenter', label: 'AI Center' }, {
+            execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) widget.openAICenterFromToolbar(); },
+            isEnabled: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canShowChatSelectorActions
+        });
+        commands.registerCommand({ id: 'dope.chat.newChat', label: 'New Chat' }, {
+            execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) widget.newChatFromToolbar(); },
+            isEnabled: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canUseChatSelectorActions
+        });
+        commands.registerCommand({ id: 'dope.chat.newFolder', label: 'New Folder' }, {
+            execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) void widget.newFolderFromToolbar(); },
+            isEnabled: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canUseChatSelectorActions
+        });
+        commands.registerCommand({ id: 'dope.chat.skills', label: 'Skills' }, {
+            execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) widget.toggleSkillsFromToolbar(); },
+            isEnabled: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canShowChatSelectorActions
+        });
         commands.registerCommand({ id: 'dope.chat.back', label: 'Back to Chats' }, {
             execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) widget.backToChats(); },
             isEnabled: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canBackToChats

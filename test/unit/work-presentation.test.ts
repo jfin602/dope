@@ -4,6 +4,8 @@ import test from 'node:test';
 
 const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
 const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
+const tooltip = await readFile(new URL('../../packages/theia-extension/src/browser/dope-tooltip.ts', import.meta.url), 'utf8');
+const frontend = await readFile(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
 
 test('Select Work has distinct truthful groups and compact accessible row anatomy', () => {
     assert.match(widget, /const groups = workRows\(controller\.tasks, controller\.runs, controller\.phase\.sequences\)/);
@@ -13,7 +15,14 @@ test('Select Work has distinct truthful groups and compact accessible row anatom
     assert.match(widget, /button\.className = 'dope-work-row'/);
     assert.match(widget, /title\.className = 'dope-work-row-title'; title\.textContent = row\.title/);
     assert.match(widget, /meta\.className = 'dope-work-row-meta'/);
-    assert.match(widget, /\[row\.status, row\.activity/);
+    assert.match(widget, /meta\.append\(time, state\)/);
+    assert.match(widget, /state\.dataset\.dopeTooltip = row\.activity/);
+    assert.match(widget, /button\.dataset\.dopeTooltip = workTitlePreview\(row\.fullTitle/);
+    assert.match(css, /\.dope-tooltip \{/);
+    assert.match(widget, /menu\.append\(menuEntry\('Open Work'/);
+    assert.match(widget, /menuEntry\('Copy ID'/);
+    assert.match(css, /dope-work-status-pill\[data-status="completed"\]/);
+    assert.match(css, /dope-work-status-pill:is\(\[data-status="failed"\]/);
     assert.match(widget, /progress\.textContent = row\.stack/);
     assert.match(widget, /button\.setAttribute\('aria-current'/);
     assert.match(widget, /cue\.setAttribute\('aria-hidden', 'true'\)/);
@@ -21,6 +30,17 @@ test('Select Work has distinct truthful groups and compact accessible row anatom
     assert.match(css, /button\.dope-work-row\[aria-current="true"\]/);
     assert.match(css, /dope-work-row\[data-status="running"\]/);
     assert.match(css, /data-status="blocked"/);
+});
+
+test('one app-wide tooltip presenter styles title attributes with top-level CSS controls', () => {
+    assert.match(frontend, /bind\(FrontendApplicationContribution\)\.toService\(DopeTooltipContribution\)/);
+    assert.match(tooltip, /closest\('\[title\], \[data-dope-tooltip\]'\)/);
+    assert.match(tooltip, /target\.removeAttribute\('title'\)/);
+    assert.match(tooltip, /target\.setAttribute\('title', this\.originalTitle\)/);
+    assert.match(tooltip, /setAttribute\('role', 'tooltip'\)/);
+    assert.match(css, /:root \{[^}]*--dope-tooltip-background:[^}]*--dope-tooltip-max-width:/s);
+    assert.match(css, /\.theia-tooltip \{[^}]*var\(--dope-tooltip-background\)/s);
+    assert.match(css, /\.dope-chat-skill-tooltip \{[^}]*var\(--dope-tooltip-background\)/s);
 });
 
 test('Prompt Stack discovery preserves folder refresh, invalid warnings, and stored identity', () => {

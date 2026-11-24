@@ -12,6 +12,18 @@ const sequence: any = { id: 'stored-sequence', status: 'completed', currentEntry
 const task: any = { id: 'historic-task', objective: 'First implementation', origin: { kind: 'phase-stack' }, completion: { validation: [] } };
 const run: any = { id: 'historic-run', taskId: task.id, status: 'completed' };
 
+test('Work display names stay short while the saved objective remains available', () => {
+    const objective = 'Build the first playable Meteor Dodge game in this repository. Add player controls and collision tests.';
+    const directTask = { ...task, id: 'meteor-task', objective, origin: { kind: 'direct' } };
+    const directRun = { ...run, id: 'meteor-run', taskId: directTask.id, createdAt: '2026-11-24T12:00:00Z' };
+    const title = 'Build the first playable Meteor Dodge…';
+    assert.equal(workTitle({ kind: 'run', id: directRun.id }, directRun, directTask), title);
+    const row = workRows([directTask], [directRun], []).history[0];
+    assert.equal(row.title, title);
+    assert.equal(row.fullTitle, objective);
+    assert.equal(directTask.objective, objective);
+});
+
 test('pure Work view keeps direct, WorkItem and Prompt Stack origins and eligibility separate', () => {
     const direct: any = { id: 'direct-task', objective: 'Repair parser', origin: { kind: 'direct' },
         completion: { requireValidationPass: true, validation: [{ kind: 'test', label: 'check' }] } };

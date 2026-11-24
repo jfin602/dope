@@ -8,11 +8,20 @@ import { PhaseStackController } from './phase-stack-controller';
 import type { WorkSelection } from './shared-panel-state';
 import type { AgentTarget } from './agent-run-controller';
 
+export function compactWorkTitle(objective: string): string {
+    const normalized = objective.replace(/\s+/g, ' ').trim();
+    const words = normalized.split(' ');
+    const prefix = words.slice(0, 6).join(' ');
+    if (words.length <= 6 && prefix.length <= 42) return prefix;
+    const clipped = prefix.length <= 42 ? prefix : prefix.slice(0, 42).replace(/\s+\S*$/, '') || prefix.slice(0, 42);
+    return `${clipped}…`;
+}
+
 export function workTitle(selection: WorkSelection, run?: AgentRun, task?: AgentTask,
     sequence?: AgentTaskSequence): string {
     if (selection.kind === 'sequence') return sequence?.stack.folderName ?? 'Prompt Stack';
-    if (run) return task?.objective ?? `Work - ${run.id.slice(0, 8)}`;
-    return task?.objective ?? `Work - ${selection.id.slice(0, 8)}`;
+    if (run) return task ? compactWorkTitle(task.objective) : `Work - ${run.id.slice(0, 8)}`;
+    return task ? compactWorkTitle(task.objective) : `Work - ${selection.id.slice(0, 8)}`;
 }
 
 /** Only saved owner state supplies these claims; agent prose is never validation evidence. */
@@ -186,6 +195,7 @@ export function selectWorkView(input: WorkViewInput): WorkViewModel {
 export interface WorkRow {
     selection: WorkSelection;
     title: string;
+    fullTitle?: string;
     status: string;
     activity: string;
     updatedAt: string;
@@ -249,7 +259,7 @@ export function workRows(tasks: AgentTask[], runs: AgentRun[], sequences: AgentT
         if (childRuns.has(run.id)) continue;
         const task = tasksById.get(run.taskId);
         rows.push({ selection: { kind: 'run', id: run.id },
-            title: workTitle({ kind: 'run', id: run.id }, run, task), status: run.status,
+            title: workTitle({ kind: 'run', id: run.id }, run, task), fullTitle: task?.objective, status: run.status,
             activity: run.outcome?.summary ?? run.commandEvidence?.at(-1)?.commandSummary ??
                 run.changeSummary?.summary ?? (run.status === 'running' ? 'Agent working' : `Run ${run.status}`),
             updatedAt: run.endedAt ?? run.startedAt ?? run.createdAt, running: run.status === 'running',
@@ -258,7 +268,8 @@ export function workRows(tasks: AgentTask[], runs: AgentRun[], sequences: AgentT
     }
     for (const task of tasks) {
         if (childTasks.has(task.id) || task.origin.kind === 'phase-stack' || runs.some(run => run.taskId === task.id)) continue;
-        rows.push({ selection: { kind: 'task', id: task.id }, title: task.objective, status: 'pending',
+        rows.push({ selection: { kind: 'task', id: task.id }, title: compactWorkTitle(task.objective),
+            fullTitle: task.objective, status: 'pending',
             activity: 'Awaiting execution', updatedAt: task.createdAt, running: false });
     }
     rows.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt) || a.title.localeCompare(b.title));

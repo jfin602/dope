@@ -59,6 +59,11 @@ function copyChatText(text: string): Promise<void> {
         navigator.clipboard?.writeText(text) ?? Promise.reject(new Error('Clipboard unavailable'));
 }
 
+function workTitlePreview(title: string): string {
+    const firstSentence = title.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? title;
+    return firstSentence.length > 160 ? `${firstSentence.slice(0, 159).trimEnd()}…` : firstSentence;
+}
+
 function appendSkillText(target: HTMLElement, content: string,
     skill: { name: string; title?: string; description?: string }): void {
     const command = `/${skill.name}`;
@@ -85,7 +90,42 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private composingWork = false;
     private composerResizeObserver?: ResizeObserver;
     private toolbarState = '';
+    get canCreateWorkFromToolbar(): boolean {
+        return this.panel.mode === 'work' && !this.panel.work && !this.composingWork &&
+            !!this.workController?.handle && !this.backendOffline && !this.workAttachmentError;
+    }
+    get canBackFromWorkComposer(): boolean { return this.panel.mode === 'work' && this.composingWork; }
+    newWorkFromToolbar(): void {
+        if (!this.canCreateWorkFromToolbar) return;
+        this.composingWork = true;
+        this.render();
+    }
+    backFromWorkComposer(): void {
+        if (!this.canBackFromWorkComposer) return;
+        this.composingWork = false;
+        this.render();
+    }
     get canBackToChats(): boolean { return this.panel.mode === 'chat' && this.controller.mode === 'chat'; }
+    get canShowChatSelectorActions(): boolean { return this.panel.mode === 'chat' && this.controller.mode === 'select-chat'; }
+    get canUseChatSelectorActions(): boolean {
+        return this.canShowChatSelectorActions && !!this.controller.snapshot && !this.controller.pending;
+    }
+    newChatFromToolbar(): void {
+        if (this.canUseChatSelectorActions) void this.controller.newChat('');
+    }
+    async newFolderFromToolbar(): Promise<void> {
+        if (!this.canUseChatSelectorActions) return;
+        const name = await this.name('New folder');
+        if (name && this.canUseChatSelectorActions) void this.controller.newFolder('', name);
+    }
+    toggleSkillsFromToolbar(): void {
+        if (!this.canShowChatSelectorActions) return;
+        if (this.skillsOpen) this.closeSkills();
+        else this.openSkills();
+    }
+    openAICenterFromToolbar(): void {
+        if (this.canShowChatSelectorActions) void this.aiCenter?.openFromChat(this.id);
+    }
     backToChats(): void { if (this.canBackToChats) this.controller.select(undefined); }
     get canCopyTranscript(): boolean { return this.canBackToChats && !!this.controller.chat?.messages.length; }
     get canOpenChatSettings(): boolean { return this.canBackToChats && !!this.controller.chat; }
@@ -1497,24 +1537,25 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             this.cancelWorkAnimation?.(); this.workAnimationUntil = 0;
             this.workScrollKey = key; this.workFollow.select(key); this.workSelectionChanged = true;
         }
-        const header = document.createElement('header');
-        const heading = document.createElement('h2');
-        heading.textContent = work && controller ? workTitle(work,
-            work.kind === 'run' && controller.selectedRun?.id === work.id ? controller.selectedRun : undefined,
-            work.kind === 'task' && controller.selectedTask?.id === work.id ||
-                work.kind === 'run' && controller.selectedRun?.id === work.id ? controller.selectedTask : undefined,
-            work.kind === 'sequence' && controller.phase.selected?.id === work.id ? controller.phase.selected : undefined) : 'Select Work';
-        header.append(heading);
-        if (!work) header.append(this.button('New Work', () => { this.selectWork(); this.composingWork = true; this.render(); }));
-        if (work) header.append(this.button('Back to Select Work', () => this.selectWork()));
-        if (work) header.append(this.button('Refresh Work', () => {
-            if (work.kind === 'sequence') {
-                void controller?.phase.refresh(); void controller?.refresh();
-            } else if (work.kind === 'task') {
-                void controller?.phase.refresh().then(() => controller.select(work));
-            } else void controller?.select(work);
-        }));
-        this.content.append(header);
+        if (work) {
+            const header = document.createElement('header');
+            const heading = document.createElement('h2');
+            heading.textContent = controller ? workTitle(work,
+                work.kind === 'run' && controller.selectedRun?.id === work.id ? controller.selectedRun : undefined,
+                work.kind === 'task' && controller.selectedTask?.id === work.id ||
+                    work.kind === 'run' && controller.selectedRun?.id === work.id ? controller.selectedTask : undefined,
+                work.kind === 'sequence' && controller.phase.selected?.id === work.id ? controller.phase.selected : undefined) : 'Work';
+            heading.title = controller?.selectedTask?.objective ?? '';
+            header.append(heading, this.button('Back to Select Work', () => this.selectWork()),
+                this.button('Refresh Work', () => {
+                    if (work.kind === 'sequence') {
+                        void controller?.phase.refresh(); void controller?.refresh();
+                    } else if (work.kind === 'task') {
+                        void controller?.phase.refresh().then(() => controller.select(work));
+                    } else void controller?.select(work);
+                }));
+            this.content.append(header);
+        }
         if (this.backendOffline || this.workAttachmentError) return;
         if (!controller?.handle) return;
         if (work && controller.selectionState !== 'attached') {
@@ -1537,11 +1578,14 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }
         if (!work) {
             const groups = workRows(controller.tasks, controller.runs, controller.phase.sequences);
-            const rowButton = (row: (typeof groups.running)[number]): HTMLButtonElement => {
+            const rowButton = (row: (typeof groups.running)[number]): HTMLElement => {
+                const container = document.createElement('div'); container.className = 'dope-chat-row dope-work-list-row';
                 const button = this.button('', () => this.selectWork(row.selection));
                 button.className = 'dope-work-row';
                 button.dataset.workKey = `${row.selection.kind}:${row.selection.id}`;
                 button.dataset.status = row.status;
+                button.setAttribute('aria-label', `${row.fullTitle ?? row.title} · ${row.status}: ${row.activity}`);
+                button.dataset.dopeTooltip = workTitlePreview(row.fullTitle ?? row.title);
                 button.setAttribute('aria-current', this.lastWorkSelection?.kind === row.selection.kind &&
                     this.lastWorkSelection.id === row.selection.id ? 'true' : 'false');
                 const cue = document.createElement('span'); cue.className = 'dope-work-state-cue';
@@ -1549,14 +1593,91 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 const text = document.createElement('span'); text.className = 'dope-work-row-text';
                 const title = document.createElement('span'); title.className = 'dope-work-row-title'; title.textContent = row.title;
                 const meta = document.createElement('span'); meta.className = 'dope-work-row-meta';
-                const time = Number.isFinite(Date.parse(row.updatedAt)) ? new Date(row.updatedAt).toLocaleString() : '';
-                meta.textContent = [row.status, row.activity, time].filter(Boolean).join(' · ');
-                if (row.startedAt) meta.append(' · ', this.elapsedClock(row.startedAt, row.endedAt, row.running));
+                const time = document.createElement('time'); time.dateTime = row.updatedAt;
+                time.textContent = Number.isFinite(Date.parse(row.updatedAt)) ? new Date(row.updatedAt).toLocaleDateString() : '';
+                const state = document.createElement('span'); state.className = 'dope-work-status-pill';
+                state.dataset.status = row.status;
+                state.textContent = row.status === 'completed' ? 'Completed' :
+                    row.status.charAt(0).toUpperCase() + row.status.slice(1);
+                state.setAttribute('aria-label', `${state.textContent}: ${row.activity || state.textContent}`);
+                state.dataset.dopeTooltip = row.activity || state.textContent || '';
+                meta.append(time, state);
                 text.append(title, meta);
                 if (row.stack) { const progress = document.createElement('span'); progress.className = 'dope-work-row-progress';
                     progress.textContent = row.stack; text.append(progress); }
                 button.append(cue, text);
-                return button;
+                const menu = document.createElement('div');
+                menu.className = 'dope-chat-composer-menu dope-chat-row-menu';
+                menu.popover = 'auto';
+                menu.id = `${this.id}-work-actions-${row.selection.kind}-${row.selection.id}`;
+                menu.setAttribute('role', 'menu');
+                menu.setAttribute('aria-label', `Actions for Work ${row.fullTitle ?? row.title}`);
+                let openOnPointerDown = false;
+                const more = this.button('⋯', () => {
+                    if (openOnPointerDown || menu.matches(':popover-open')) {
+                        openOnPointerDown = false;
+                        if (menu.matches(':popover-open')) menu.hidePopover();
+                        return;
+                    }
+                    menu.showPopover();
+                    const bounds = more.getBoundingClientRect();
+                    const width = menu.offsetWidth, height = menu.offsetHeight;
+                    menu.style.left = `${Math.max(8, Math.min(bounds.right - width, window.innerWidth - width - 8))}px`;
+                    menu.style.top = `${bounds.bottom + height + 8 <= window.innerHeight ? bounds.bottom + 4 :
+                        Math.max(8, bounds.top - height - 4)}px`;
+                    menu.querySelector<HTMLButtonElement>('button')?.focus();
+                });
+                more.className = 'dope-chat-row-more';
+                more.addEventListener('pointerdown', () => { openOnPointerDown = menu.matches(':popover-open'); });
+                more.setAttribute('aria-label', `Actions for Work ${row.fullTitle ?? row.title}`);
+                more.setAttribute('aria-haspopup', 'menu');
+                more.setAttribute('aria-controls', menu.id);
+                more.setAttribute('aria-expanded', 'false');
+                menu.addEventListener('toggle', () => more.setAttribute('aria-expanded', String(menu.matches(':popover-open'))));
+                menu.addEventListener('focusout', event => {
+                    if (event.relatedTarget && !menu.contains(event.relatedTarget as Node) && menu.matches(':popover-open'))
+                        menu.hidePopover();
+                });
+                menu.addEventListener('keydown', event => {
+                    const entries = [...menu.querySelectorAll<HTMLButtonElement>('button')];
+                    const index = entries.indexOf(document.activeElement as HTMLButtonElement);
+                    if (event.key === 'Escape') { event.preventDefault(); menu.hidePopover(); more.focus(); return; }
+                    const next = event.key === 'ArrowDown' ? (index + 1) % entries.length :
+                        event.key === 'ArrowUp' ? (index + entries.length - 1) % entries.length :
+                            event.key === 'Home' ? 0 : event.key === 'End' ? entries.length - 1 : -1;
+                    if (next >= 0) { event.preventDefault(); entries[next].focus(); }
+                });
+                more.addEventListener('keydown', event => {
+                    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                        event.preventDefault();
+                        if (!menu.matches(':popover-open')) more.click();
+                        const entries = menu.querySelectorAll<HTMLButtonElement>('button');
+                        (event.key === 'ArrowUp' ? entries[entries.length - 1] : entries[0])?.focus();
+                    }
+                });
+                const menuEntry = (label: string, action: () => void): HTMLButtonElement => {
+                    const entry = this.button(label, () => { menu.hidePopover(); action(); });
+                    entry.setAttribute('role', 'menuitem');
+                    return entry;
+                };
+                menu.append(menuEntry('Open Work', () => void this.selectWork(row.selection)));
+                if (row.selection.kind === 'run' && this.panel.workspace && this.openTranscript) {
+                    const project = this.panel.workspace;
+                    menu.append(menuEntry('Open Transcript', () => {
+                        if (this.panel.workspace === project && controller.project === project)
+                            void this.openTranscript?.(project, row.selection.id);
+                    }));
+                }
+                const copyWork = (value: string, label: string) => {
+                    const copied = navigator.clipboard?.writeText(value) ?? copyChatText(value);
+                    void copied.then(() => { more.dataset.dopeTooltip = `${label} copied`; },
+                        () => { more.dataset.dopeTooltip = `Could not copy ${label.toLowerCase()}`; });
+                };
+                more.dataset.dopeTooltip = 'Work actions';
+                menu.append(menuEntry('Copy title', () => copyWork(row.fullTitle ?? row.title, 'Title')),
+                    menuEntry('Copy ID', () => copyWork(row.selection.id, 'ID')));
+                container.append(button, more, menu);
+                return container;
             };
             if (!this.promptStacksOnly) for (const [heading, rows] of [['Running', groups.running],
                 ['History', groups.history]] as const) {
@@ -2960,7 +3081,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }
         this.syncViewedProposal();
         this.syncAutoRoadmapPreview();
-        const toolbarState = `${this.canBackToChats}:${this.canCopyTranscript}:${this.canOpenChatSettings}:${this.isChatSettingsOpen}`;
+        const toolbarState = `${this.canBackToChats}:${this.canCopyTranscript}:${this.canOpenChatSettings}:${this.isChatSettingsOpen}:${this.canShowChatSelectorActions}:${this.canUseChatSelectorActions}:${this.canCreateWorkFromToolbar}:${this.canBackFromWorkComposer}`;
         if (toolbarState !== this.toolbarState) {
             this.toolbarState = toolbarState;
             ChatPanelWidget.toolbarChanged.fire();
@@ -3072,24 +3193,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (state.mode === 'select-chat') {
             this.settingsOpen = false; this.settingsDraft = undefined; this.settingsChatId = undefined;
             this.titleEditingChatId = undefined;
-            const header = document.createElement('header');
-            header.className = 'dope-chat-selector-header';
-            const heading = document.createElement('h2');
-            heading.textContent = 'Select Chat';
-            const create = document.createElement('div');
-            create.className = 'dope-chat-selector-create';
-            create.append(this.button('New Chat', () => void state.newChat(''), state.pending),
-                this.button('New Folder', () => void this.name('New folder').then(name => {
-                    if (name) void state.newFolder('', name);
-                }), state.pending), this.button('Skills', () => this.openSkills()));
-            header.append(heading, create);
-            if (!this.usableModels().length)
-                header.append(this.button('Manage AI connections', () => { void this.aiCenter?.openFromChat(this.id); }));
             const navigation = document.createElement('nav');
             navigation.className = 'dope-chat-selector-list';
             navigation.setAttribute('aria-label', 'Chats and folders');
             navigation.append(this.renderTree(chatTree(state.snapshot)));
-            this.content.append(header, navigation);
+            this.content.append(navigation);
             if (this.skillsOpen) this.content.append(this.renderSkillsDrawer());
             return;
         }

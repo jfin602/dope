@@ -500,6 +500,7 @@ export const ROADMAP_CANVAS_ID = 'dope-roadmap-canvas';
 /** A single ordinary center tab; it neither owns nor opens a ChatPanel. */
 export class RoadmapCanvasWidget extends BaseWidget {
     private readonly status = document.createElement('p');
+    private readonly controlsHint = document.createElement('p');
     private readonly contextBar = document.createElement('section');
     private readonly structuralPanel = document.createElement('section');
     private readonly addPhase = document.createElement('button');
@@ -1049,10 +1050,13 @@ export class RoadmapCanvasWidget extends BaseWidget {
             this.expandButton, this.collapseButton, this.focusButton, this.nextPromptsButton, this.phaseButton, this.detailLabel, this.reload);
         this.status.setAttribute('role', 'status');
         this.status.setAttribute('aria-live', 'polite');
+        this.controlsHint.id = 'dope-roadmap-controls-hint';
+        this.controlsHint.className = 'dope-roadmap-controls-hint';
+        this.controlsHint.textContent = 'Shift+Arrow pans. In Arrange mode, Alt+Arrow moves the selected card.';
         this.path.className = 'dope-roadmap-stage';
         this.path.setAttribute('aria-label', 'Roadmap canvas');
+        this.path.setAttribute('aria-describedby', this.controlsHint.id);
         this.path.tabIndex = 0;
-        this.path.title = 'Shift+Arrow pans. In Arrange mode, Alt+Arrow moves the selected card.';
         this.path.onkeydown = event => {
             if (event.key === 'Escape' && this.contextPicker) {
                 event.preventDefault(); event.stopPropagation(); this.cancelContextPicker(); return;
@@ -1200,7 +1204,7 @@ export class RoadmapCanvasWidget extends BaseWidget {
         this.structuralPanel.hidden = true;
         this.stage.append(this.contextBar, this.path, this.status, this.importEntry, this.inspection, this.phaseFocus, this.poolButton, this.pools);
         this.stage.append(this.structuralPanel);
-        this.stage.append(this.stageNotice, this.emptyNotice, this.proposalBar, this.historyStrip);
+        this.stage.append(this.stageNotice, this.emptyNotice, this.proposalBar, this.historyStrip, this.controlsHint);
         this.node.append(this.toolbar, this.stage);
         this.stageResize.observe(this.stage);
         this.setSourceOpen(false);
