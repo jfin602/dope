@@ -1,0 +1,17 @@
+TASK: c14-work-redesign / P2 — One dockable Work conversation panel
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: no.
+
+ENTRY
+Require verified P1 lifecycle/queue semantics on actual local source; otherwise BLOCKED. Read BOOT.md, AGENTS.md, docs/workflow.md, Work UX contract and stack plan. Inspect existing Work setup/selector, AgentRun center transcript, shared Chat rendering, Theia docking, tests and owner dirty work.
+
+GOAL — T1
+Keep current New Work prompt/model/tool/sandbox setup. Start transforms the SAME dockable panel into persistent Work conversation, with live typed agent/tool/approval/diagnostic events, full historical reopening, queued/delivered message states, composer, Interrupt/Resume/Stop and compact inspectable locked configuration. Reuse safe Chat Markdown, scrolling, accessibility and theme primitives but never Chat identity/permissions. Support left/right/bottom/center and narrow panels. Retire separate center-only transcript presentation only after parity verified; preserve source event/evidence owner and no hidden fallback.
+
+VERIFY
+Focused setup→running, transcript order, selector reopen, safe rendering, missing legacy evidence, controls, docking, keyboard and theme tests; changed-package builds. No synthetic transcript presented as live proof. <=8m target, stop if scope expands.
+
+GENERAL
+No Work grant/candidate changes, unrelated Chat redesign, self-commit or next prompt auto-run. Report results/gaps.
