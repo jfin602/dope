@@ -1,8 +1,12 @@
-TASK: c14-work-redesign / P4 — Independent real-browser Work UI qualification
+TASK: Correction 14 / P4 — Independent real-browser Work UI closeout
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol High.
-- Browser required: YES — MANUAL connected Codex browser; never phase-runner auto-execution.
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction at unchanged version; no manifest, pin or lockfile change.
 
 PREFLIGHT
 Read BOOT.md, AGENTS.md, docs/workflow.md, Work UX contract, stack plan and P1–P3 evidence. Inspect exact local HEAD/version/dirty state and start the actual updated Dope app. If browser/runtime unavailable, report BLOCKED; do not replace with mocks.
