@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "id": "8138ea4d-e186-42aa-90b0-1630e341abbb",
+  "createdAt": "2026-11-24T21:50:22.988Z",
+  "objective": "reply ready",
+  "instructions": "reply ready",
+  "projectRoot": ".",
+  "modelPolicy": {
+    "kind": "exact",
+    "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+    "modelId": "ibm/granite-4-h-tiny"
+  },
+  "controls": {},
+  "authority": {
+    "profile": "phase-8b-project"
+  },
+  "completion": {
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "npm test"
+      }
+    ],
+    "requireValidationPass": true
+  },
+  "origin": {
+    "kind": "direct"
+  },
+  "reviewPolicy": {
+    "kind": "required"
+  }
+}

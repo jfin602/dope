@@ -658,8 +658,8 @@ test('Select Chat keeps folder disclosure and keyboard accessible contextual act
     const module = await readFile(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
     const tree = widget.slice(widget.indexOf('private renderTree('), widget.indexOf('private render():'));
-    assert.match(tree, /details\.append\(menu, this\.renderTree\(folder\)\)/);
-    assert.match(tree, /menuLabel\.setAttribute\('aria-label', `Actions for folder \$\{folder\.path\}`\)/);
+    assert.match(tree, /details\.append\(this\.renderTree\(folder\)\)/);
+    assert.match(tree, /more\.setAttribute\('aria-label', `Actions for folder \$\{folder\.path\}`\)/);
     assert.match(tree, /select = this\.button\('', \(\) => void this\.controller\.select\(chat\.id\)\)/);
     assert.match(tree, /select\.setAttribute\('aria-label', `Open Chat \$\{chat\.title\}`\)/);
     assert.match(tree, /title\.textContent = chat\.title/);
@@ -668,9 +668,13 @@ test('Select Chat keeps folder disclosure and keyboard accessible contextual act
     assert.match(tree, /menu\.setAttribute\('aria-label', `Actions for Chat \$\{chat\.title\}`\)/);
     assert.match(tree, /more\.setAttribute\('aria-haspopup', 'menu'\)/);
     assert.match(tree, /if \(event\.key === 'Escape'\) \{ event\.preventDefault\(\); menu\.hidePopover\(\); more\.focus\(\)/);
-    assert.match(tree, /row\.append\(select, more, menu\)/);
+    assert.match(tree, /row\.append\(select, time, more, menu\)/);
+    assert.match(tree, /row\.draggable = true/);
+    assert.match(tree, /select\.draggable = true/);
+    assert.match(tree, /summary\.draggable = true/);
+    assert.match(tree, /time\.textContent = `\$\{date\.getMonth\(\) \+ 1\}\/\$\{date\.getDate\(\)\}`/);
     assert.match(tree, /type: 'rename-chat'/);
-    assert.match(tree, /type: 'move-chat'/);
+    assert.doesNotMatch(tree, /menuEntry\('Move'/);
     assert.match(tree, /this\.controller\.deleteChat\(chat\.id\)/);
     assert.match(widget, /navigation\.setAttribute\('aria-label', 'Chats and folders'\)/);
     assert.match(module, /commands\.registerCommand\(\{ id: 'dope\.chat\.back', label: 'Back to Chats' \}/);

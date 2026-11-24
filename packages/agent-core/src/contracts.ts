@@ -1,6 +1,7 @@
 /** Portable, provider-neutral Phase 8B execution records. All persisted input goes through parsers. */
 import { parseWorkMCPObservationReceipt } from './authority';
 import type { WorkMCPObservationReceipt } from './authority';
+import { parseWorkToolSelection, type WorkToolSelection } from './work-tool-selection';
 export const AGENT_SCHEMA_VERSION = 1 as const;
 export type AgentOrigin =
     | { kind: 'direct' }
@@ -69,12 +70,16 @@ export interface CandidateReviewDecision {
     kind: 'accept' | 'reject'; revision: number; at: string; candidateFingerprint: string;
 }
 export interface AuthorityDecision { allowed: boolean; blocked: { kind: CandidateEffect['kind']; path: string }[] }
+export interface DirtyPath { path: string; code: string; hash: string | null; size: number; mode: number | null }
+export interface AcceptedDirtyBasis { head: string; paths: DirtyPath[] }
 export interface AgentRun {
     version: typeof AGENT_SCHEMA_VERSION; id: string; taskId: string; status: AgentRunStatus;
     grantId: string; grantRevision: number; requestedPolicy: AgentModelPolicy;
+    toolSelection?: WorkToolSelection;
     projectRoot: '.'; projectId?: string; createdAt: string; startedAt?: string; endedAt?: string;
     executionWorkspace?: { id: string; basisHead: string };
-    provenance?: ExecutionProvenance; basis?: GitBasis; finalGit?: GitFinal; changedFiles: string[];
+    provenance?: ExecutionProvenance; basis?: GitBasis; acceptedDirty?: AcceptedDirtyBasis;
+    finalGit?: GitFinal; changedFiles: string[];
     commandEvidence?: CommandEvidence[];
     validationResults: ValidationResult[]; changeSummary?: ChangeSummary;
     validationBasis?: 'execution-workspace'; candidateDelta?: CandidateDelta;
@@ -413,13 +418,28 @@ function parseWorkDocumentRead(value: unknown): WorkDocumentRead {
 }
 export function parseAgentRun(value: unknown): AgentRun {
     const x = record(value, ['version', 'id', 'taskId', 'status', 'grantId', 'grantRevision', 'requestedPolicy',
-        'projectRoot', 'projectId', 'createdAt', 'startedAt', 'endedAt', 'provenance', 'basis',
+        'projectRoot', 'projectId', 'toolSelection', 'createdAt', 'startedAt', 'endedAt', 'provenance', 'basis', 'acceptedDirty',
         'changedFiles', 'validationResults', 'changeSummary', 'finalGit', 'commandEvidence', 'recovery', 'outcome',
         'validationBasis', 'candidateDelta', 'candidateFingerprint', 'resumedFrom', 'candidateReview', 'reviewDecision', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries', 'taskContract', 'documentReads', 'mcpObservations', 'contextCompactions']);
     if (projectPath(x.projectRoot, true) !== '.') throw new Error('Invalid project root');
     const status = parseAgentRunStatus(x.status);
     const basis = x.basis === undefined ? undefined : record(x.basis, ['head', 'clean', 'metadataChanged']);
     const taskContract = x.taskContract === undefined ? undefined : parseTaskContract(x.taskContract);
+    const acceptedDirty = x.acceptedDirty === undefined ? undefined : record(x.acceptedDirty, ['head', 'paths']);
+    const dirtyPaths = acceptedDirty === undefined ? undefined : array(acceptedDirty.paths, 500, value => {
+        const path = record(value, ['path', 'code', 'hash', 'size', 'mode']);
+        const code = select(path.code, [' M', ' D', '??'] as const);
+        const size = integer(path.size);
+        const mode = path.mode === null ? null : integer(path.mode);
+        if (size > 32 * 1024 * 1024 || mode !== null && mode > 0o777 ||
+            (code === ' D' ? path.hash !== null || size !== 0 || mode !== null :
+                typeof path.hash !== 'string' || !/^[a-f0-9]{64}$/u.test(path.hash) || mode === null))
+            throw new Error('Invalid accepted dirty path');
+        return { path: projectPath(path.path), code, hash: path.hash as string | null, size, mode };
+    });
+    const toolSelection = x.toolSelection === undefined ? undefined : parseWorkToolSelection(x.toolSelection);
+    if (toolSelection && (toolSelection.taskId !== x.taskId || toolSelection.grantRevision !== x.grantRevision))
+        throw new Error('Work tool selection does not match run');
     const documentReads = x.documentReads === undefined ? undefined : array(x.documentReads, 24, parseWorkDocumentRead);
     const mcpObservations = x.mcpObservations === undefined ? undefined : array(x.mcpObservations, 1,
         parseWorkMCPObservationReceipt);
@@ -492,6 +512,7 @@ export function parseAgentRun(value: unknown): AgentRun {
         grantId: id(x.grantId), grantRevision: integer(x.grantRevision),
         requestedPolicy: parseAgentModelPolicy(x.requestedPolicy), projectRoot: '.',
         ...(x.projectId === undefined ? {} : { projectId: id(x.projectId) }),
+        ...(toolSelection === undefined ? {} : { toolSelection }),
         ...(taskContract === undefined ? {} : { taskContract }),
         ...(documentReads === undefined ? {} : { documentReads }),
         ...(mcpObservations === undefined ? {} : { mcpObservations }),
@@ -502,7 +523,9 @@ export function parseAgentRun(value: unknown): AgentRun {
         ...(x.provenance === undefined ? {} : { provenance: parseExecutionProvenance(x.provenance) }),
         ...(basis === undefined ? {} : { basis: { head: basis.head === null ? null : id(basis.head),
             clean: bool(basis.clean), ...(basis.metadataChanged === undefined ? {} :
-                { metadataChanged: bool(basis.metadataChanged) }) } }), changedFiles,
+                { metadataChanged: bool(basis.metadataChanged) }) } }),
+        ...(acceptedDirty === undefined ? {} : { acceptedDirty: {
+            head: id(acceptedDirty.head), paths: dirtyPaths! } }), changedFiles,
         validationResults: array(x.validationResults, 24, parseValidationResult),
         ...(x.commandEvidence === undefined ? {} : { commandEvidence: array(x.commandEvidence, 24, parseCommandEvidence) }),
         ...(x.finalGit === undefined ? {} : { finalGit: parseGitFinal(x.finalGit) }),

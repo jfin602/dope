@@ -31,12 +31,15 @@ export interface CandidateResumePreview {
     candidateFingerprint?: string; effects?: AgentRun['candidateDelta'];
     outcome?: AgentRun['outcome']; uncertainCommands?: string[]; transcriptIncomplete?: boolean;
 }
+export interface WorktreeReview { clean: boolean; fingerprint: string; paths: string[] }
 export interface AgentRuntimeService {
     attach(folderUri: string): Promise<{ projectHandle: string }>;
     workMCPObservationOffer(projectHandle: string, connectionId: string, modelId: string): Promise<WorkMCPObservationScope | undefined>;
     pendingWorkMCPObservations(projectHandle: string): Promise<PendingWorkMCPObservation[]>;
     decideWorkMCPObservation(projectHandle: string, runId: string, requestId: string, approved: boolean): Promise<void>;
     createTask(projectHandle: string, task: AgentTask): Promise<AgentTask>;
+    previewWorktree(projectHandle: string): Promise<WorktreeReview>;
+    commitWorktree(projectHandle: string, fingerprint: string, message: string): Promise<void>;
     launchWorkItem(projectHandle: string, request: WorkItemLaunchRequest): Promise<AgentTask>;
     listWorkItemTasks(projectHandle: string, planningMapId: string, workItemId: string): Promise<AgentTask[]>;
     readTask(projectHandle: string, taskId: string): Promise<AgentTask | undefined>;
@@ -80,6 +83,6 @@ export interface AgentRuntimeService {
         nextSequence: number; hasMore: boolean; incomplete: boolean;
     }>;
     start(projectHandle: string, folderUri: string, taskId: string, grant: ExecutionGrant,
-        hostedProjectDataAuthorized: boolean): Promise<AgentRun>;
+        hostedProjectDataAuthorized: boolean, acceptedDirtyFingerprint?: string): Promise<AgentRun>;
     stop(projectHandle: string, runId: string): Promise<AgentRun>;
 }

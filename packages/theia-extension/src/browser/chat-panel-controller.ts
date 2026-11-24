@@ -1,5 +1,5 @@
 import { compareChatsByInteraction, joinChatFolderPath } from '@dope/chat';
-import type { Chat, ChatCollection, ChatFolderPath, ChatActivityEvent } from '@dope/chat';
+import type { Chat, ChatCollection, ChatFolderPath, ChatColor, ChatActivityEvent } from '@dope/chat';
 import type { ChatClient, ChatEvent, ChatOperation, ChatService, ChatContextSelection, ChatContextPreview, ChatSearchHit,
     ChatPlanningProposal, ChatTurnResult,
     ChatCommandMode, ChatCommandPreview } from '@dope/chat/lib/service';
@@ -20,7 +20,7 @@ export function readOnlyPrompt(kind: ReadOnlyBehavior, draft = ''): string {
     };
     return `${prompts[kind]}${draft.trim() ? `\n\n${draft.trim()}` : ''}`;
 }
-export interface ChatTree { path: ChatFolderPath; folders: ChatTree[]; chats: Chat[] }
+export interface ChatTree { path: ChatFolderPath; color?: ChatColor; position?: number; folders: ChatTree[]; chats: Chat[] }
 
 /** A renderer-local reservation, keyed by project URI and durable Chat identity. */
 export class ChatOpenOwners {
@@ -49,14 +49,18 @@ export function chatTree(collection: ChatCollection): ChatTree {
     const root: ChatTree = { path: '', folders: [], chats: [] };
     const nodes = new Map<string, ChatTree>([['', root]]);
     for (const folder of [...collection.folders].sort((a, b) => a.path.localeCompare(b.path)))
-        nodes.set(folder.path, { path: folder.path, folders: [], chats: [] });
+        nodes.set(folder.path, { path: folder.path, color: folder.color, position: folder.position, folders: [], chats: [] });
     for (const folder of collection.folders) {
         const parent = folder.path.includes('/') ? folder.path.slice(0, folder.path.lastIndexOf('/')) : '';
         nodes.get(parent)?.folders.push(nodes.get(folder.path)!);
     }
-    for (const node of nodes.values()) node.folders.sort((a, b) => a.path.localeCompare(b.path));
+    for (const node of nodes.values()) node.folders.sort((a, b) =>
+        a.position === undefined && b.position === undefined ? a.path.localeCompare(b.path) :
+            (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER) || a.path.localeCompare(b.path));
     for (const chat of collection.chats) nodes.get(chat.folderPath)?.chats.push(chat);
-    for (const node of nodes.values()) node.chats.sort(compareChatsByInteraction);
+    for (const node of nodes.values()) node.chats.sort((a, b) =>
+        a.position === undefined && b.position === undefined ? compareChatsByInteraction(a, b) :
+            (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER) || compareChatsByInteraction(a, b));
     return root;
 }
 

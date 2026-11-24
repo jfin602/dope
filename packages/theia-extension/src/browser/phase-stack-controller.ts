@@ -2,6 +2,7 @@ import { createDefaultExecutionGrant, sequenceNeedsDirtyAcceptance } from '@dope
 import type { AgentModelPolicy, AgentRun, AgentTaskSequence } from '@dope/agent-core';
 import type { AgentRuntimeService, DiscoveredTaskStack, OpenTaskStackResult } from '@dope/contracts/lib/agent-runtime-service';
 import type { AgentTarget } from './agent-run-controller';
+import { hasApprovedWorkCommand, type WorkToolPreferences } from './work-tool-preferences';
 
 export type StackEvidence = Awaited<ReturnType<AgentRuntimeService['sequenceEvidence']>>;
 const retryable = ['run-failed', 'run-cancelled', 'authority-denied', 'validation-failed', 'capacity-exhausted'];
@@ -43,7 +44,8 @@ export class PhaseStackController {
     constructor(private readonly runtime: AgentRuntimeService, private readonly changed: () => void,
         private readonly attachLimitMs = 10000,
         private readonly resolveTarget?: (policy: AgentModelPolicy) => Promise<{
-            target?: AgentTarget; targets?: AgentTarget[]; reason: string }>) {}
+            target?: AgentTarget; targets?: AgentTarget[]; reason: string }>,
+        private readonly tools?: WorkToolPreferences) {}
     setModelPolicy(policy: AgentModelPolicy): void {
         this.modelPolicy = policy; this.acceptedGrant = false; this.hostedProjectDataAuthorized = false;
         this.resolvedTarget = undefined; this.targetReason = 'Coding Agent target is loading.';
@@ -240,10 +242,15 @@ export class PhaseStackController {
         if (this.evidence && this.evidence.head !== (this.selected.checkpoints.at(-1)?.sha ?? this.selected.basis.head))
             return 'Repository HEAD changed. Reconcile the sequence before continuing.';
         if (this.needsDirtyAcceptance) return 'Worktree is dirty: continue?';
-        if (!this.acceptedGrant) return 'Accept the project execution grant to continue.';
+        if (!this.tools && !this.acceptedGrant) return 'Accept the project execution grant to continue.';
         if (!this.validationCommand.trim()) return 'Enter a required validation command to continue.';
         if (this.validationCommand.trim().length > 160) return 'Validation command is too long.';
         if (this.resolveTarget && !this.resolvedTarget) return this.targetReason;
+        if (this.resolvedTarget?.locality === 'local' && this.tools) {
+            const unavailable = this.tools.resolve(this.project ?? '', `sequence:${this.selected.id}`,
+                hasApprovedWorkCommand(this.validationCommand)).unavailable;
+            if (unavailable.length) return `Review unavailable Work tools: ${unavailable.join('; ')}`;
+        }
         if (this.resolvedTarget?.locality === 'hosted' && !this.hostedProjectDataAuthorized)
             return 'Authorize sending this project data to the hosted Coding Agent for this start.';
         if (this.modelPolicy.kind === 'follow-coding-agent' && !this.codingAgentReady)
@@ -259,10 +266,13 @@ export class PhaseStackController {
             (this.evidence.clean || Boolean(s.acceptedDirty) && !this.needsDirtyAcceptance || acceptedBasisRetry) &&
             this.current?.execution === 'agent-task' &&
             (s.status === 'ready' || s.status === 'blocked' && retryable.includes(s.blockedReason ?? '')) &&
-            !this.needsDirtyAcceptance && this.acceptedGrant &&
+            !this.needsDirtyAcceptance && (this.tools || this.acceptedGrant) &&
             (!this.resolveTarget || !!this.resolvedTarget) &&
             (this.modelPolicy.kind === 'exact' || this.codingAgentReady) &&
             (this.resolvedTarget?.locality !== 'hosted' || this.hostedProjectDataAuthorized) &&
+            (this.resolvedTarget?.locality !== 'local' || !this.tools ||
+                !this.tools.resolve(this.project ?? '', `sequence:${s.id}`,
+                    hasApprovedWorkCommand(this.validationCommand)).unavailable.length) &&
             this.validationCommand.trim().length > 0 && this.validationCommand.trim().length <= 160 && !this.busy);
     }
     async start(): Promise<void> {
@@ -272,7 +282,7 @@ export class PhaseStackController {
         await this.perform(async () => {
             const shown = this.resolvedTarget;
             const fresh = await this.resolveTarget?.(policy);
-            if (policy !== this.modelPolicy || !this.acceptedGrant ||
+            if (policy !== this.modelPolicy || !(this.tools || this.acceptedGrant) ||
                 this.resolveTarget && (!shown || !fresh?.target ||
                 shown.connectionId !== fresh.target.connectionId || shown.modelId !== fresh.target.modelId ||
                 shown.locality !== fresh.target.locality ||
@@ -282,7 +292,9 @@ export class PhaseStackController {
             const task = await this.runtime.prepareSequenceTask(this.handle!, id, policy,
                 { validation: [{ kind: 'test', label: 'phase-stack', command }], requireValidationPass: true });
             const grant = createDefaultExecutionGrant({ id: crypto.randomUUID(), revision: 1, taskId: task.id,
-                acceptedAt: new Date().toISOString() });
+                acceptedAt: new Date().toISOString(),
+                ...(shown?.locality === 'local' && this.tools ? { toolSelection: this.tools.snapshot(this.project!,
+                    `sequence:${id}`, task.id, 1, shown, hasApprovedWorkCommand(command)) } : {}) });
             this.acceptedGrant = false;
             this.run = await this.runtime.startSequence(this.handle!, this.project!, id, grant,
                 shown?.locality === 'hosted' && this.hostedProjectDataAuthorized);

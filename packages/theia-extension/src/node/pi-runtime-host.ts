@@ -186,15 +186,22 @@ export class PiRuntimeHost {
 
     openWorkSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string,
         thinkingLevel?: string, processAvailable = true,
-        mcpTools: NonNullable<NonNullable<ConversationRequest['projectTools']>['mcpTools']> = []):
-        Promise<{ version: string; tools: string[]; resources: string }> {
+        mcpTools: NonNullable<NonNullable<ConversationRequest['projectTools']>['mcpTools']> = [],
+        workToolNames?: readonly string[]):
+        Promise<{ version: string; tools: string[]; resources: string; workCatalogRevision: number }> {
         if (mcpTools.length > 1 || mcpTools.some(tool => !/^mcp_[a-z][a-z0-9_]{0,79}$/u.test(tool.name) ||
             offeredToolNames.has(tool.name) || tool.description.length > 300 ||
             JSON.stringify(tool.parameters) !== JSON.stringify({ type: 'object', properties: {}, additionalProperties: false })))
             return Promise.reject(new Error('Invalid MCP Work manifest'));
         this.mcpToolNames = new Set(mcpTools.map(tool => tool.name));
+        if (workToolNames && (new Set(workToolNames).size !== workToolNames.length ||
+            workToolNames.some(name => !['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output'].includes(name)) ||
+            (!processAvailable && workToolNames.some(name => ['run_command', 'read_command_output'].includes(name))) ||
+            workToolNames.includes('read_command_output') && !workToolNames.includes('run_command')))
+            return Promise.reject(new Error('Invalid selected Pi Work tools'));
         return this.request({ type: 'open', mode: 'work', model, cwd,
             ...(credential ? { credential } : {}), thinkingLevel, workProcessAvailable: processAvailable,
+            ...(workToolNames ? { workToolNames } : {}),
             ...(mcpTools.length ? { mcpTools } : {}) });
     }
 

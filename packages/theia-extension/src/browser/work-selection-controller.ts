@@ -2,11 +2,12 @@ import type { AgentMapImpact, AgentRun, AgentSteeringRequest, AgentSteeringState
     AgentTranscriptEntry, AgentTaskSequence, ProposedAction } from '@dope/agent-core';
 import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 import type { WorkMCPObservationScope } from '@dope/agent-core/lib/authority';
-import type { CandidateResumePreview } from '@dope/contracts/lib/agent-runtime-service';
+import type { CandidateResumePreview, WorktreeReview } from '@dope/contracts/lib/agent-runtime-service';
 import { createDefaultExecutionGrant, createMCPObservationExecutionGrant, parseAgentTask } from '@dope/agent-core';
 import { PhaseStackController } from './phase-stack-controller';
 import type { WorkSelection } from './shared-panel-state';
 import type { AgentTarget } from './agent-run-controller';
+import { hasApprovedWorkCommand, type WorkToolPreferences } from './work-tool-preferences';
 
 export function compactWorkTitle(objective: string): string {
     const normalized = objective.replace(/\s+/g, ' ').trim();
@@ -35,7 +36,7 @@ export function workRunOverview(run: AgentRun, task?: AgentTask): { state: strin
     const passed = required.length > 0 && matching.every(result => result?.status === 'passed');
     const failed = matching.some(result => result?.status === 'failed');
     const validation = failed ? 'Required validation failed' : passed ? 'Required validation passed' :
-        required.length ? 'Required validation has not passed' : 'No required validation recorded';
+        required.length ? 'Required validation has not passed' : 'No validation command requested';
     const state = review === 'pending' ? 'Candidate held for review; no changes applied' :
         review === 'accepted' ? `Candidate accepted; ${run.appliedFiles?.length ?? 0} ` +
             `file${run.appliedFiles?.length === 1 ? '' : 's'} applied` :
@@ -220,7 +221,7 @@ export function workReviewState(run?: AgentRun, task?: AgentTask, busy = false):
 }
 
 export function workReviewCanAccept(run?: AgentRun, task?: AgentTask): boolean {
-    if (workReviewState(run, task) !== 'pending' || !run?.candidateReview || !task?.completion.validation.length) return false;
+    if (workReviewState(run, task) !== 'pending' || !run?.candidateReview || !task) return false;
     return task.completion.validation.every(target => run.candidateReview!.validation.some(result =>
         result.owner === 'dope' && result.kind === target.kind && result.label === target.label &&
         result.status === 'passed' && result.candidateFingerprint === run.candidateReview!.candidateFingerprint));
@@ -311,6 +312,8 @@ export class WorkSelectionController {
     startMCPOffer?: WorkMCPObservationScope;
     startMCPAccepted = false;
     startTargetReason = 'Coding Agent target is loading.';
+    startWorktreeReview?: WorktreeReview;
+    startCommitMessage = 'Checkpoint before Work';
     private selectedTaskId?: string;
     private startEpoch = 0;
     private serial = 0;
@@ -318,8 +321,8 @@ export class WorkSelectionController {
     constructor(private readonly runtime: AgentRuntimeService, private readonly changed: () => void,
         private readonly resolveTarget?: (policy: AgentTask['modelPolicy']) => Promise<{
             target?: AgentTarget; targets?: AgentTarget[]; reason: string }>,
-        private readonly attachLimitMs = 10000) {
-        this.phase = new PhaseStackController(runtime, changed, attachLimitMs, resolveTarget);
+        private readonly attachLimitMs = 10000, private readonly tools?: WorkToolPreferences) {
+        this.phase = new PhaseStackController(runtime, changed, attachLimitMs, resolveTarget, tools);
     }
     /** Adapter for the UI: capture only existing controller eligibility, then project it without effects. */
     view(selection: WorkSelection): WorkViewModel {
@@ -354,7 +357,7 @@ export class WorkSelectionController {
         this.project = project; this.handle = undefined; this.attachState = project ? 'loading' : 'idle';
         this.tasks = []; this.runs = [];
         this.startBusy = false; this.acceptedStartGrant = false; this.hostedProjectDataAuthorized = false;
-        this.selectedTaskId = undefined; this.startTarget = undefined;
+        this.selectedTaskId = undefined; this.startTarget = undefined; this.startWorktreeReview = undefined;
         this.startMCPOffer = undefined; this.startMCPAccepted = false;
         this.selectedRun = undefined; this.selectedTask = undefined; this.transcript = []; this.message = '';
         this.resumePreview = undefined; this.resumeOpen = false; this.resumeAccepted = false;
@@ -431,6 +434,7 @@ export class WorkSelectionController {
         this.selectionState = !selection ? 'idle' : handle ? 'loading' : 'unavailable';
         this.selectedTaskId = selection?.kind === 'task' ? selection.id : undefined;
         this.acceptedStartGrant = false; this.hostedProjectDataAuthorized = false; this.startTarget = undefined;
+        this.startWorktreeReview = undefined;
         this.startMCPOffer = undefined; this.startMCPAccepted = false;
         this.selectedRun = undefined; this.selectedTask = undefined; this.transcript = []; this.transcriptIncomplete = false;
         this.resumePreview = undefined; this.resumeOpen = false; this.resumeAccepted = false;
@@ -546,7 +550,7 @@ export class WorkSelectionController {
         const handle = this.handle, project = this.project, run = this.selectedRun;
         const preview = this.resumePreview, task = preview?.task, target = this.resumeTarget;
         if (!handle || !project || !run || !preview?.eligible || !task || !target || !this.resumeOpen ||
-            !this.resumeAccepted || this.resumeBusy || target.locality === 'hosted' && !this.resumeHostedAuthorized) return;
+            !(this.tools || this.resumeAccepted) || this.resumeBusy || target.locality === 'hosted' && !this.resumeHostedAuthorized) return;
         this.resumeBusy = true; this.resumeAccepted = false; this.changed();
         try {
             const fresh = await this.resolveTarget?.(task.modelPolicy);
@@ -555,7 +559,10 @@ export class WorkSelectionController {
                 throw new Error('Selected model changed; review continuation again.');
             const newTask = parseAgentTask({ ...task, id: crypto.randomUUID(), createdAt: new Date().toISOString() });
             const grant = createDefaultExecutionGrant({ id: crypto.randomUUID(), revision: 1,
-                taskId: newTask.id, acceptedAt: new Date().toISOString() });
+                taskId: newTask.id, acceptedAt: new Date().toISOString(),
+                ...(target.locality === 'local' && this.tools ? { toolSelection: this.tools.snapshot(project,
+                    `resume:${run.id}`, newTask.id, 1, target,
+                    newTask.completion.validation.some(item => hasApprovedWorkCommand(item.command))) } : {}) });
             const newRun = await this.runtime.resumeCandidate(handle, project, run.id,
                 preview.candidateFingerprint!, newTask, grant,
                 target.locality === 'hosted' && this.resumeHostedAuthorized);
@@ -587,17 +594,44 @@ export class WorkSelectionController {
             task.completion.validation.some(target => !target.command?.trim()))
             return 'This saved task has no required Dope validation. Return to its Planning Map and launch a new task with an approved validation command.';
         if (!this.startTarget) return this.startTargetReason;
-        if (!this.acceptedStartGrant)
+        if (this.startTarget.locality === 'local' && this.tools) {
+            const unavailable = this.tools.resolve(this.project, `task:${task.id}`,
+                task.completion.validation.some(item => hasApprovedWorkCommand(item.command))).unavailable;
+            if (unavailable.length) return `Review unavailable Work tools: ${unavailable.join('; ')}`;
+        }
+        if (!this.tools && !this.acceptedStartGrant)
             return 'Review and accept the fixed project execution grant for this task.';
         if (this.startTarget?.locality === 'hosted' && !this.hostedProjectDataAuthorized)
             return 'Authorize sending this project data to the hosted Coding Agent for this start.';
         return '';
     }
-    async startSelectedWorkItemTask(): Promise<AgentRun | undefined> {
+    cancelStartWorktreeReview(): void { this.startWorktreeReview = undefined; this.message = ''; this.changed(); }
+    async commitStartWorktree(): Promise<AgentRun | undefined> {
+        if (!this.handle || !this.startWorktreeReview || this.startBusy) return;
+        this.startBusy = true; this.message = ''; this.changed();
+        try {
+            await this.runtime.commitWorktree(this.handle, this.startWorktreeReview.fingerprint, this.startCommitMessage);
+            this.startWorktreeReview = undefined;
+        } catch (error) {
+            this.message = error instanceof Error ? error.message : 'Commit failed. Review project changes and retry.';
+            this.startBusy = false; this.changed(); return;
+        }
+        this.startBusy = false; this.changed();
+        return this.startSelectedWorkItemTask();
+    }
+    async startSelectedWorkItemTask(continueDirty = false): Promise<AgentRun | undefined> {
         const reason = this.startBlockReason;
         if (reason) { this.message = reason; this.changed(); return; }
         const handle = this.handle!, project = this.project!, shown = this.selectedTask!;
         const serial = this.serial, shownTarget = this.startTarget!;
+        let review: WorktreeReview;
+        try { review = await this.runtime.previewWorktree(handle); }
+        catch (error) { this.message = error instanceof Error ? error.message : 'Project changes could not be reviewed';
+            this.changed(); return; }
+        if (!review.clean && (!continueDirty || review.fingerprint !== this.startWorktreeReview?.fingerprint)) {
+            this.startWorktreeReview = review; this.changed(); return;
+        }
+        this.startWorktreeReview = undefined;
         const startEpoch = ++this.startEpoch;
         this.startBusy = true; this.message = ''; this.changed();
         try {
@@ -607,7 +641,7 @@ export class WorkSelectionController {
                 this.resolveTarget?.(shown.modelPolicy)
             ]);
             if (serial !== this.serial || handle !== this.handle || project !== this.project ||
-                this.selectedTaskId !== shown.id || !this.acceptedStartGrant ||
+                this.selectedTaskId !== shown.id || !(this.tools || this.acceptedStartGrant) ||
                 (shownTarget.locality === 'hosted' && !this.hostedProjectDataAuthorized))
                 throw new Error('Selection or project changed. Review and accept Start again.');
             if (!task || JSON.stringify(task) !== JSON.stringify(shown))
@@ -626,7 +660,10 @@ export class WorkSelectionController {
                 task.completion.validation.some(target => !target.command?.trim()))
                 throw new Error('Saved WorkItem task lacks required Dope validation. Launch a new validated task from its Planning Map.');
             const grantInput = { id: crypto.randomUUID(), revision: 1, taskId: task.id,
-                acceptedAt: new Date().toISOString() };
+                acceptedAt: new Date().toISOString(),
+                ...(shownTarget.locality === 'local' && this.tools ? { toolSelection: this.tools.snapshot(project,
+                    `task:${task.id}`, task.id, 1, shownTarget,
+                    task.completion.validation.some(item => hasApprovedWorkCommand(item.command))) } : {}) };
             let grant = createDefaultExecutionGrant(grantInput);
             if (this.startMCPAccepted) {
                 if (!this.startMCPOffer || shownTarget.locality !== 'local')
@@ -644,7 +681,8 @@ export class WorkSelectionController {
             // Consume acceptance before the RPC; a failed attempt requires a fresh review.
             const hostedAuthorized = shownTarget.locality === 'hosted' && this.hostedProjectDataAuthorized;
             this.acceptedStartGrant = false; this.hostedProjectDataAuthorized = false; this.startMCPAccepted = false;
-            const run = await this.runtime.start(handle, project, task.id, grant, hostedAuthorized);
+            const run = await this.runtime.start(handle, project, task.id, grant, hostedAuthorized,
+                continueDirty && !review.clean ? review.fingerprint : undefined);
             if (run.taskId !== task.id || run.projectId !== task.projectId)
                 throw new Error('AgentRun identity did not match the selected saved task. Refresh Work.');
             if (serial !== this.serial || handle !== this.handle || project !== this.project) return run;

@@ -2,6 +2,7 @@ import type { AIInventoryState } from '@dope/contracts/lib/ai-registry-service';
 import { ModelRuntimeFailure, type ConversationRequest } from '@dope/contracts/lib/model-runtime';
 import { providerSetup } from './provider-setup';
 import type { PiRuntimeHost } from './pi-runtime-host';
+import { WORK_TOOL_CATALOG_REVISION } from '@dope/agent-core/lib/work-tool-selection';
 
 export interface PiLocalSelection { connectionId: string; modelId: string; registryRevision?: number; loadedContextTokens?: number }
 export interface PiLocalBinding {
@@ -52,7 +53,7 @@ export class PiModelBridge {
             assessmentTools?: boolean; planTools?: boolean;
             mcpTools?: NonNullable<NonNullable<ConversationRequest['projectTools']>['mcpTools']>;
             operationPolicy?: NonNullable<ConversationRequest['projectTools']>['operationPolicy'];
-            reasoningMode?: string; workProcessAvailable?: boolean } = {}): Promise<PiLocalBinding> {
+            reasoningMode?: string; workProcessAvailable?: boolean; workToolNames?: readonly string[] } = {}): Promise<PiLocalBinding> {
         if (!selection.connectionId?.trim() || !selection.modelId?.trim())
             throw unavailable('Select a Local model in AI Center first');
         const before = await this.dependencies.inventory();
@@ -160,11 +161,12 @@ export class PiModelBridge {
             await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, true, false, false, false,
                 options.operationPolicy) :
             options.tools ? await host.openWorkSession(modelSpec, cwd, credential, thinkingLevel,
-                options.workProcessAvailable !== false, options.mcpTools) : options.chatTools ?
+                options.workProcessAvailable !== false, options.mcpTools, options.workToolNames) : options.chatTools ?
                 await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, false, false, false,
                     options.operationPolicy, false, false, options.mcpTools) :
                 await host.openNoToolSession(modelSpec, cwd, credential, thinkingLevel);
-        const expected = options.tools ? ['edit_file', 'list_files', 'read_command_output', 'read_file',
+        const expected = options.tools ? options.workToolNames ? [...options.workToolNames] :
+            ['edit_file', 'list_files', 'read_command_output', 'read_file',
             ...(options.workProcessAvailable === false ? [] : ['run_command'])] :
             options.chatTools ? options.roadmapGeneration ?
                 ['roadmap_finish', 'roadmap_phase'] :
@@ -190,6 +192,8 @@ export class PiModelBridge {
         const actualBuiltins = opened.tools?.filter(name => !offeredMCP.includes(name));
         const actualMCP = opened.tools?.filter(name => offeredMCP.includes(name));
         if (opened.version !== '1.4.0' || opened.resources !== 'isolated' ||
+            options.tools && (!('workCatalogRevision' in opened) ||
+                opened.workCatalogRevision !== WORK_TOOL_CATALOG_REVISION) ||
             JSON.stringify(actualBuiltins?.slice().sort()) !== JSON.stringify(expected.slice().sort()) ||
             JSON.stringify(actualMCP?.slice().sort()) !== JSON.stringify(offeredMCP.slice().sort()))
             throw unavailable('Pi tool boundary changed; restart Dope');

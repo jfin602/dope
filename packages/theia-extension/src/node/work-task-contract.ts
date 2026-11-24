@@ -86,6 +86,7 @@ export async function projectWorkTaskContract(root: string, task: AgentTask, gra
         instructionsHash: digest(task.instructions), acceptance, validation: task.completion.validation,
         planning: planningRef, roadmap: roadmapRef,
         grant: { id: grant.id, revision: grant.revision, acceptedAt: grant.acceptedAt,
-            permissionsHash: digest(grant.mcpObservation ?
-                { permissions: grant.permissions, mcpObservation: grant.mcpObservation } : grant.permissions) }, sourceHead };
+            permissionsHash: digest(grant.mcpObservation || grant.toolSelection ?
+                { permissions: grant.permissions, mcpObservation: grant.mcpObservation,
+                    toolSelection: grant.toolSelection } : grant.permissions) }, sourceHead };
 }

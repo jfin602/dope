@@ -6,11 +6,18 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/authority.js';
+import { makeWorkToolSelection } from '../../packages/agent-core/lib/work-tool-selection.js';
 import { ExecutionWorkspace } from '../../packages/agent-core/lib/node/execution-workspace.js';
 import { PiWorkExecutionAdapter } from '../../packages/theia-extension/lib/node/pi-work-execution.js';
 import { dispatch } from '../../packages/pi-runtime/worker.mjs';
 
 const execute = promisify(execFile);
+const selectedGrant = (project: string, id: string, taskId: string, modelId: string,
+    tools: Parameters<typeof makeWorkToolSelection>[1] =
+        ['read_file', 'list_files', 'edit_file']) =>
+    createDefaultExecutionGrant({ id, revision: 0, taskId, acceptedAt: new Date().toISOString(),
+        toolSelection: makeWorkToolSelection({ projectUri: 'file://' + project, taskId,
+            grantRevision: 0, connectionId: 'local', modelId }, tools) });
 
 test('Pi Work model-selected read/edit/test stays in a disposable candidate until Dope promotion', async () => {
     const parent = await mkdtemp(join(tmpdir(), 'dope-pi-work-'));
@@ -90,8 +97,8 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
             assert.deepEqual(opened.tools.sort(), ['edit_file', 'list_files', 'read_command_output', 'read_file', 'run_command']);
             return { endpoint };
         }, async assertWorkSelection() {} };
-        const grant = createDefaultExecutionGrant({ id: 'grant-1', revision: 0, taskId: 'task-1',
-            acceptedAt: new Date().toISOString() });
+        const grant = selectedGrant(project, 'grant-1', 'task-1', 'synthetic-local',
+            ['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output']);
         const events: any[] = [];
         const request = { projectRoot: project, executionRoot: workspace.root, grant, taskId: 'task-1',
             connectionId: 'local', registrationId: 'local', modelId: 'synthetic-local',
@@ -171,6 +178,41 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
     }
 });
 
+test('Pi Work broker rejects a forged unselected edit before candidate mutation', async () => {
+    const parent = await mkdtemp(join(tmpdir(), 'dope-pi-denied-tool-'));
+    const project = join(parent, 'project');
+    let workspace: ExecutionWorkspace | undefined;
+    try {
+        await execute('git', ['clone', '--no-local', '--quiet', '--', resolve('.'), project]);
+        workspace = await ExecutionWorkspace.create(project);
+        await writeFile(join(workspace.root, 'AGENTS.md'), 'Inspect the candidate only.\n');
+        const selection = makeWorkToolSelection({ projectUri: 'file://' + project,
+            taskId: 'selected-task', grantRevision: 1, connectionId: 'local', modelId: 'model' },
+            ['read_file']);
+        const grant = createDefaultExecutionGrant({ id: 'selected-grant', revision: 1,
+            taskId: 'selected-task', acceptedAt: new Date().toISOString(), toolSelection: selection });
+        const events: any[] = [];
+        const host: any = { async start() {}, async runWork(_prompt: string,
+            onTool: (call: any) => Promise<any>) {
+            await assert.rejects(onTool({ id: 1, name: 'edit_file', arguments: {
+                operation: 'create', path: 'forged.txt', content: 'forged' } }), /denied/);
+            return { modelId: 'model', text: 'No change.' };
+        }, dispose() {} };
+        const adapter = new PiWorkExecutionAdapter({ async bind(_model: any, _host: any, _cwd: any, options: any) {
+            assert.deepEqual(options.workToolNames, ['read_file']);
+            return { endpoint: 'http://127.0.0.1:9/v1', registryRevision: 1 };
+        }, async assertWorkSelection() {} } as any,
+        { create: () => host, release() {} } as any, () => workspace!, () => []);
+        const run = await adapter.start({ projectRoot: project, executionRoot: workspace.root,
+            grant, taskId: 'selected-task', connectionId: 'local', registrationId: 'local',
+            modelId: 'model', prompt: 'Inspect only.', onEvent(event: unknown) { events.push(event); } });
+        await assert.rejects(run.result, /denied/);
+        await assert.rejects(readFile(join(workspace.root, 'forged.txt')), { code: 'ENOENT' });
+        assert.ok(events.some(event => event.kind === 'work-observation' && event.toolName === 'edit_file' &&
+            event.phase === 'denied' && event.brokerInvoked === false));
+    } finally { await workspace?.dispose(); await rm(parent, { recursive: true, force: true }); }
+});
+
 test('Pi Work rejects a revoked callback and ignores late Pi events after cancellation', async () => {
     const parent = await mkdtemp(join(tmpdir(), 'dope-pi-work-cancel-'));
     const project = join(parent, 'project');
@@ -188,8 +230,7 @@ test('Pi Work rejects a revoked callback and ignores late Pi events after cancel
         await execute('git', ['clone', '--no-local', '--quiet', '--', resolve('.'), project]);
         workspace = await ExecutionWorkspace.create(project);
         await writeFile(join(workspace.root, 'AGENTS.md'), 'Use the approved Work tools and keep changes in the candidate.\n');
-        const grant = createDefaultExecutionGrant({ id: 'grant-cancel', revision: 0,
-            taskId: 'task-cancel', acceptedAt: new Date().toISOString() });
+        const grant = selectedGrant(project, 'grant-cancel', 'task-cancel', 'fixture-model');
         const events: any[] = [];
         const adapter = new PiWorkExecutionAdapter({ async bind() { return { endpoint: 'http://127.0.0.1:9/v1' }; },
             async assertWorkSelection() {} } as any, factory, () => {
@@ -239,8 +280,7 @@ test('Pi Work records a safe source-hash denial for a model-invented first-page 
         workspace = await ExecutionWorkspace.create(project);
         await writeFile(join(workspace.root, 'AGENTS.md'), 'Use the authorized candidate tools.\n');
         await writeFile(join(workspace.root, 'safe-source.txt'), 'safe source\n');
-        const grant = createDefaultExecutionGrant({ id: 'grant-source-hash', revision: 0,
-            taskId: 'task-source-hash', acceptedAt: new Date().toISOString() });
+        const grant = selectedGrant(project, 'grant-source-hash', 'task-source-hash', 'fixture-model');
         const adapter = new PiWorkExecutionAdapter({ async bind() { return { endpoint: 'http://127.0.0.1:9/v1' }; },
             async assertWorkSelection() {} } as any, factory, () => workspace!, () => []);
         const handle = await adapter.start({ projectRoot: project, executionRoot: workspace.root,
@@ -293,8 +333,7 @@ test('Pi Work read parser feedback permits a corrected candidate page in the sam
         await writeFile(join(workspace.root, 'AGENTS.md'), 'Use the approved Work tools and keep changes in the candidate.\n');
         await writeFile(join(workspace.root, 'CANDIDATE.txt'), `${'safe candidate line\n'.repeat(650)}TAIL-9247\n`);
         const original = await readFile(join(workspace.root, 'CANDIDATE.txt'));
-        const grant = createDefaultExecutionGrant({ id: 'grant-recovery', revision: 0,
-            taskId: 'task-recovery', acceptedAt: new Date().toISOString() });
+        const grant = selectedGrant(project, 'grant-recovery', 'task-recovery', 'fixture-model');
         const events: any[] = [];
         const adapter = new PiWorkExecutionAdapter({ async bind() { return { endpoint: 'http://127.0.0.1:9/v1' }; },
             async assertWorkSelection() {} } as any, factory, () => workspace!, () => []);
@@ -341,8 +380,8 @@ test('Pi Work retains sanitized command pages without rerunning the approved com
         await writeFile(join(workspace.root, 'AGENTS.md'), 'Use the approved Work tools and keep changes in the candidate.\n');
         await writeFile(join(workspace.root, 'sample-output.mjs'),
             `import fs from 'node:fs';\nfs.writeFileSync('/work/command-count', String(Number(fs.existsSync('/work/command-count') ? fs.readFileSync('/work/command-count', 'utf8') : '0') + 1));\nconsole.log('A'.repeat(1015) + ' password=hidden-value ' + 'B'.repeat(1300));\n`);
-        const grant = createDefaultExecutionGrant({ id: 'grant-output', revision: 0,
-            taskId: 'task-output', acceptedAt: new Date().toISOString() });
+        const grant = selectedGrant(project, 'grant-output', 'task-output', 'model',
+            ['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output']);
         const request = { projectRoot: project, executionRoot: workspace.root, grant,
             taskId: 'task-output', connectionId: 'local', registrationId: 'local',
             modelId: 'model', prompt: 'Run one approved command and inspect its output.',
@@ -414,8 +453,8 @@ test('Pi Work omits issued output handles from saved reasoning and final message
         workspace = await ExecutionWorkspace.create(project);
         await writeFile(join(workspace.root, 'AGENTS.md'), 'Use the approved Work tools and keep changes in the candidate.\n');
         await writeFile(join(workspace.root, 'sample-output.mjs'), "console.log('safe output');\n");
-        const grant = createDefaultExecutionGrant({ id: 'grant-handle', revision: 0,
-            taskId: 'task-handle', acceptedAt: new Date().toISOString() });
+        const grant = selectedGrant(project, 'grant-handle', 'task-handle', 'model',
+            ['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output']);
         const host: any = { async start() {}, async runWork(_prompt: string,
             onTool: (call: any) => Promise<any>, onEvent: (event: any) => void) {
             const result = await onTool({ id: 1, name: 'run_command',

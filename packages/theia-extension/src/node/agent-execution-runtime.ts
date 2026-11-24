@@ -197,7 +197,7 @@ export class AgentExecutionRuntime {
                 grant.taskId !== task.id || grant.projectRoot !== task.projectRoot ||
                 grant.acceptedAt < task.createdAt)
                 throw new Error('Execution grant changed since candidate review');
-            if (!task.completion.validation.length || task.completion.validation.some(target =>
+            if (task.completion.validation.some(target =>
                 !run.candidateReview!.validation.some(result => result.owner === 'dope' &&
                     result.kind === target.kind && result.label === target.label &&
                     result.status === 'passed' && result.candidateFingerprint === candidateFingerprint)))
@@ -205,7 +205,7 @@ export class AgentExecutionRuntime {
             const authoritative = await captureGitBasis(root);
             const acceptedDirty = task.origin.kind === 'phase-stack' ?
                 (await this.store.listSequences(root)).find(sequence => sequence.taskId === task.id &&
-                    sequence.runIds?.includes(run.id))?.acceptedDirty : undefined;
+                    sequence.runIds?.includes(run.id))?.acceptedDirty : run.acceptedDirty;
             if (authoritative.head !== run.basis.head ||
                 (acceptedDirty ? acceptedDirty.head !== run.basis.head : !authoritative.clean))
                 throw new Error('Authoritative Git basis changed before review decision');
@@ -521,8 +521,8 @@ export class AgentExecutionRuntime {
     }
 
     async start(root: string, folderUri: string, taskId: string, offeredGrant: ExecutionGrant,
-        hostedAuthorized: boolean): Promise<AgentRun> {
-        return this.startInternal(root, folderUri, taskId, offeredGrant, hostedAuthorized, false);
+        hostedAuthorized: boolean, acceptedDirty?: AcceptedDirtyBasis): Promise<AgentRun> {
+        return this.startInternal(root, folderUri, taskId, offeredGrant, hostedAuthorized, false, acceptedDirty);
     }
 
     async previewCandidateResume(root: string, runId: string): Promise<{
@@ -642,15 +642,23 @@ export class AgentExecutionRuntime {
                     task.completion.validation.some(target => !target.command)))
                 throw new Error('WorkItem task requires approved Dope validation before Start');
             if (task.origin.kind === 'direct' &&
-                (task.reviewPolicy?.kind !== 'required' || !task.completion.requireValidationPass ||
-                    !task.completion.validation.length || task.completion.validation.some(target => !target.command?.trim())))
-                throw new Error('Direct Work requires a validation command and candidate review before Start');
+                (task.reviewPolicy?.kind !== 'required' ||
+                    task.completion.requireValidationPass !== !!task.completion.validation.length ||
+                    task.completion.validation.some(target => !target.command?.trim())))
+                throw new Error('Direct Work validation or candidate review is invalid');
             const grant = parseExecutionGrant(offeredGrant);
             if (grant.taskId !== task.id || grant.projectRoot !== task.projectRoot ||
                 grant.acceptedAt < task.createdAt || resume && sourceRun &&
                     (grant.id === sourceRun.grantId || grant.acceptedAt < sourceRun.endedAt!))
                 throw new Error('Accepted ExecutionGrant does not match the task/project');
             const selected = await this.select(task.modelPolicy, hostedAuthorized);
+            if (selected.adapter.id === 'pi-local-work' && !grant.toolSelection)
+                throw new Error('Local Pi Work requires a reviewed tool selection');
+            if (grant.toolSelection && (selected.provenance.runtimeKind !== 'local' ||
+                grant.toolSelection.projectUri !== folderUri || grant.toolSelection.taskId !== task.id ||
+                grant.toolSelection.connectionId !== selected.provenance.connectionId ||
+                grant.toolSelection.modelId !== selected.provenance.modelId))
+                throw new Error('Work tool selection changed; review tools and start again');
             if (grant.mcpObservation && selected.provenance.runtimeKind !== 'local')
                 throw new Error('Work MCP observation requires the selected Local Pi agent');
             if (resume && JSON.stringify(selected.provenance) !== JSON.stringify(sourceRun?.provenance))
@@ -661,7 +669,7 @@ export class AgentExecutionRuntime {
             const basis = await captureGitBasis(root);
             if (!basis.head) throw new Error('Phase 8B requires a committed Git HEAD');
             if (acceptedDirty) {
-                if (!sequence || acceptedDirty.head !== basis.head) throw new Error('Dirty basis requires matching sequence HEAD');
+                if (acceptedDirty.head !== basis.head) throw new Error('Dirty basis requires matching HEAD');
                 await assertDirtyBasis(root, acceptedDirty);
             } else if (!basis.clean) throw new Error('Phase 8B requires a clean project worktree');
             const taskContract = await projectWorkTaskContract(root, task, grant, basis.head,
@@ -695,6 +703,8 @@ export class AgentExecutionRuntime {
             const now = new Date().toISOString();
             const pending: AgentRun = { version: AGENT_SCHEMA_VERSION, id: randomUUID(), taskId: task.id,
                 status: 'pending', grantId: grant.id, grantRevision: grant.revision,
+                ...(grant.toolSelection ? { toolSelection: grant.toolSelection } : {}),
+                ...(acceptedDirty ? { acceptedDirty } : {}),
                 requestedPolicy: task.modelPolicy, projectRoot: '.', ...(task.projectId ? { projectId: task.projectId } : {}),
                 createdAt: now, basis, executionWorkspace: { id: active.workspace.id, basisHead: active.workspace.head },
                 taskContract,

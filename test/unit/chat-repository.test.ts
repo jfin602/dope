@@ -17,6 +17,35 @@ const model = { connectionId: 'local', modelId: 'model' };
 const provenance = { schemaVersion: 1 as const, ...model, providerId: 'test', modelLabel: 'Test' };
 const emptyAnalysis = { projects: [], nodes: [], relationships: [], evidence: [], status: { completeness: 'complete' as const, errors: [] } };
 
+test('drag placement persists chat order and nested folder order across reopen', async () => {
+  const root = await folder(), repo = new ChatRepository(), first = id(), second = id(), third = id();
+  try {
+    let state = await repo.mutate(root, 0, { type: 'create-folder', path: 'Alpha' });
+    state = await repo.mutate(root, state.revision, { type: 'create-folder', path: 'Beta' });
+    state = await repo.mutate(root, state.revision, { type: 'create-folder', path: 'Gamma' });
+    state = await repo.mutate(root, state.revision, { type: 'create-chat', id: first, folderPath: '' });
+    state = await repo.mutate(root, state.revision, { type: 'create-chat', id: second, folderPath: '' });
+    state = await repo.mutate(root, state.revision, { type: 'create-chat', id: third, folderPath: '' });
+    state = await repo.mutate(root, state.revision, { type: 'place-chat', chatId: third, folderPath: '' });
+    state = await repo.mutate(root, state.revision, { type: 'place-chat', chatId: first, folderPath: '', beforeChatId: third });
+    state = await repo.mutate(root, state.revision, { type: 'place-chat', chatId: second, folderPath: '', beforeChatId: first });
+    assert.deepEqual(state.chats.filter(chat => chat.folderPath === '').sort((a, b) => a.position! - b.position!)
+      .map(chat => chat.id), [second, first, third]);
+    state = await repo.mutate(root, state.revision, { type: 'place-chat', chatId: third, folderPath: 'Alpha' });
+    state = await repo.mutate(root, state.revision, { type: 'place-folder', path: 'Gamma', parentPath: '', beforePath: 'Alpha' });
+    state = await repo.mutate(root, state.revision, { type: 'place-folder', path: 'Beta', parentPath: 'Alpha' });
+    const saved = await new ChatRepository().read(root);
+    assert.deepEqual(saved.folders.filter(item => !item.path.includes('/')).sort((a, b) => a.position! - b.position!)
+      .map(item => item.path), ['Gamma', 'Alpha']);
+    assert.ok(saved.folders.some(item => item.path === 'Alpha/Beta'));
+    assert.equal(saved.chats.find(chat => chat.id === third)?.folderPath, 'Alpha');
+    assert.deepEqual(saved.chats.filter(chat => chat.folderPath === '').sort((a, b) => a.position! - b.position!)
+      .map(chat => chat.id), [second, first]);
+    await assert.rejects(repo.mutate(root, state.revision,
+      { type: 'place-folder', path: 'Alpha', parentPath: 'Alpha/Beta' }), /into itself/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('generation limit policy persists across repository reopen', async () => {
   const root = await folder(), repo = new ChatRepository(), chatId = id();
   try {
@@ -359,6 +388,51 @@ test('delete Chat removes its saved file and index entry after the writer releas
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
+test('folder deletion removes descendants and requires consent for chats', async () => {
+  const root = await folder(), repo = new ChatRepository(), chatId = id(), keptId = id();
+  try {
+    let state = await repo.mutate(root, 0, { type: 'create-folder', path: 'Planning' });
+    state = await repo.mutate(root, state.revision, { type: 'create-folder', path: 'Planning/Notes' });
+    state = await repo.mutate(root, state.revision, { type: 'delete-folder', path: 'Planning' });
+    assert.deepEqual(state.folders, []);
+    state = await repo.mutate(root, state.revision, { type: 'create-folder', path: 'Planning' });
+    state = await repo.mutate(root, state.revision, { type: 'create-folder', path: 'Planning/Notes' });
+    state = await repo.mutate(root, state.revision, { type: 'create-chat', id: chatId, folderPath: 'Planning/Notes' });
+    state = await repo.mutate(root, state.revision, { type: 'create-chat', id: keptId, folderPath: '' });
+    await assert.rejects(repo.mutate(root, state.revision, { type: 'delete-folder', path: 'Planning' }), /requires confirmation/);
+    const lease = await repo.claim(root, chatId, 'owner');
+    if (!lease.acquired) throw new Error('Chat claim missing');
+    await assert.rejects(repo.mutate(root, state.revision,
+      { type: 'delete-folder', path: 'Planning', deleteChats: true }), /open Chat/);
+    await repo.release(root, chatId, lease.token);
+    state = await repo.mutate(root, state.revision, { type: 'delete-folder', path: 'Planning', deleteChats: true });
+    assert.deepEqual(state.folders, []);
+    assert.deepEqual(state.chats.map(chat => chat.id), [keptId]);
+    assert.deepEqual(await repo.read(root), state);
+    await assert.rejects(lstat(join(root, '.dope/chats/.leases', `${chatId}.json`)), { code: 'ENOENT' });
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
+test('folder color persists and new chats inherit it without changing existing chat colors', async () => {
+  const root = await folder(), repo = new ChatRepository(), first = id(), second = id();
+  try {
+    let state = await repo.mutate(root, 0, { type: 'create-folder', path: 'Planning' });
+    assert.equal(state.folders[0].color, 'blue');
+    state = await repo.mutate(root, state.revision, { type: 'set-folder-color', path: 'Planning', color: 'purple' });
+    state = await repo.mutate(root, state.revision, { type: 'create-chat', id: first, folderPath: 'Planning' });
+    assert.equal(state.chats[0].color, 'purple');
+    state = await repo.mutate(root, state.revision, { type: 'set-folder-color', path: 'Planning', color: 'green' });
+    state = await repo.mutate(root, state.revision, { type: 'create-chat', id: second, folderPath: 'Planning' });
+    assert.equal(state.chats.find(chat => chat.id === first)?.color, 'purple');
+    assert.equal(state.chats.find(chat => chat.id === second)?.color, 'green');
+    assert.equal((await new ChatRepository().read(root)).folders[0].color, 'green');
+    await assert.rejects(repo.mutate(root, state.revision,
+      { type: 'set-folder-color', path: 'Missing', color: 'red' }), /not found/);
+    await assert.rejects(repo.mutate(root, state.revision,
+      { type: 'set-folder-color', path: 'Planning', color: 'chartreuse' as never }), /color/);
+  } finally { await rm(root, { recursive: true, force: true }); }
+});
+
 test('nested folders and chats survive copy/reopen with stable ID, revisions and bounded search', async () => {
   const root = await folder(), copyRoot = await folder();
   const repo = new ChatRepository(), chatId = id(), messageId = id();
@@ -367,7 +441,7 @@ test('nested folders and chats survive copy/reopen with stable ID, revisions and
     let state = await repo.mutate(root, 0, { type: 'create-folder', path: 'Research' });
     state = await repo.mutate(root, state.revision, { type: 'create-folder', path: 'Research/Notes' });
     state = await repo.mutate(root, state.revision, { type: 'create-chat', id: chatId, folderPath: 'Research/Notes' });
-    assert.equal(state.chats[0].color, assignedChatColor(chatId));
+    assert.equal(state.chats[0].color, 'blue');
     const lease = await repo.claim(root, chatId, 'panel');
     if (!lease.acquired) throw new Error('claim failed');
     state = await repo.mutate(root, state.revision, { type: 'append-user', chatId,

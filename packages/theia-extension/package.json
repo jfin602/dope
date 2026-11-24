@@ -9,9 +9,12 @@
     "src"
   ],
   "scripts": {
-    "build": "tsc -p . && cp src/browser/dope.css lib/browser/dope.css"
+    "build": "tsc -p . && cp src/browser/dope.css src/browser/clipboard-history.css lib/browser/"
   },
   "theiaExtensions": [
+    {
+      "electronMain": "lib/electron-main/clipboard-main-module"
+    },
     {
       "frontend": "lib/browser/frontend-module",
       "backend": "lib/node/backend-module"

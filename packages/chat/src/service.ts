@@ -10,9 +10,13 @@ export const ChatService = Symbol('ChatService');
 export type ChatOperation =
     | { type: 'create-folder'; path: ChatFolderPath }
     | { type: 'move-folder'; path: ChatFolderPath; destination: ChatFolderPath }
+    | { type: 'place-folder'; path: ChatFolderPath; parentPath: ChatFolderPath; beforePath?: ChatFolderPath }
     | { type: 'rename-folder'; path: ChatFolderPath; name: string }
+    | { type: 'delete-folder'; path: ChatFolderPath; deleteChats?: boolean }
+    | { type: 'set-folder-color'; path: ChatFolderPath; color: ChatColor }
     | { type: 'create-chat'; id: ChatId; folderPath: ChatFolderPath; title?: string }
     | { type: 'move-chat'; chatId: ChatId; folderPath: ChatFolderPath }
+    | { type: 'place-chat'; chatId: ChatId; folderPath: ChatFolderPath; beforeChatId?: ChatId }
     | { type: 'rename-chat'; chatId: ChatId; title: string }
     | { type: 'delete-chat'; chatId: ChatId }
     | { type: 'automatic-title'; chatId: ChatId; title: string; firstUserMessageId: string; firstAssistantMessageId: string }

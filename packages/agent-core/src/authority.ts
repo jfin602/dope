@@ -1,4 +1,5 @@
 import { AGENT_SCHEMA_VERSION, bool, freeze, id, integer, modelKey, projectPath, record, select, timestamp } from './contracts';
+import { parseWorkToolSelection, type WorkToolSelection } from './work-tool-selection';
 
 export type EffectKind = 'workspace-read' | 'workspace-write' | 'workspace-process' | 'workspace-test' |
     'workspace-build' | 'project-create' | 'project-modify' | 'project-delete' | 'project-rename' |
@@ -15,6 +16,8 @@ export interface ExecutionGrant {
     permissions: Readonly<Record<EffectKind, boolean>>;
     /** Separately accepted, single-call external observation. Absent in the default 8B grant. */
     mcpObservation?: WorkMCPObservationScope;
+    /** Immutable per-run Pi exposure approval; absent on historical grants and hosted adapters. */
+    toolSelection?: WorkToolSelection;
 }
 export interface WorkMCPObservationScope {
     projectKey: string; serverId: string; registrationRevision: number; catalogRevision: number; toolName: string;
@@ -49,7 +52,7 @@ const defaults: Readonly<Record<EffectKind, boolean>> = freeze({
 /** The 8B profile is fixed; a later broader profile needs an explicit product decision. */
 export function parseExecutionGrant(value: unknown): ExecutionGrant {
     const x = record(value, ['version', 'id', 'revision', 'taskId', 'projectRoot',
-        'acceptedAt', 'acceptedBy', 'permissions', 'mcpObservation']);
+        'acceptedAt', 'acceptedBy', 'permissions', 'mcpObservation', 'toolSelection']);
     if (x.version !== AGENT_SCHEMA_VERSION || x.projectRoot !== '.' || x.acceptedBy !== 'developer')
         throw new Error('Invalid accepted execution grant');
     const permissions = record(x.permissions, EFFECT_KINDS);
@@ -60,6 +63,9 @@ export function parseExecutionGrant(value: unknown): ExecutionGrant {
         if (parsed[kind] !== defaults[kind]) throw new Error('Unsupported 8B grant permission');
     }
     const acceptedAt = timestamp(x.acceptedAt);
+    const toolSelection = x.toolSelection === undefined ? undefined : parseWorkToolSelection(x.toolSelection);
+    if (toolSelection && (toolSelection.taskId !== x.taskId || toolSelection.grantRevision !== x.revision))
+        throw new Error('Work tool selection does not match grant');
     let mcpObservation: WorkMCPObservationScope | undefined;
     if (x.mcpObservation !== undefined) {
         const scope = record(x.mcpObservation, ['projectKey', 'serverId', 'registrationRevision', 'catalogRevision',
@@ -83,10 +89,11 @@ export function parseExecutionGrant(value: unknown): ExecutionGrant {
     }
     return freeze({ version: AGENT_SCHEMA_VERSION, id: id(x.id), revision: integer(x.revision),
         taskId: id(x.taskId), projectRoot: '.', acceptedAt,
-        acceptedBy: 'developer', permissions: parsed, ...(mcpObservation ? { mcpObservation } : {}) });
+        acceptedBy: 'developer', permissions: parsed, ...(mcpObservation ? { mcpObservation } : {}),
+        ...(toolSelection ? { toolSelection } : {}) });
 }
 export function createDefaultExecutionGrant(input: { id: string; revision: number; taskId: string;
-    acceptedAt: string }): ExecutionGrant {
+    acceptedAt: string; toolSelection?: WorkToolSelection }): ExecutionGrant {
     return parseExecutionGrant({ version: AGENT_SCHEMA_VERSION, ...input, projectRoot: '.',
         acceptedBy: 'developer', permissions: defaults });
 }
@@ -98,7 +105,7 @@ export function reviseExecutionGrant(previous: ExecutionGrant, acceptedAt: strin
 }
 /** Called only after the developer accepts the named server/method in Work review. */
 export function createMCPObservationExecutionGrant(input: { id: string; revision: number; taskId: string;
-    acceptedAt: string; mcpObservation: WorkMCPObservationScope }): ExecutionGrant {
+    acceptedAt: string; mcpObservation: WorkMCPObservationScope; toolSelection?: WorkToolSelection }): ExecutionGrant {
     return parseExecutionGrant({ version: AGENT_SCHEMA_VERSION, ...input, projectRoot: '.',
         acceptedBy: 'developer', permissions: defaults });
 }

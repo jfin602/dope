@@ -1,5 +1,6 @@
 export * from './contracts';
 export * from './authority';
+export * from './work-tool-selection';
 export * from './proposed-action';
 export * from './steering';
 export * from './state';

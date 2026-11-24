@@ -16,6 +16,7 @@ let session;
 let isolatedDir;
 let workMode = false;
 let workProcessAvailable = true;
+let selectedWorkToolNames;
 let chatToolsMode = false;
 let mcpChatTools = [];
 let roadmapToolsMode = false;
@@ -269,6 +270,7 @@ const WORK_TOOLS = {
   run_command: { kind: Type.Union([Type.Literal('test'), Type.Literal('build')]), commandId: Type.String() },
   read_command_output: { handle: Type.String(), offset: Type.Integer(), maxBytes: Type.Integer() }
 };
+const WORK_CATALOG_REVISION = 1;
 const CHAT_TOOLS = {
   read_file: { path: Type.String(), offset: Type.Optional(Type.Integer()),
     maxBytes: Type.Optional(Type.Integer()), expectedSourceHash: Type.Optional(Type.String()) },
@@ -544,7 +546,7 @@ function chatTools() {
   }));
 }
 function workTools() {
-  return [...Object.entries(WORK_TOOLS).filter(([name]) => name !== 'run_command' || workProcessAvailable),
+  return [...Object.entries(WORK_TOOLS).filter(([name]) => selectedWorkToolNames.includes(name)),
     ...mcpChatTools.map(tool => [tool.name, {}])].map(([name, properties]) => ({
     name, label: name, description: mcpChatTools.find(tool => tool.name === name)?.description ?? (name === 'read_file' ?
       'Read an authorized candidate file. On the FIRST read of each file, send path and offset 0; OMIT expectedSourceHash entirely. The reply supplies sourceHash and nextOffset. Only for later pages, send that exact returned sourceHash as expectedSourceHash with nextOffset. A task, Git or candidate hash is NOT a file sourceHash. Path-only reads retain the legacy sanitized prefix.' :
@@ -681,6 +683,12 @@ export async function dispatch(message) {
       if (message.workProcessAvailable !== undefined &&
           (message.mode !== 'work' || typeof message.workProcessAvailable !== 'boolean'))
         throw new Error('Invalid Pi Work process availability');
+      if (message.workToolNames !== undefined && (message.mode !== 'work' ||
+          !Array.isArray(message.workToolNames) || new Set(message.workToolNames).size !== message.workToolNames.length ||
+          message.workToolNames.some(name => !Object.hasOwn(WORK_TOOLS, name) ||
+            !message.workProcessAvailable && ['run_command', 'read_command_output'].includes(name)) ||
+          message.workToolNames.includes('read_command_output') && !message.workToolNames.includes('run_command')))
+        throw new Error('Invalid Pi Work tool selection');
       if (typeof message.cwd !== 'string' || !message.cwd.startsWith('/'))
         throw new Error('Explicit absolute Pi working directory required');
       isolatedDir = await mkdtemp(join(tmpdir(), 'dope-pi-'));
@@ -703,6 +711,8 @@ export async function dispatch(message) {
         });
         workMode = message.mode === 'work';
         workProcessAvailable = message.workProcessAvailable !== false;
+        selectedWorkToolNames = message.workToolNames ?? Object.keys(WORK_TOOLS).filter(name =>
+          workProcessAvailable || !['run_command', 'read_command_output'].includes(name));
         chatToolsMode = message.mode === 'chat-tools';
         roadmapToolsMode = chatToolsMode && message.roadmapTools === true;
         roadmapGenerationMode = chatToolsMode && message.roadmapGeneration === true && !roadmapToolsMode;
@@ -745,8 +755,7 @@ export async function dispatch(message) {
             reserveTokens: Math.min(8192, Math.floor(message.model.contextWindow / 4)),
             keepRecentTokens: Math.min(4096, Math.floor(message.model.contextWindow / 8)) },
             retry: { enabled: false } }),
-          resourceLoader: emptyResources, tools: workMode ? Object.keys(WORK_TOOLS).filter(name =>
-            name !== 'run_command' || workProcessAvailable).concat(mcpChatTools.map(tool => tool.name)) :
+          resourceLoader: emptyResources, tools: workMode ? selectedWorkToolNames.concat(mcpChatTools.map(tool => tool.name)) :
             chatToolsMode ? chatToolNames : [],
           noTools: 'all', customTools: workMode ? workTools() : chatToolsMode ? chatTools() : [],
           scopedModels: [{ model: message.model }]
@@ -754,11 +763,10 @@ export async function dispatch(message) {
         session = result.session;
         sessionConsumed = false;
         const tools = session.getActiveToolNames();
-        if (JSON.stringify(tools.slice().sort()) !== JSON.stringify((workMode ? Object.keys(WORK_TOOLS).filter(name =>
-          name !== 'run_command' || workProcessAvailable).concat(mcpChatTools.map(tool => tool.name)) :
+        if (JSON.stringify(tools.slice().sort()) !== JSON.stringify((workMode ? selectedWorkToolNames.concat(mcpChatTools.map(tool => tool.name)) :
           chatToolsMode ? chatToolNames : []).sort()))
           throw new Error('Pi opened with unexpected tools');
-        return { version, tools, resources: 'isolated' };
+        return { version, tools, resources: 'isolated', ...(workMode ? { workCatalogRevision: WORK_CATALOG_REVISION } : {}) };
       } catch (error) {
         await dispose();
         throw error;

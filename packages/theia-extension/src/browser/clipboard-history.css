@@ -1,0 +1,15 @@
+.dope-clipboard-history { color: var(--theia-foreground); background: var(--theia-editor-background); padding: 8px; min-width: 0; }
+.dope-clipboard-history input, .dope-clipboard-history button { color: var(--theia-foreground); background: var(--theia-input-background); border: 1px solid var(--theia-input-border); border-radius: 4px; }
+.dope-clipboard-history input[type=search] { box-sizing: border-box; width: 100%; padding: 6px; }
+.dope-clipboard-toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 8px 0; }
+.dope-clipboard-toolbar button, .dope-clipboard-actions button { padding: 3px 7px; cursor: pointer; }
+.dope-clipboard-toolbar input[type=number] { width: 48px; }
+.dope-clipboard-list { overflow: auto; max-height: calc(100% - 100px); }
+.dope-clipboard-entry { border-top: 1px solid var(--theia-panel-border); padding: 7px 0; min-width: 0; }
+.dope-clipboard-meta { display: flex; gap: 10px; font-size: 11px; color: var(--theia-descriptionForeground); }
+.dope-clipboard-preview pre { margin: 5px 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+.dope-clipboard-clamped { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.dope-clipboard-preview img { display: block; max-width: min(100%, 180px); max-height: 100px; object-fit: contain; }
+.dope-clipboard-actions { display: flex; flex-wrap: wrap; gap: 4px; }
+.dope-clipboard-entry:hover { background: var(--theia-list-hoverBackground); cursor: pointer; }
+.dope-clipboard-entry:focus-visible, .dope-clipboard-history button:focus-visible { outline: 2px solid var(--theia-focusBorder); outline-offset: -2px; }

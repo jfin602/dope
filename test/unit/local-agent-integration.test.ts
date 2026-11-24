@@ -56,8 +56,9 @@ test('synthetic Local probe gates exact routing; real broker edit reaches Dope v
             }
             if (!messages.some(message => message.role === 'tool')) {
                 toolCalls++;
+                const path = toolCalls === 1 ? 'local-p13.txt' : 'local-p13-second.txt';
                 return { kind: 'tools', calls: [{ id: 'edit-one', name: 'edit', arguments: {
-                    operation: 'create', path: 'local-p13.txt', content: 'changed\n'
+                    operation: 'create', path, content: 'changed\n'
                 } }] };
             }
             assert.equal(JSON.parse(messages.at(-1)!.content).status, 'completed');
@@ -126,6 +127,26 @@ test('synthetic Local probe gates exact routing; real broker edit reaches Dope v
                 done.candidateReview!.candidateFingerprint, 'accept', grant);
             assert.deepEqual(accepted.appliedFiles, ['local-p13.txt']);
             assert.equal(await readFile(join(root, 'local-p13.txt'), 'utf8'), 'changed\n');
+            const nextId = 'local-p13-second';
+            await backend.createTask(handle, { version: 1, id: nextId, createdAt: new Date(Date.now() - 1000).toISOString(),
+                objective: 'Create another file', instructions: 'Write a second file', projectRoot: '.',
+                modelPolicy: { kind: 'follow-coding-agent' }, controls: {},
+                authority: { profile: 'phase-8b-project' }, origin: { kind: 'direct' },
+                reviewPolicy: { kind: 'required' }, completion: { validation: [], requireValidationPass: false } } as any);
+            const nextGrant = createDefaultExecutionGrant({ id: 'accepted-next', revision: 0, taskId: nextId,
+                acceptedAt: new Date().toISOString() });
+            const dirty = await backend.previewWorktree(handle);
+            assert.deepEqual(dirty.paths, ['local-p13.txt']);
+            await assert.rejects(backend.start(handle, uri, nextId, nextGrant, false), /Review changed/);
+            const next = await backend.start(handle, uri, nextId, nextGrant, false, dirty.fingerprint);
+            const nextDone = await runtime.waitForRun(root, next.id);
+            assert.equal(nextDone.status, 'blocked', JSON.stringify(nextDone.outcome));
+            assert.deepEqual(nextDone.candidateReview?.validation, []);
+            const nextAccepted = await backend.decideCandidate(handle, next.id,
+                nextDone.candidateReview!.revision, nextDone.candidateReview!.candidateFingerprint, 'accept', nextGrant);
+            assert.deepEqual(nextAccepted.appliedFiles, ['local-p13-second.txt']);
+            assert.equal(await readFile(join(root, 'local-p13.txt'), 'utf8'), 'changed\n');
+            assert.equal(await readFile(join(root, 'local-p13-second.txt'), 'utf8'), 'changed\n');
             await runtime.reconcile(root);
             assert.equal((await new AgentStore().readRun(root, started.id))?.status, 'completed');
             await store.createRun(root, { version: 1, id: 'abandoned-before-start', taskId,

@@ -80,6 +80,10 @@ export class AICenterContribution implements CommandContribution, MenuContributi
         return this.openForChat(chatPanelId);
     }
 
+    async openFromWork(workPanelId: string): Promise<AICenterWidget> {
+        return this.openForChat(workPanelId, 'Return to Work');
+    }
+
     async openFromSoftwareMap(): Promise<AICenterWidget> {
         return this.openForChat('dope-software-map', 'Return to synthesis setup');
     }

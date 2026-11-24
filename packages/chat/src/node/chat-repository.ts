@@ -583,18 +583,73 @@ export class ChatRepository {
             }
             const now = new Date().toISOString();
             let folders = [...current.folders], chats = [...current.chats];
+            const deletedChatIds: string[] = [];
             const index = 'chatId' in operation ? chats.findIndex(c => c.id === operation.chatId) : -1;
             const update = (edit: (chat: Chat) => Chat): void => {
                 if (index < 0) throw new Error('Chat not found');
                 const original = chats[index];
                 chats[index] = parseChat({ ...edit(original), revision: original.revision + 1, updatedAt: now });
             };
+            const parentOf = (path: string): string => path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
+            const orderedFolders = (parent: string): ChatFolder[] => folders.filter(folder => parentOf(folder.path) === parent)
+                .sort((a, b) => a.position === undefined && b.position === undefined ? a.path.localeCompare(b.path) :
+                    (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER) || a.path.localeCompare(b.path));
+            const orderedChats = (parent: string): Chat[] => chats.filter(chat => chat.folderPath === parent)
+                .sort((a, b) => a.position === undefined && b.position === undefined ? compareChatsByInteraction(a, b) :
+                    (a.position ?? Number.MAX_SAFE_INTEGER) - (b.position ?? Number.MAX_SAFE_INTEGER) || compareChatsByInteraction(a, b));
             switch (operation.type) {
                 case 'create-folder': {
                     const path = parseChatFolderPath(operation.path);
                     if (!path || folders.some(f => f.path === path) ||
                         (path.includes('/') && !folders.some(f => f.path === path.slice(0, path.lastIndexOf('/'))))) throw new Error('Invalid or duplicate Chat folder');
-                    folders.push({ schemaVersion: 1, path, createdAt: now }); break;
+                    const parent = path.includes('/') ? path.slice(0, path.lastIndexOf('/')) : '';
+                    folders.push({ schemaVersion: 1, path, createdAt: now,
+                        ...(folders.some(folder => parentOf(folder.path) === parent && folder.position !== undefined) ?
+                            { position: Math.max(-1, ...orderedFolders(parent).map(folder => folder.position ?? -1)) + 1 } : {}),
+                        color: folders.find(folder => folder.path === parent)?.color ?? 'blue' }); break;
+                }
+                case 'place-folder': {
+                    const source = parseChatFolderPath(operation.path);
+                    const parent = parseChatFolderPath(operation.parentPath);
+                    if (!source || !folders.some(folder => folder.path === source) ||
+                        parent && !folders.some(folder => folder.path === parent)) throw new Error('Chat folder not found');
+                    if (isChatFolderWithin(parent, source)) throw new Error('Cannot move folder into itself');
+                    const target = joinChatFolderPath(parent, source.split('/').at(-1)!);
+                    if (target !== source && folders.some(folder => folder.path === target)) throw new Error('Destination Chat folder exists');
+                    const before = operation.beforePath === undefined ? undefined : parseChatFolderPath(operation.beforePath);
+                    if (before && (before === source || parentOf(before) !== parent || !folders.some(folder => folder.path === before)))
+                        throw new Error('Invalid folder drop target');
+                    const siblings = orderedFolders(parent).filter(folder => folder.path !== source);
+                    const insert = before === undefined ? siblings.length : siblings.findIndex(folder => folder.path === before);
+                    if (insert < 0) throw new Error('Invalid folder drop target');
+                    const remap = (path: string) => isChatFolderWithin(path, source) ? target + path.slice(source.length) : path;
+                    folders = folders.map(folder => ({ ...folder, path: remap(folder.path) }));
+                    chats = chats.map(chat => isChatFolderWithin(chat.folderPath, source) ? parseChat({ ...chat,
+                        folderPath: remap(chat.folderPath), revision: chat.revision + 1, updatedAt: now }) : chat);
+                    const paths = siblings.map(folder => folder.path);
+                    paths.splice(insert, 0, target);
+                    folders = folders.map(folder => parentOf(folder.path) === parent ? { ...folder, position: paths.indexOf(folder.path) } : folder);
+                    break;
+                }
+                case 'set-folder-color': {
+                    const path = parseChatFolderPath(operation.path);
+                    const index = folders.findIndex(folder => folder.path === path);
+                    if (index < 0) throw new Error('Chat folder not found');
+                    folders[index] = { ...folders[index], color: parseChatColor(operation.color) };
+                    break;
+                }
+                case 'delete-folder': {
+                    const path = parseChatFolderPath(operation.path);
+                    if (!path || !folders.some(folder => folder.path === path)) throw new Error('Chat folder not found');
+                    const contained = chats.filter(chat => isChatFolderWithin(chat.folderPath, path));
+                    if (contained.length && !operation.deleteChats) throw new Error('Deleting a nonempty Chat folder requires confirmation');
+                    for (const chat of contained) {
+                        if (this.active(await this.lease(base, chat.id))) throw new Error('Cannot delete an open Chat');
+                        deletedChatIds.push(chat.id);
+                    }
+                    folders = folders.filter(folder => !isChatFolderWithin(folder.path, path));
+                    chats = chats.filter(chat => !isChatFolderWithin(chat.folderPath, path));
+                    break;
                 }
                 case 'move-folder':
                 case 'rename-folder': {
@@ -616,15 +671,38 @@ export class ChatRepository {
                     uuid(operation.id); parseChatFolderPath(operation.folderPath);
                     if (chats.some(c => c.id === operation.id)) throw new Error('Chat already exists');
                     chats.push(parseChat({ schemaVersion: 1, id: operation.id, revision: 0, folderPath: operation.folderPath,
+                        ...(chats.some(chat => chat.folderPath === operation.folderPath && chat.position !== undefined) ?
+                            { position: Math.max(-1, ...orderedChats(operation.folderPath).map(chat => chat.position ?? -1)) + 1 } : {}),
                         title: operation.title?.trim() || 'New Chat', titleSource: operation.title ? 'developer' : 'placeholder',
-                        color: assignedChatColor(operation.id), createdAt: now, updatedAt: now, lastInteractedAt: now,
+                        color: operation.folderPath ? folders.find(folder => folder.path === operation.folderPath)?.color ?? 'blue' :
+                            assignedChatColor(operation.id), createdAt: now, updatedAt: now, lastInteractedAt: now,
                         settings: DEFAULT_SETTINGS, messages: [] })); break;
                 }
                 case 'move-chat': update(c => ({ ...c, folderPath: parseChatFolderPath(operation.folderPath) })); break;
+                case 'place-chat': {
+                    if (index < 0) throw new Error('Chat not found');
+                    const parent = parseChatFolderPath(operation.folderPath);
+                    if (parent && !folders.some(folder => folder.path === parent)) throw new Error('Chat folder not found');
+                    const before = operation.beforeChatId;
+                    if (before && (before === operation.chatId || !chats.some(chat => chat.id === before && chat.folderPath === parent)))
+                        throw new Error('Invalid Chat drop target');
+                    const siblings = orderedChats(parent).filter(chat => chat.id !== operation.chatId);
+                    const insert = before === undefined ? siblings.length : siblings.findIndex(chat => chat.id === before);
+                    if (insert < 0) throw new Error('Invalid Chat drop target');
+                    const ids = siblings.map(chat => chat.id);
+                    ids.splice(insert, 0, operation.chatId);
+                    chats = chats.map(chat => {
+                        const position = ids.indexOf(chat.id);
+                        if (position < 0 || chat.position === position && chat.folderPath === parent) return chat;
+                        return parseChat({ ...chat, folderPath: parent, position, revision: chat.revision + 1, updatedAt: now });
+                    });
+                    break;
+                }
                 case 'rename-chat': update(c => ({ ...c, title: operation.title.trim(), titleSource: 'developer' })); break;
                 case 'delete-chat': {
                     if (index < 0) throw new Error('Chat not found');
                     chats.splice(index, 1);
+                    deletedChatIds.push(operation.chatId);
                     break;
                 }
                 case 'automatic-title': {
@@ -846,12 +924,12 @@ export class ChatRepository {
             }
             const next = parseChatCollection({ schemaVersion: 1, revision: current.revision + 1, folders, chats });
             await this.write(root, next);
-            if (operation.type === 'delete-chat') {
-                const leaseFile = join(base, '.leases', `${operation.chatId}.json`);
+            for (const chatId of deletedChatIds) {
+                const leaseFile = join(base, '.leases', `${chatId}.json`);
                 if (await regular(leaseFile)) await rm(leaseFile);
                 const staging = join(base, '.proposal-staging');
                 if (await directory(staging)) for (const name of await readdir(staging)) {
-                    if (!name.startsWith(`${operation.chatId}.`) || !name.endsWith('.json')) continue;
+                    if (!name.startsWith(`${chatId}.`) || !name.endsWith('.json')) continue;
                     const file = join(staging, name);
                     if (await regular(file)) await rm(file);
                 }

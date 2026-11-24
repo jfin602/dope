@@ -1,5 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { readdir } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { constants } from 'node:fs';
+import { open, readdir } from 'node:fs/promises';
+import { join } from 'node:path';
+import { promisify } from 'node:util';
 import { AGENT_SCHEMA_VERSION, decideProposedAction, parseAgentTask, parseExecutionGrant, projectPath,
     phaseStackFolder, phaseStackTaskMetadata, sequenceNeedsDirtyAcceptance, importPhaseStack } from '@dope/agent-core';
 import type { AgentModelPolicy, AgentRun, AgentTask, AgentTaskSequence, ProposedAction, CompletionPolicy,
@@ -9,7 +13,7 @@ import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import { captureSequenceEvidence, checkedTasksRoot, snapshotTaskStack, readStackSources,
     TaskStackSnapshotError, sequenceBlockReason, stackSourceDrift, verifyManualGate } from '@dope/agent-core/lib/node/sequence-reconciliation';
 import type { ManualGateReconciliation } from '@dope/agent-core/lib/node/sequence-reconciliation';
-import { assertDirtyBasis, captureDirtyBasis, safeGit } from '@dope/agent-core/lib/node/dirty-basis';
+import { agentState, assertDirtyBasis, captureDirtyBasis, safeGit } from '@dope/agent-core/lib/node/dirty-basis';
 import { checkpointSequence as commitCheckpoint, verifyCommittedCheckpoint } from '@dope/agent-core/lib/node/sequence-checkpoint';
 import type { AgentRuntimeClient, AgentRuntimeService, DiscoveredTaskStack, OpenTaskStackResult } from '@dope/contracts/lib/agent-runtime-service';
 import type { WorkItemLaunchRequest } from '@dope/contracts/lib/agent-runtime-service';
@@ -20,6 +24,9 @@ import type { WorkMCPObservationAuthority } from './mcp-work-observation';
 // Shared by RPC backend instances in this process; persisted HEAD/checkpoint evidence owns restart safety.
 const checkpointProjects = new Set<string>();
 const openingTaskStacks = new Map<string, Promise<OpenTaskStackResult>>();
+const executeGit = promisify(execFile);
+const dirtyFingerprint = (basis: Awaited<ReturnType<typeof captureDirtyBasis>>) =>
+    createHash('sha256').update(JSON.stringify(basis)).digest('hex');
 
 /** One RPC connection attaches one canonical project root. The handle never enters durable state. */
 export class AgentRuntimeBackend implements AgentRuntimeService {
@@ -97,6 +104,58 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
     createTask(handle: string, task: AgentTask): Promise<AgentTask> {
         if (task.origin.kind === 'work-item') throw new Error('WorkItem tasks require revision-checked launch');
         return this.store.createTask(this.active(handle), task);
+    }
+    async previewWorktree(handle: string) {
+        const basis = await captureDirtyBasis(this.active(handle));
+        return { clean: basis.paths.length === 0, fingerprint: dirtyFingerprint(basis),
+            paths: basis.paths.map(item => item.path) };
+    }
+    async commitWorktree(handle: string, fingerprint: string, message: string): Promise<void> {
+        const root = this.active(handle);
+        if (checkpointProjects.has(root) || this.execution?.activeRunId(root))
+            throw new Error('Project execution or checkpoint is active');
+        const subject = message.trim();
+        if (!subject || subject.length > 120 || /[\r\n\x00-\x1f]/u.test(subject))
+            throw new Error('Enter a one-line commit message');
+        const basis = await captureDirtyBasis(root);
+        if (!basis.paths.length || dirtyFingerprint(basis) !== fingerprint)
+            throw new Error('Project changes changed; review them again');
+        if (await safeGit(root, ['diff', '--cached', '--name-only', '-z']))
+            throw new Error('Staged changes need separate review');
+        const paths = basis.paths.map(item => item.path);
+        const originalHead = basis.head;
+        if (checkpointProjects.has(root)) throw new Error('Project checkpoint in progress');
+        checkpointProjects.add(root);
+        try {
+            await safeGit(root, ['add', '-A', '--', ...paths]);
+            const staged = (await safeGit(root, ['diff', '--cached', '--name-only', '-z'])).split('\0').filter(Boolean).sort();
+            const unstaged = (await safeGit(root, ['diff', '--name-only', '-z'])).split('\0').filter(Boolean);
+            const untracked = (await safeGit(root, ['ls-files', '--others', '--exclude-standard', '-z'])).split('\0').filter(Boolean);
+            if (JSON.stringify(staged) !== JSON.stringify(paths.slice().sort()) || unstaged.length ||
+                untracked.some(path => !agentState(path)) ||
+                (await safeGit(root, ['rev-parse', 'HEAD'])).trim() !== originalHead)
+                throw new Error('Project changed while preparing the commit');
+            for (const entry of basis.paths) {
+                if (entry.code === ' D') continue;
+                const file = await open(join(root, entry.path), constants.O_RDONLY | constants.O_NOFOLLOW);
+                try {
+                    const info = await file.stat();
+                    if (!info.isFile() || info.size !== entry.size || (info.mode & 0o777) !== entry.mode ||
+                        createHash('sha256').update(await file.readFile()).digest('hex') !== entry.hash)
+                        throw new Error('Project file changed while preparing the commit');
+                } finally { await file.close(); }
+            }
+            const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith('GIT_')));
+            await executeGit('git', ['commit', '-m', subject], { cwd: root, env,
+                timeout: 30_000, maxBuffer: 2 * 1024 * 1024 });
+            if ((await safeGit(root, ['rev-parse', 'HEAD'])).trim() === originalHead ||
+                (await captureDirtyBasis(root)).paths.length)
+                throw new Error('Commit did not leave the project ready');
+        } catch (error) {
+            if ((await safeGit(root, ['rev-parse', 'HEAD'])).trim() === originalHead)
+                await safeGit(root, ['reset', '--mixed', '--', ...paths]).catch(() => undefined);
+            throw error;
+        } finally { checkpointProjects.delete(root); }
     }
     async launchWorkItem(handle: string, request: WorkItemLaunchRequest): Promise<AgentTask> {
         const root = this.active(handle);
@@ -626,12 +685,18 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
     readTranscript(handle: string, runId: string, afterSequence: number, limit: number) {
         return this.store.readTranscript(this.active(handle), runId, afterSequence, limit);
     }
-    start(handle: string, folderUri: string, taskId: string, grant: ExecutionGrant,
-        hostedProjectDataAuthorized: boolean): Promise<AgentRun> {
+    async start(handle: string, folderUri: string, taskId: string, grant: ExecutionGrant,
+        hostedProjectDataAuthorized: boolean, acceptedDirtyFingerprint?: string): Promise<AgentRun> {
         if (!this.execution) throw new Error('Agent execution unavailable');
         const root = this.active(handle);
         if (checkpointProjects.has(root)) throw new Error('Project checkpoint in progress');
-        return this.execution.start(root, folderUri, taskId, grant, hostedProjectDataAuthorized);
+        const dirty = await captureDirtyBasis(root);
+        if (dirty.paths.length && dirtyFingerprint(dirty) !== acceptedDirtyFingerprint)
+            throw new Error('Review changed project files before starting Work');
+        if (!dirty.paths.length && acceptedDirtyFingerprint)
+            throw new Error('Project changed since Work review');
+        return this.execution.start(root, folderUri, taskId, grant, hostedProjectDataAuthorized,
+            dirty.paths.length ? dirty : undefined);
     }
     stop(handle: string, runId: string): Promise<AgentRun> {
         if (!this.execution) throw new Error('Agent execution unavailable');

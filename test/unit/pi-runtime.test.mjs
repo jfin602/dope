@@ -1724,7 +1724,25 @@ test('Pi Work without approved process commands does not offer run_command', asy
     const opened = await dispatch({ type: 'open', mode: 'work', cwd, model,
       workProcessAvailable: false });
     assert.deepEqual(opened.tools.slice().sort(),
-      ['edit_file', 'list_files', 'read_command_output', 'read_file']);
+      ['edit_file', 'list_files', 'read_file']);
+  } finally {
+    await dispatch({ type: 'close' });
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('Pi Work registers only selected tools and rejects stale or dependent choices', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-work-selection-'));
+  try {
+    const opened = await dispatch({ type: 'open', mode: 'work', cwd, model,
+      workToolNames: ['read_file', 'list_files'] });
+    assert.deepEqual(opened.tools.slice().sort(), ['list_files', 'read_file']);
+    assert.equal(opened.workCatalogRevision, 1);
+    await dispatch({ type: 'close' });
+    await assert.rejects(dispatch({ type: 'open', mode: 'work', cwd, model,
+      workToolNames: ['future_tool'] }), /Invalid Pi Work tool selection/);
+    await assert.rejects(dispatch({ type: 'open', mode: 'work', cwd, model,
+      workToolNames: ['read_command_output'] }), /Invalid Pi Work tool selection/);
   } finally {
     await dispatch({ type: 'close' });
     await rm(cwd, { recursive: true, force: true });

@@ -19,6 +19,7 @@ import { verifyRecoveryReads } from './work-recovery';
 import type { DocumentRead } from './work-document-routing';
 import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
+import { parseWorkToolSelection } from '@dope/agent-core/lib/work-tool-selection';
 
 const expectedTools = ['edit_file', 'list_files', 'run_command', 'read_file', 'read_command_output'];
 const workToolNames = { read_file: 'read', list_files: 'list', edit_file: 'edit',
@@ -129,6 +130,12 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
         if (this.disposed || request.reasoningEffort || !request.prompt?.trim() ||
             request.connectionId !== request.registrationId) throw new Error('Invalid Pi Work request');
         const grant = parseExecutionGrant(request.grant);
+        if (!grant.toolSelection) throw new Error('Local Pi Work requires a reviewed tool selection');
+        const selectedTools = parseWorkToolSelection(grant.toolSelection).tools.map(tool => tool.id);
+        if (grant.toolSelection && (grant.toolSelection.taskId !== request.taskId ||
+            grant.toolSelection.connectionId !== request.connectionId ||
+            grant.toolSelection.modelId !== request.modelId))
+            throw new Error('Work tool selection binding changed');
         if (grant.taskId !== request.taskId || grant.acceptedAt > new Date().toISOString())
             throw new Error('Pi Work grant unavailable');
         const workspace = this.workspace(request);
@@ -140,6 +147,8 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
         const initialFingerprint = await workspace.fingerprint();
         if (!(await preflightLocalToolSandbox()).available) throw new Error('Local OS sandbox unavailable');
         const commands = this.commands(request);
+        if (!commands.length && selectedTools.some(name => name === 'run_command' || name === 'read_command_output'))
+            throw new Error('Approved Work command tools are no longer available');
         const broker = localWorkspaceBroker(request, workspace, commands);
         const agents = new WorkAgentsRouting(request, broker);
         let documents: WorkDocumentRouting | undefined;
@@ -176,7 +185,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
             const binding = await this.bridge.bind({ connectionId: request.connectionId,
                 modelId: request.modelId, registryRevision: request.selectedRegistryRevision,
                 loadedContextTokens: request.selectedLoadedContextTokens }, host, workspace.root,
-                { tools: true, workProcessAvailable: commands.length > 0,
+                { tools: true, workProcessAvailable: commands.length > 0, workToolNames: selectedTools,
                     ...(mcpObservation ? { mcpTools: mcpObservation.descriptors } : {}) });
             endpoint = binding.endpoint;
             boundRegistryRevision = binding.registryRevision;
@@ -268,6 +277,11 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                         throw new Error('Invalid Pi Work tool event');
                     seenTools.add(raw.id);
                     if (!expectedTools.includes(raw.name) && !isMCP) throw new Error('Unsupported Pi Work tool');
+                    if (!isMCP && grant.toolSelection &&
+                        !parseWorkToolSelection(request.grant.toolSelection).tools.some(tool => tool.id === raw.name))
+                        throw new Error('Work tool approval changed');
+                    if (!isMCP && !selectedTools.some(name => name === raw.name))
+                        throw new Error('Work tool was not selected for this run');
                     if (isMCP) {
                         if (!scope || !this.mcp || !mcpObservation || !request.runId || mcpCallsUsed !== 0 ||
                             !raw.arguments || typeof raw.arguments !== 'object' || Array.isArray(raw.arguments) ||

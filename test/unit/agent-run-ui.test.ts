@@ -27,15 +27,20 @@ function harness() {
     let run: AgentRun | undefined; let task: unknown; let grant: unknown; let authorized: unknown; let stopped = false;
     let gate: any; let reconciliations = 0; let mcpOffer: any;
     let pendingMCP: any[] = []; const mcpDecisions: unknown[][] = [];
+    let worktree = { clean: true, fingerprint: 'clean', paths: [] as string[] };
+    let acceptedDirty: unknown; let commits = 0;
     const runtime = { async attach() { return { projectHandle: 'handle' }; },
+        async previewWorktree() { return worktree; },
+        async commitWorktree(_handle: string, fingerprint: string) {
+            assert.equal(fingerprint, worktree.fingerprint); commits++; worktree = { clean: true, fingerprint: 'clean', paths: [] }; },
         async workMCPObservationOffer() { return mcpOffer; },
         async pendingWorkMCPObservations() { return pendingMCP; },
         async decideWorkMCPObservation(...args: unknown[]) { mcpDecisions.push(args); pendingMCP = []; },
         async listRuns() { return run ? [run] : []; }, async listSequences() { return gate ? [gate] : []; },
         async reconcileManualGate() { reconciliations++; return gate; }, async readRun() { return run; },
         async readTask() { return task; }, async createTask(_handle: string, value: unknown) { task = value; return value; },
-        async start(_handle: string, _uri: string, taskId: string, accepted: unknown, hosted: boolean) {
-            grant = accepted; authorized = hosted;
+        async start(_handle: string, _uri: string, taskId: string, accepted: unknown, hosted: boolean, dirty?: string) {
+            grant = accepted; authorized = hosted; acceptedDirty = dirty;
             run = { version: 1, id: 'run', taskId, status: 'running', grantId: 'grant', grantRevision: 1,
                 requestedPolicy: { kind: 'follow-coding-agent' }, projectRoot: '.', createdAt: now,
                 changedFiles: [], validationResults: [] }; return run;
@@ -46,6 +51,8 @@ function harness() {
         { list: async () => policy } as unknown as AIRolePolicyService, () => {});
     return { controller, runtime, inventory, policy, get task() { return task; }, get grant() { return grant; },
         get authorized() { return authorized; }, get stopped() { return stopped; },
+        get acceptedDirty() { return acceptedDirty; }, get commits() { return commits; },
+        setWorktree(value: { clean: boolean; fingerprint: string; paths: string[] }) { worktree = value; },
         get reconciliations() { return reconciliations; }, setGate(value: unknown) { gate = value; },
         setMCPOffer(value: unknown) { mcpOffer = value; }, setPendingMCP(value: unknown[]) { pendingMCP = value; },
         get mcpDecisions() { return mcpDecisions; },
@@ -65,8 +72,12 @@ test('direct task displays eligible target and requires explicit grant before st
     h.controller.setPolicy({ kind: 'follow-coding-agent' }); await h.controller.resolveTarget();
     h.controller.edit('Objective', 'Instructions'); assert.equal(h.controller.canStart, false);
     h.controller.acceptGrant(true); assert.equal(h.controller.canStart, false);
-    h.controller.authorizeHostedProjectData(true); assert.equal(h.controller.canStart, false);
-    await h.controller.start(); assert.equal(h.task, undefined);
+    h.controller.authorizeHostedProjectData(true); assert.equal(h.controller.canStart, true);
+    await h.controller.start(); assert.equal((h.task as { completion: { validation: unknown[] } }).completion.validation.length, 0);
+    h.finish('completed');
+    await h.controller.attach('file:///project');
+    h.controller.edit('Objective', 'Instructions');
+    h.controller.authorizeHostedProjectData(true);
     h.controller.setValidation('npm test'); h.controller.acceptGrant(true);
     assert.equal(h.controller.canStart, true);
     await h.controller.start(); assert.equal((h.task as { origin: { kind: string } }).origin.kind, 'direct');
@@ -88,6 +99,30 @@ test('direct task keeps validation bounded and requires a fresh grant after edit
     assert.deepEqual((h.task as { completion: unknown }).completion, { validation: [
         { kind: 'test', label: 'Required validation', command: 'npm test' }], requireValidationPass: true });
     assert.deepEqual((h.task as { reviewPolicy: unknown }).reviewPolicy, { kind: 'required' });
+});
+
+test('dirty Direct Work waits for an explicit continue or commit choice', async () => {
+    const h = harness(); await h.controller.attach('file:///project');
+    h.controller.edit('Inspect', 'Inspect this project');
+    h.controller.acceptGrant(true);
+    h.controller.authorizeHostedProjectData(true);
+    h.setWorktree({ clean: false, fingerprint: 'snapshot-1', paths: ['src/a.ts'] });
+    await h.controller.start();
+    assert.equal(h.task, undefined);
+    assert.deepEqual(h.controller.worktreeReview?.paths, ['src/a.ts']);
+    await h.controller.start(true);
+    assert.equal(h.acceptedDirty, 'snapshot-1');
+
+    const committed = harness(); await committed.controller.attach('file:///project');
+    committed.controller.edit('Inspect', 'Inspect this project');
+    committed.controller.acceptGrant(true);
+    committed.controller.authorizeHostedProjectData(true);
+    committed.setWorktree({ clean: false, fingerprint: 'snapshot-2', paths: ['src/b.ts'] });
+    await committed.controller.start();
+    await committed.controller.commitWorktree();
+    assert.equal(committed.commits, 1);
+    assert.equal(committed.acceptedDirty, undefined);
+    assert.equal(committed.controller.selected?.status, 'running');
 });
 
 test('Resume requests backend gate reconciliation and restart keeps the same pending prompt', async () => {
@@ -128,7 +163,7 @@ test('Work uses the direct authority controller and aliases without a standalone
         'chat-panel-widget.ts', 'agent-run-controller.ts', 'frontend-module.ts'
     ].map(name => readFile(new URL(name, base), 'utf8')));
     assert.match(module, /id: 'dope\.agentRun\.open'/); assert.doesNotMatch(module, /AgentRunWidget/);
-    for (const label of ['Work instructions', 'Coding Agent model', 'Accept project execution grant', 'Stop Work'])
+    for (const label of ['Work instructions', 'Coding Agent model', 'Tools for this Work', 'Stop Work'])
         assert.ok(widget.includes(label));
     for (const label of ['Candidate diff', 'Accept candidate', 'Reject candidate', 'Changed paths:'])
         assert.ok(widget.includes(label));
@@ -178,7 +213,7 @@ test('Work candidate review preserves held evidence and submits only a fresh exp
     assert.equal(workReviewState({ ...run, reviewDecision: { kind: 'reject' } } as AgentRun, task as any), 'rejected');
     assert.equal(workReviewState(run as AgentRun, { ...task, origin: { kind: 'direct' } } as any), 'pending');
     assert.equal(workReviewCanAccept({ ...run, reviewDecision: undefined } as AgentRun,
-        { ...task, completion: { validation: [] } } as any), false);
+        { ...task, completion: { validation: [], requireValidationPass: false } } as any), true);
     run = { ...run, status: 'blocked', reviewDecision: undefined,
         candidateReview: { ...run.candidateReview, revision: 0 } } as any;
     await controller.select({ kind: 'run', id: 'run' });

@@ -255,6 +255,7 @@ export interface Chat {
     id: ChatId;
     revision: number;
     folderPath: ChatFolderPath;
+    position?: number; // Explicit order within the folder; absent for legacy Chats.
     title: string;
     titleSource: ChatTitleSource;
     color: ChatColor;
@@ -268,6 +269,8 @@ export interface ChatFolder {
     schemaVersion: 1;
     path: ChatFolderPath;
     createdAt: string;
+    color?: ChatColor;
+    position?: number;
 }
 export interface ChatCollection {
     schemaVersion: 1;
@@ -1172,7 +1175,7 @@ export function parsePlanningActivity(value: unknown): ChatPlanningActivity {
 }
 export function parseChat(value: unknown): Chat {
     const v = record(value, ['schemaVersion', 'id', 'revision', 'folderPath', 'title', 'titleSource',
-        'color', 'createdAt', 'updatedAt', 'lastInteractedAt', 'settings', 'messages'],
+        'color', 'createdAt', 'updatedAt', 'lastInteractedAt', 'settings', 'messages', 'position'],
         ['schemaVersion', 'id', 'revision', 'folderPath', 'title', 'titleSource', 'color',
             'createdAt', 'updatedAt', 'lastInteractedAt', 'settings', 'messages']);
     if (v.schemaVersion !== 1 || !Array.isArray(v.messages)) throw new Error('Unsupported Chat schema');
@@ -1180,7 +1183,8 @@ export function parseChat(value: unknown): Chat {
         folderPath: parseChatFolderPath(v.folderPath), title: string(v.title, 'Chat title'),
         titleSource: choice(v.titleSource, ['placeholder', 'automatic', 'developer'], 'title source'), color: parseChatColor(v.color),
         createdAt: time(v.createdAt), updatedAt: time(v.updatedAt), lastInteractedAt: time(v.lastInteractedAt),
-        settings: parseChatSettings(v.settings), messages: v.messages.map(parseChatMessage) };
+        settings: parseChatSettings(v.settings), messages: v.messages.map(parseChatMessage),
+        ...(v.position === undefined ? {} : { position: count(v.position, 'Chat position') }) };
     const ids = chat.messages.flatMap(message => message.role === 'assistant' ? [message.id, message.execution.id] : [message.id]);
     const created = Date.parse(chat.createdAt);
     const updated = Date.parse(chat.updatedAt);
@@ -1197,11 +1201,13 @@ export function parseChat(value: unknown): Chat {
     return chat;
 }
 export function parseChatFolder(value: unknown): ChatFolder {
-    const v = record(value, ['schemaVersion', 'path', 'createdAt'], ['schemaVersion', 'path', 'createdAt']);
+    const v = record(value, ['schemaVersion', 'path', 'createdAt', 'color', 'position'], ['schemaVersion', 'path', 'createdAt']);
     if (v.schemaVersion !== 1) throw new Error('Unsupported Chat folder schema');
     const path = parseChatFolderPath(v.path);
     if (!path) throw new Error('Root folder is implicit');
-    return { schemaVersion: 1, path, createdAt: time(v.createdAt) };
+    return { schemaVersion: 1, path, createdAt: time(v.createdAt),
+        ...(v.color === undefined ? {} : { color: parseChatColor(v.color) }),
+        ...(v.position === undefined ? {} : { position: count(v.position, 'folder position') }) };
 }
 export function parseChatCollection(value: unknown): ChatCollection {
     const v = record(value, ['schemaVersion', 'revision', 'folders', 'chats'],

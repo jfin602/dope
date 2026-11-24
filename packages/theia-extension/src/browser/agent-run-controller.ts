@@ -5,7 +5,8 @@ import { findEligibleModels, futureFeatureRoleRequest, resolveAIRole } from '@do
 import type { AIInventoryState } from '@dope/contracts/lib/ai-registry-service';
 import type { AIRegistryService } from '@dope/contracts/lib/ai-registry-service';
 import type { AIRolePolicyService } from '@dope/contracts/lib/ai-role-policy-service';
-import type { AgentRuntimeService, PendingWorkMCPObservation } from '@dope/contracts/lib/agent-runtime-service';
+import type { AgentRuntimeService, PendingWorkMCPObservation, WorktreeReview } from '@dope/contracts/lib/agent-runtime-service';
+import { hasApprovedWorkCommand, type WorkToolPreferences } from './work-tool-preferences';
 
 export interface AgentTarget { connectionId: string; modelId: string; label: string; locality: 'local' | 'hosted'; context?: number }
 export class AgentRunController {
@@ -29,20 +30,23 @@ export class AgentRunController {
     objective = '';
     instructions = '';
     validationCommand = '';
+    worktreeReview?: WorktreeReview;
+    commitMessage = 'Checkpoint before Work';
     policy: AgentModelPolicy = { kind: 'follow-coding-agent' };
     private sequence = 0;
     private refreshing = false;
     private serial = 0;
 
     constructor(private readonly runtime: AgentRuntimeService, private readonly registry: AIRegistryService,
-        private readonly roles: AIRolePolicyService, private readonly changed: () => void) {}
+        private readonly roles: AIRolePolicyService, private readonly changed: () => void,
+        private readonly tools?: WorkToolPreferences) {}
 
     async attach(project?: string): Promise<void> {
         const serial = ++this.serial;
         this.project = project; this.handle = undefined; this.runs = []; this.sequences = []; this.selected = undefined;
         this.task = undefined; this.events = []; this.sequence = 0; this.accepted = false; this.hostedProjectDataAuthorized = false;
         this.mcpOffer = undefined; this.mcpAccepted = false; this.pendingMCP = [];
-        this.objective = ''; this.instructions = ''; this.validationCommand = '';
+        this.objective = ''; this.instructions = ''; this.validationCommand = ''; this.worktreeReview = undefined;
         this.changed();
         if (!project) return;
         try {
@@ -127,10 +131,26 @@ export class AgentRunController {
                 item.connectionId === connectionId && item.providerModelKey === modelId)?.contextWindowTokens };
     }
     setPolicy(policy: AgentModelPolicy): void { this.policy = policy; this.accepted = false; this.hostedProjectDataAuthorized = false;
+        this.worktreeReview = undefined;
         this.mcpOffer = undefined; this.mcpAccepted = false; this.resolved = undefined; void this.resolveTarget(); this.changed(); }
     edit(objective: string, instructions: string): void { this.objective = objective; this.instructions = instructions;
-        this.accepted = false; }
-    setValidation(command: string): void { this.validationCommand = command; this.accepted = false; this.changed(); }
+        this.accepted = false; this.worktreeReview = undefined; }
+    setValidation(command: string): void { this.validationCommand = command; this.accepted = false;
+        this.worktreeReview = undefined; this.changed(); }
+    cancelWorktreeReview(): void { this.worktreeReview = undefined; this.message = ''; this.changed(); }
+    async commitWorktree(): Promise<AgentRun | undefined> {
+        if (!this.handle || !this.worktreeReview || this.busy) return;
+        this.busy = true; this.message = ''; this.changed();
+        try {
+            await this.runtime.commitWorktree(this.handle, this.worktreeReview.fingerprint, this.commitMessage);
+            this.worktreeReview = undefined;
+        } catch (error) {
+            this.message = error instanceof Error ? error.message : 'Commit failed. Review project changes and retry.';
+            this.busy = false; this.changed(); return;
+        }
+        this.busy = false; this.changed();
+        return this.start();
+    }
     acceptGrant(accepted: boolean): void { this.accepted = accepted; this.changed(); }
     acceptMCPObservation(accepted: boolean): void { this.mcpAccepted = accepted && !!this.mcpOffer;
         this.accepted = false; this.changed(); }
@@ -141,13 +161,20 @@ export class AgentRunController {
         await this.refresh(); this.changed();
     }
     authorizeHostedProjectData(authorized: boolean): void { this.hostedProjectDataAuthorized = authorized; this.changed(); }
-    get canStart(): boolean { return Boolean((this.resolved?.locality !== 'hosted' || this.hostedProjectDataAuthorized) && this.handle && this.project && this.resolved && this.accepted &&
-        this.objective.trim() && this.instructions.trim() && this.validationCommand.trim() && !this.busy && !this.runs.some(run =>
+    get canStart(): boolean { return Boolean((this.resolved?.locality !== 'hosted' || this.hostedProjectDataAuthorized) && this.handle && this.project && this.resolved && (this.tools || this.accepted) &&
+        (this.resolved?.locality !== 'local' || !this.tools ||
+            !this.tools.resolve(this.project ?? '', 'direct', hasApprovedWorkCommand(this.validationCommand)).unavailable.length) &&
+        this.objective.trim() && this.instructions.trim() && !this.busy && !this.runs.some(run =>
             ['pending', 'running', 'blocked', 'cancelling'].includes(run.status))); }
-    async start(): Promise<AgentRun | undefined> {
+    async start(continueDirty = false): Promise<AgentRun | undefined> {
         if (!this.canStart || !this.handle || !this.project) return;
         this.busy = true; this.message = ''; this.changed();
         try {
+            const review = await this.runtime.previewWorktree(this.handle);
+            if (!review.clean && (!continueDirty || review.fingerprint !== this.worktreeReview?.fingerprint)) {
+                this.worktreeReview = review; return;
+            }
+            this.worktreeReview = undefined;
             const shown = this.resolved!;
             const fresh = (await this.resolvePolicyTarget(this.policy)).target;
             if (!fresh || fresh.connectionId !== shown.connectionId || fresh.modelId !== shown.modelId ||
@@ -170,19 +197,24 @@ export class AgentRunController {
             const task = parseAgentTask({ version: AGENT_SCHEMA_VERSION, id: crypto.randomUUID(), createdAt: new Date().toISOString(),
                 objective: this.objective.trim(), instructions: this.instructions.trim(), projectRoot: '.',
                 modelPolicy: this.policy, controls: {}, authority: { profile: 'phase-8b-project' },
-                completion: { validation: [{ kind: 'test', label: 'Required validation', command: this.validationCommand.trim() }],
-                    requireValidationPass: true }, origin: { kind: 'direct' },
+                completion: { validation: this.validationCommand.trim() ?
+                    [{ kind: 'test', label: 'Required validation', command: this.validationCommand.trim() }] : [],
+                    requireValidationPass: !!this.validationCommand.trim() }, origin: { kind: 'direct' },
                 reviewPolicy: { kind: 'required' as const } });
             this.task = await this.runtime.createTask(this.handle, task);
             const grantInput = { id: crypto.randomUUID(), revision: 1, taskId: task.id,
-                acceptedAt: new Date().toISOString() };
+                acceptedAt: new Date().toISOString(), ...(fresh.locality === 'local' && this.tools ?
+                    { toolSelection: this.tools.snapshot(this.project, 'direct', task.id, 1, fresh,
+                        hasApprovedWorkCommand(this.validationCommand)) } : {}) };
             const grant = mcpScope ? createMCPObservationExecutionGrant({ ...grantInput,
                 mcpObservation: mcpScope }) : createDefaultExecutionGrant(grantInput);
-            const run = await this.runtime.start(this.handle, this.project, task.id, grant, hostedAuthorized);
+            const run = await this.runtime.start(this.handle, this.project, task.id, grant, hostedAuthorized,
+                continueDirty && !review.clean ? review.fingerprint : undefined);
             this.selected = run; this.accepted = false; this.hostedProjectDataAuthorized = false; this.mcpAccepted = false;
             await this.refresh();
             return run;
-        } catch { this.message = 'Agent Run could not start. Review the project, target and grant, then retry.'; }
+        } catch (error) { this.message = error instanceof Error ? error.message :
+            'Agent Run could not start. Review the project, target and grant, then retry.'; }
         finally { this.busy = false; this.changed(); }
     }
     async stop(): Promise<void> {

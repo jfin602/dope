@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import test from 'node:test';
 import { createMCPObservationExecutionGrant } from '../../packages/agent-core/lib/authority.js';
+import { makeWorkToolSelection } from '../../packages/agent-core/lib/work-tool-selection.js';
 import { ExecutionWorkspace } from '../../packages/agent-core/lib/node/execution-workspace.js';
 import { MCPServerRegistryStore } from '../../packages/theia-extension/lib/node/mcp-server-registry-store.js';
 import { MCPProjectPreferencesStore, mcpProjectKey } from '../../packages/theia-extension/lib/node/mcp-project-preferences-store.js';
@@ -94,8 +95,11 @@ for line in sys.stdin:
         authority = new WorkMCPObservationAuthority(registry, preferences);
         const scope = await authority.offer(root, 'local', 'fixture-model');
         assert.ok(scope);
+        const toolSelection = makeWorkToolSelection({ projectUri: 'file://' + root,
+            taskId: 'task', grantRevision: 1, connectionId: 'local', modelId: 'fixture-model' },
+            ['read_file', 'list_files', 'edit_file']);
         const grant = createMCPObservationExecutionGrant({ id: 'grant', revision: 1,
-            taskId: 'task', acceptedAt: new Date().toISOString(), mcpObservation: scope });
+            taskId: 'task', acceptedAt: new Date().toISOString(), mcpObservation: scope, toolSelection });
         workspace = await ExecutionWorkspace.create(root);
         let openedTools: string[] = [];
         let callResult: unknown;
@@ -284,7 +288,7 @@ for line in sys.stdin:
         await rm(join(installRoot, 'bin', 'mode'));
         const expired = createMCPObservationExecutionGrant({ id: 'expired', revision: 1, taskId: 'task',
             acceptedAt: new Date(Date.now() - 120_000).toISOString(),
-            mcpObservation: { ...scope, expiresAt: new Date(Date.now() - 60_000).toISOString() } });
+            mcpObservation: { ...scope, expiresAt: new Date(Date.now() - 60_000).toISOString() }, toolSelection });
         await assert.rejects(adapter.start({ ...request, grant: expired }), /scope unavailable/);
         const beforeDisable = events.length;
         host.runWork = async (_prompt: string, onTool: (call: any) => Promise<any>) => {

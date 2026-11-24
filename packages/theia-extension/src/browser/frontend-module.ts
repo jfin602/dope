@@ -1,6 +1,6 @@
 import { ContainerModule } from '@theia/core/shared/inversify';
 import { injectable } from '@theia/core/shared/inversify';
-import { AbstractViewContribution, ApplicationShell, FrontendApplicationContribution, WidgetFactory, WidgetManager, open } from '@theia/core/lib/browser';
+import { AbstractViewContribution, ApplicationShell, FrontendApplicationContribution, ViewContainer, WidgetFactory, WidgetManager, open } from '@theia/core/lib/browser';
 import { ConnectionStatusService } from '@theia/core/lib/browser/connection-status-service';
 import URI from '@theia/core/lib/common/uri';
 import { CommandContribution, CommandRegistry, Emitter, MenuContribution } from '@theia/core/lib/common';
@@ -29,6 +29,11 @@ import { ThemeService } from '@theia/core/lib/browser/theming';
 import { CoreMarkdownRenderer, type MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
 import { dopeDarkTheme } from './dope-theme';
 import './dope.css';
+import './clipboard-history.css';
+import { ElectronIpcConnectionProvider } from '@theia/core/lib/electron-browser/messaging/electron-ipc-connection-source';
+import { clipboardHistoryPath, type ClipboardHistoryService } from '../clipboard/clipboard-service';
+import { ClipboardHistoryWidget, CLIPBOARD_HISTORY_ID } from './clipboard-history-widget';
+import { ClipboardHistoryContribution } from './clipboard-history-contribution';
 import { DopeTooltipContribution } from './dope-tooltip';
 import { DopeWindowTitleService, ProjectMindWidget, PROJECT_MIND_ID } from './dope-workbench';
 import { openProjectMindOwner } from './project-mind-navigation';
@@ -80,6 +85,7 @@ import { verifyPrepareWorkNavigation } from './prepare-work-navigation';
 import { RoadmapInspectorWidget, ROADMAP_INSPECTOR_ID } from './roadmap-inspector-widget';
 import { FileNavigatorWidget } from '@theia/navigator/lib/browser/navigator-widget';
 import { createFileNavigatorContainer } from '@theia/navigator/lib/browser/navigator-container';
+import { EXPLORER_VIEW_CONTAINER_ID } from '@theia/navigator/lib/browser/navigator-widget-factory';
 import { SearchInWorkspaceFrontendContribution } from '@theia/search-in-workspace/lib/browser/search-in-workspace-frontend-contribution';
 import { ExplorerSearchWidget } from './explorer-search-widget';
 import { SearchNavigationContribution } from './search-navigation-contribution';
@@ -168,6 +174,13 @@ class RightHistoryLauncher extends AbstractViewContribution<HistoryWidget> imple
 }
 
 export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
+    bindViewContribution(bind, ClipboardHistoryContribution);
+    bind(clipboardHistoryPath).toDynamicValue(context =>
+        ElectronIpcConnectionProvider.createProxy<ClipboardHistoryService>(context.container, clipboardHistoryPath)).inSingletonScope();
+    bind(WidgetFactory).toDynamicValue(context => ({ id: CLIPBOARD_HISTORY_ID,
+        createWidget: () => new ClipboardHistoryWidget('electronTheiaCore' in window ?
+            context.container.get<ClipboardHistoryService>(clipboardHistoryPath) : undefined)
+    })).inSingletonScope();
     bind(DopeTooltipContribution).toSelf().inSingletonScope();
     bind(FrontendApplicationContribution).toService(DopeTooltipContribution);
     rebind(EditorWidgetFactory).to(NativeDocumentEditorWidgetFactory).inSingletonScope();
@@ -180,6 +193,20 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         child.rebind(FileNavigatorWidget).to(ExplorerSearchWidget);
         return child.get(FileNavigatorWidget);
     });
+    bind(FrontendApplicationContribution).toDynamicValue(context => ({
+        onDidInitializeLayout: async () => {
+            const explorer = await context.container.get(WidgetManager).getWidget<ViewContainer>(EXPLORER_VIEW_CONTAINER_ID);
+            if (!explorer) return;
+            const configureExplorerViews = () => {
+                for (const part of explorer.getParts()) {
+                    if (part.wrapped.id === 'theia-open-editors-widget') explorer.removeWidget(part.wrapped);
+                    if (part.wrapped.id === 'timeline-view') part.setHidden(true);
+                }
+            };
+            explorer.onDidChangeTrackableWidgets(() => queueMicrotask(configureExplorerViews));
+            configureExplorerViews();
+        }
+    })).inSingletonScope();
     rebind(SearchInWorkspaceFrontendContribution).to(SearchNavigationContribution).inSingletonScope();
     bind(RoadmapNavigationContribution).toSelf().inSingletonScope();
     bind(FrontendApplicationContribution).toService(RoadmapNavigationContribution);
@@ -262,13 +289,21 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bind(FrontendApplicationContribution).toService(RightWorkLauncher);
     bind(FrontendApplicationContribution).toService(RightHistoryLauncher);
     bind(TabBarToolbarContribution).toConstantValue({ registerToolbarItems: (registry: TabBarToolbarRegistry) => {
+        registry.registerItem({ id: 'dope.work.aiCenter', command: 'dope.work.aiCenter', icon: codicon('sparkle'),
+            tooltip: 'AI Center', group: 'navigation',
+            isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canShowWorkListActions,
+            onDidChange: ChatPanelWidget.onDidChangeToolbar });
+        registry.registerItem({ id: 'dope.work.newFolder', command: 'dope.work.newFolder', icon: codicon('new-folder'),
+            tooltip: 'New Folder', group: 'navigation',
+            isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canShowWorkListActions,
+            onDidChange: ChatPanelWidget.onDidChangeToolbar });
         registry.registerItem({ id: 'dope.work.new', command: 'dope.work.new', icon: codicon('add'),
             tooltip: 'New Work', group: 'navigation',
             isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canCreateWorkFromToolbar,
             onDidChange: ChatPanelWidget.onDidChangeToolbar });
         registry.registerItem({ id: 'dope.work.back', command: 'dope.work.back', icon: codicon('arrow-left'),
             tooltip: 'Back to Work list', group: 'navigation',
-            isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canBackFromWorkComposer,
+            isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canBackToWorkList,
             onDidChange: ChatPanelWidget.onDidChangeToolbar });
         registry.registerItem({ id: 'dope.chat.aiCenter', command: 'dope.chat.aiCenter', icon: codicon('sparkle'),
             tooltip: 'AI Center', group: 'navigation',
@@ -304,13 +339,21 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             onDidChange: ChatPanelWidget.onDidChangeToolbar });
     } });
     bind(CommandContribution).toConstantValue({ registerCommands: (commands: CommandRegistry) => {
+        commands.registerCommand({ id: 'dope.work.aiCenter', label: 'AI Center' }, {
+            execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) widget.openWorkAICenterFromToolbar(); },
+            isEnabled: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canShowWorkListActions
+        });
+        commands.registerCommand({ id: 'dope.work.newFolder', label: 'New Work Folder' }, {
+            execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) widget.newWorkFolderFromToolbar(); },
+            isEnabled: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canShowWorkListActions
+        });
         commands.registerCommand({ id: 'dope.work.new', label: 'New Work' }, {
             execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) widget.newWorkFromToolbar(); },
             isEnabled: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canCreateWorkFromToolbar
         });
         commands.registerCommand({ id: 'dope.work.back', label: 'Back to Work list' }, {
-            execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) widget.backFromWorkComposer(); },
-            isEnabled: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canBackFromWorkComposer
+            execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) widget.backToWorkList(); },
+            isEnabled: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canBackToWorkList
         });
         commands.registerCommand({ id: 'dope.chat.aiCenter', label: 'AI Center' }, {
             execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) widget.openAICenterFromToolbar(); },

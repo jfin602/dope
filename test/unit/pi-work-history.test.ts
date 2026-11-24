@@ -7,6 +7,7 @@ import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { AgentStore } from '../../packages/agent-core/lib/node/agent-store.js';
 import { createDefaultExecutionGrant, createMCPObservationExecutionGrant } from '../../packages/agent-core/lib/authority.js';
+import { makeWorkToolSelection } from '../../packages/agent-core/lib/work-tool-selection.js';
 import { AgentExecutionRuntime } from '../../packages/theia-extension/lib/node/agent-execution-runtime.js';
 import { readHistoryWorkGitMetadata } from '../../packages/theia-extension/lib/node/history-work-git.js';
 import { piWorkObservation } from '../../packages/theia-extension/lib/node/pi-work-execution.js';
@@ -60,7 +61,9 @@ test('Work stores one factual MCP receipt without promoting the candidate or awa
             modelId: 'fixture-model', maxCalls: 1 as const,
             expiresAt: new Date(Date.now() + 600_000).toISOString() };
         const grant = createMCPObservationExecutionGrant({ id: 'mcp-receipt-grant', revision: 1,
-            taskId, acceptedAt: new Date().toISOString(), mcpObservation: scope });
+            taskId, acceptedAt: new Date().toISOString(), mcpObservation: scope,
+            toolSelection: makeWorkToolSelection({ projectUri: 'file://' + root, taskId,
+                grantRevision: 1, connectionId: 'local', modelId: 'fixture-model' }, ['read_file']) });
         let runRuntime: AgentExecutionRuntime;
         const adapter = { id: 'pi-local-work', async start(request: any) {
             const result = Promise.resolve().then(async () => {
@@ -148,7 +151,9 @@ test('two fresh Pi-mapped Work candidates retain transcript and History identiti
                             delegablePaths: [candidatePath], humanReservedPaths: [] } },
                     planningMapId: 'map', reviewPolicy: { kind: 'required' } } as any);
                 const grant = createDefaultExecutionGrant({ id: `grant-${decision}`, revision: 0,
-                    taskId, acceptedAt: now });
+                    taskId, acceptedAt: now,
+                    toolSelection: makeWorkToolSelection({ projectUri: 'file://' + root, taskId,
+                        grantRevision: 0, connectionId: 'local', modelId: 'fixture-model' }, ['read_file']) });
                 runRuntime = runtime(store, adapter);
                 const started = await runRuntime.start(root, new URL(`file://${root}`).href, taskId, grant, false);
                 const held = await runRuntime.waitForRun(root, started.id);

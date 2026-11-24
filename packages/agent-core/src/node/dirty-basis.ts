@@ -4,12 +4,11 @@ import { constants } from 'node:fs';
 import { lstat, open, realpath } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
 import { promisify } from 'node:util';
-import { projectPath } from '../contracts';
+import { projectPath, type AcceptedDirtyBasis, type DirtyPath } from '../contracts';
 
 const execute = promisify(execFile);
 const sha = /^[a-f0-9]{40,64}$/u;
-export interface DirtyPath { path: string; code: string; hash: string | null; size: number; mode: number | null }
-export interface AcceptedDirtyBasis { head: string; paths: DirtyPath[] }
+export type { DirtyPath, AcceptedDirtyBasis } from '../contracts';
 export const agentState = (path: string): boolean => path === '.dope/agent' || path.startsWith('.dope/agent/');
 
 export async function safeGit(root: string, args: string[]): Promise<string> {
