@@ -1,0 +1,14 @@
+TASK: c14-work-redesign / P4 — Independent real-browser Work UI qualification
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: YES — MANUAL connected Codex browser; never phase-runner auto-execution.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, Work UX contract, stack plan and P1–P3 evidence. Inspect exact local HEAD/version/dirty state and start the actual updated Dope app. If browser/runtime unavailable, report BLOCKED; do not replace with mocks.
+
+GOAL — T3
+In real connected browser exercise setup→Start, live actual tool transcript, queued message submission/delivery, explicit Interrupt Requested→Paused→intervention→Resume, completed follow-up, failed/stopped evidence, existing run reopen, application restart and restored queue/history. Verify left/right/bottom/center docking and narrow/keyboard usability. Inspect locked model/tool/sandbox, denied escalation, approvals, candidate review and no duplicate execution. Preserve original historical evidence.
+
+VERIFY
+Record source revision, screenshots, actions, observable results, focused reruns for any fixes and independent PASS/NOT GREEN/evidence gaps. Browser proof does not establish native Electron parity. Do not award Roadmap GREEN, self-commit or auto-run subsequent work.
