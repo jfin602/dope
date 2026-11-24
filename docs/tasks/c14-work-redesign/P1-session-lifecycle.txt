@@ -1,8 +1,12 @@
-TASK: c14-work-redesign / P1 — Durable Work session lifecycle and interventions
+TASK: Correction 14 / P1 — Durable Work session lifecycle and interventions
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol High.
+- Recommended configuration: `GPT-6 Sol High`.
 - Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction at unchanged version; no manifest, pin or lockfile change.
 
 PREFLIGHT
 Read BOOT.md, AGENTS.md, docs/workflow.md, docs/ui/work-conversational-session-contract.md, stack assessment and plan. Inspect ACTUAL LOCAL HEAD/version/dirty state and existing Work, AgentRun, Pi runtime, persistence, grants and focused tests. Preserve owner work and historical qualification. Stop if source differs materially from assumptions.
