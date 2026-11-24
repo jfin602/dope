@@ -1,0 +1,17 @@
+TASK: c14-work-redesign / P1 — Durable Work session lifecycle and interventions
+
+MODEL / REASONING / USAGE
+- Recommended configuration: GPT-6 Sol High.
+- Browser required: no.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, docs/ui/work-conversational-session-contract.md, stack assessment and plan. Inspect ACTUAL LOCAL HEAD/version/dirty state and existing Work, AgentRun, Pi runtime, persistence, grants and focused tests. Preserve owner work and historical qualification. Stop if source differs materially from assumptions.
+
+GOAL — T1
+Extend existing Work runtime, not a second agent owner: editable Setup becomes sealed Running with immutable model, maximum tools and sandbox. Implement durable FIFO Queued→Delivered only on acknowledged agent receipt; no double-delivery after retry/restart. Implement Interrupt Requested→Paused at a safe execution boundary; intervention instructions and explicit Resume; Stop distinct. Respect pending tool operations/approvals and existing grant broker. Completed follow-up must retain original ceiling.
+
+VERIFY
+Focused transition, FIFO, delivery acknowledgment, idempotence, interrupt/resume, restart and permission-boundary tests. Build changed packages before tests importing compiled lib. Target <=8 minutes; stop with evidence on unsupported runtime boundary. No GUI GREEN claim.
+
+GENERAL
+No parallel runtime, no permission escalation, no panel refactor, no self-commit, no next prompt auto-run. Report exact source, tests and gaps.
