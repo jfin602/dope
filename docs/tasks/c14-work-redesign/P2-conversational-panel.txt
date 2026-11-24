@@ -1,8 +1,12 @@
-TASK: c14-work-redesign / P2 — One dockable Work conversation panel
+TASK: Correction 14 / P2 — One dockable Work conversation panel
 
 MODEL / REASONING / USAGE
-- Recommended configuration: GPT-6 Sol High.
+- Recommended configuration: `GPT-6 Sol High`.
 - Browser required: no.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- Correction at unchanged version; no manifest, pin or lockfile change.
 
 ENTRY
 Require verified P1 lifecycle/queue semantics on actual local source; otherwise BLOCKED. Read BOOT.md, AGENTS.md, docs/workflow.md, Work UX contract and stack plan. Inspect existing Work setup/selector, AgentRun center transcript, shared Chat rendering, Theia docking, tests and owner dirty work.
