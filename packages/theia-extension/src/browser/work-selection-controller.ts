@@ -3,7 +3,8 @@ import type { AgentMapImpact, AgentRun, AgentSteeringRequest, AgentSteeringState
 import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 import type { WorkMCPObservationScope } from '@dope/agent-core/lib/authority';
 import type { CandidateResumePreview, WorktreeReview } from '@dope/contracts/lib/agent-runtime-service';
-import { createDefaultExecutionGrant, createMCPObservationExecutionGrant, parseAgentTask } from '@dope/agent-core';
+import { createDefaultExecutionGrant, createMCPObservationExecutionGrant, makeWorkToolSelection,
+    parseAgentTask, parseExecutionGrant } from '@dope/agent-core';
 import { PhaseStackController } from './phase-stack-controller';
 import type { WorkSelection } from './shared-panel-state';
 import type { AgentTarget } from './agent-run-controller';
@@ -289,6 +290,13 @@ export class WorkSelectionController {
     session?: WorkSession;
     sessionBusy = false;
     sessionError = '';
+    followUpOpen = false;
+    followUpInstructions = '';
+    followUpAccepted = false;
+    followUpRecoveryDiscardAccepted = false;
+    followUpBusy = false;
+    followUpDirtyReview?: WorktreeReview;
+    followUpError = '';
     private readonly pendingSessionMessages = new Map<string, { id: string; text: string }>();
     get sessionRetryText(): string {
         return this.session ? this.pendingSessionMessages.get(this.session.id)?.text ?? '' : '';
@@ -307,6 +315,7 @@ export class WorkSelectionController {
     events: AgentRunEvent[] = [];
     transcriptState: 'recorded' | 'not-recorded' = 'not-recorded';
     transcriptIncomplete = false;
+    transcriptUnavailableSegments: string[] = [];
     message = '';
     reviewBusy = false;
     steering?: AgentSteeringState;
@@ -371,6 +380,9 @@ export class WorkSelectionController {
         this.selectedTaskId = undefined; this.startTarget = undefined; this.startWorktreeReview = undefined;
         this.startMCPOffer = undefined; this.startMCPAccepted = false;
         this.selectedRun = undefined; this.selectedTask = undefined; this.session = undefined; this.transcript = []; this.message = '';
+        this.followUpOpen = false; this.followUpInstructions = ''; this.followUpAccepted = false;
+        this.followUpRecoveryDiscardAccepted = false;
+        this.followUpDirtyReview = undefined; this.followUpError = '';
         this.pendingSessionMessages.clear();
         this.resumePreview = undefined; this.resumeOpen = false; this.resumeAccepted = false;
         this.selectionState = 'idle';
@@ -477,6 +489,79 @@ export class WorkSelectionController {
                 this.sessionError = error instanceof Error ? error.message : 'Work could not stop.';
         } finally { this.sessionBusy = false; this.changed(); }
     }
+    openFollowUp(): void {
+        if (!this.session || !this.selectedRun || !this.selectedTask ||
+            !(this.session.status === 'completed' && !!this.selectedRun.reviewDecision ||
+                this.session.status === 'recovery-required' && this.selectedRun.status === 'interrupted') ||
+            this.session.segments.at(-1)?.runId !== this.selectedRun.id) return;
+        this.followUpOpen = true;
+        this.followUpInstructions = '';
+        this.followUpAccepted = false;
+        this.followUpRecoveryDiscardAccepted = false;
+        this.followUpDirtyReview = undefined;
+        this.followUpError = '';
+        this.changed();
+    }
+    cancelFollowUp(): void {
+        this.followUpOpen = false; this.followUpAccepted = false;
+        this.followUpRecoveryDiscardAccepted = false;
+        this.followUpDirtyReview = undefined; this.followUpError = '';
+        this.changed();
+    }
+    async continueSession(acceptDirty = false): Promise<AgentRun | undefined> {
+        const handle = this.handle, project = this.project, shown = this.selectedRun;
+        const session = this.session, task = this.selectedTask;
+        if (!handle || !project || !shown || !session || !task || this.followUpBusy ||
+            !this.followUpOpen || !this.followUpAccepted || !this.followUpInstructions.trim() ||
+            !(session.status === 'completed' && !!shown.reviewDecision ||
+                session.status === 'recovery-required' && shown.status === 'interrupted' &&
+                this.followUpRecoveryDiscardAccepted) ||
+            session.segments.at(-1)?.runId !== shown.id || task.id !== shown.taskId) return;
+        this.followUpBusy = true; this.followUpError = ''; this.changed();
+        try {
+            const [freshSession, freshRun, freshTask, review, target] = await Promise.all([
+                this.runtime.readWorkSession(handle, session.id), this.runtime.readRun(handle, shown.id),
+                this.runtime.readTask(handle, task.id),
+                this.runtime.previewWorktree(handle),
+                this.resolveTarget?.({ kind: 'exact', connectionId: session.connectionId, modelId: session.modelId })
+            ]);
+            if (handle !== this.handle || project !== this.project ||
+                this.selectedRun?.id !== shown.id || this.session?.id !== session.id ||
+                JSON.stringify(freshSession) !== JSON.stringify(session) ||
+                JSON.stringify(freshRun) !== JSON.stringify(shown) ||
+                JSON.stringify(freshTask) !== JSON.stringify(task) ||
+                !shown.toolSelection || !target?.target || target.target.locality !== 'local' ||
+                target.target.connectionId !== session.connectionId || target.target.modelId !== session.modelId)
+                throw new Error('Saved Work or exact local model changed. Review the session again.');
+            if (!review.clean && (!acceptDirty || review.fingerprint !== this.followUpDirtyReview?.fingerprint)) {
+                this.followUpDirtyReview = review; return;
+            }
+            if (review.clean && acceptDirty) throw new Error('Project changed since Work review');
+            if (!shown.basis?.head) throw new Error('Saved source HEAD unavailable for linked follow-up');
+            const newTask = parseAgentTask({ ...task, id: crypto.randomUUID(),
+                createdAt: new Date().toISOString(), instructions: this.followUpInstructions.trim(),
+                modelPolicy: { kind: 'exact', connectionId: session.connectionId, modelId: session.modelId } });
+            const selection = makeWorkToolSelection({ projectUri: project, taskId: newTask.id,
+                grantRevision: 1, connectionId: session.connectionId, modelId: session.modelId },
+                shown.toolSelection.tools.map(tool => tool.id));
+            if (JSON.stringify(selection.tools) !== JSON.stringify(shown.toolSelection.tools))
+                throw new Error('Work tool catalog changed. Start a separately reviewed fork.');
+            const base = createDefaultExecutionGrant({ id: crypto.randomUUID(), revision: 1,
+                taskId: newTask.id, acceptedAt: new Date().toISOString(), toolSelection: selection });
+            const grant = parseExecutionGrant({ ...base, permissions: session.permissionCeiling });
+            await this.runtime.createTask(handle, newTask);
+            const run = await this.runtime.continueWorkSession(handle, project, session.id, shown.id,
+                newTask.id, grant, false, shown.basis.head,
+                session.status === 'recovery-required',
+                review.clean ? undefined : review.fingerprint);
+            this.cancelFollowUp();
+            await this.refresh();
+            await this.select({ kind: 'run', id: run.id });
+            return run;
+        } catch (error) {
+            this.followUpError = error instanceof Error ? error.message : 'Work continuation could not start.';
+        } finally { this.followUpBusy = false; this.changed(); }
+    }
     async scan(): Promise<void> {
         await Promise.all([this.phase.scan(), this.refresh()]);
     }
@@ -502,6 +587,7 @@ export class WorkSelectionController {
     }
     private async selectInternal(selection: WorkSelection | undefined, navigationOnly = false): Promise<WorkSelection | undefined> {
         const handle = this.handle;
+        const sameRun = selection?.kind === 'run' && this.selectedRun?.id === selection.id;
         // Back during initial attachment clears presentation without cancelling
         // the project attach that the Select Work page still needs.
         const serial = !selection && !handle && this.attachState === 'loading' ? this.serial : ++this.serial;
@@ -512,7 +598,13 @@ export class WorkSelectionController {
         this.startMCPOffer = undefined; this.startMCPAccepted = false;
         this.selectedRun = undefined; this.selectedTask = undefined; this.session = undefined;
         this.transcript = []; this.events = []; this.transcriptState = 'not-recorded'; this.transcriptIncomplete = false;
+        this.transcriptUnavailableSegments = [];
         this.sessionError = '';
+        if (!sameRun) {
+            this.followUpOpen = false; this.followUpInstructions = ''; this.followUpAccepted = false;
+            this.followUpRecoveryDiscardAccepted = false;
+            this.followUpDirtyReview = undefined; this.followUpError = '';
+        }
         this.resumePreview = undefined; this.resumeOpen = false; this.resumeAccepted = false;
         this.steering = undefined; this.actions = []; this.mapImpact = undefined; this.steeringText = '';
         this.message = ''; this.phase.message = ''; this.phase.selected = undefined; this.phase.run = undefined;
@@ -581,16 +673,18 @@ export class WorkSelectionController {
                 const runIds = this.session?.segments.map(segment => segment.runId) ?? [run.id];
                 for (const runId of runIds) {
                     let cursor = 0;
+                    let recorded = false;
                     while (true) {
                         const result = await this.runtime.readTranscript(handle, runId, cursor, 100);
                         if (serial !== this.serial || handle !== this.handle) return;
-                        if (result.state === 'recorded') this.transcriptState = 'recorded';
+                        if (result.state === 'recorded') { this.transcriptState = 'recorded'; recorded = true; }
                         this.transcriptIncomplete ||= result.incomplete;
                         this.transcript.push(...result.entries);
                         if (!result.hasMore) break;
                         if (result.nextSequence <= cursor) throw new Error('Transcript pagination did not advance');
                         cursor = result.nextSequence;
                     }
+                    if (!recorded) this.transcriptUnavailableSegments.push(runId);
                     cursor = 0;
                     while (true) {
                         const result = await this.runtime.readEvents(handle, runId, cursor, 100);

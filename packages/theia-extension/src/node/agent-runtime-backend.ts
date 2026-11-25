@@ -721,6 +721,9 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         if (!this.execution) throw new Error('Agent execution unavailable');
         const root = this.active(handle);
         if (checkpointProjects.has(root)) throw new Error('Project checkpoint in progress');
+        const task = await this.store.readTask(root, taskId);
+        if (!task || !await this.workItemResumeAllowed(root, task))
+            throw new Error('WorkItem project or delegation basis changed');
         const dirty = await captureDirtyBasis(root);
         if (dirty.paths.length && dirtyFingerprint(dirty) !== acceptedDirtyFingerprint)
             throw new Error('Review changed project files before starting Work');
@@ -736,6 +739,10 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         if (!this.execution) throw new Error('Agent execution unavailable');
         const root = this.active(handle);
         if (checkpointProjects.has(root)) throw new Error('Project checkpoint in progress');
+        const session = await this.store.readWorkSession(root, sessionId);
+        const originalTask = session && await this.store.readTask(root, session.taskId);
+        if (!originalTask || !await this.workItemResumeAllowed(root, originalTask))
+            throw new Error('WorkItem project or delegation basis changed');
         const dirty = await captureDirtyBasis(root);
         if (dirty.paths.length && dirtyFingerprint(dirty) !== acceptedDirtyFingerprint)
             throw new Error('Review changed project files before continuing Work');

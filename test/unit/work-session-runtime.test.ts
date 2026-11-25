@@ -68,8 +68,9 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
         const head = (await execute('git', ['-C', root, 'rev-parse', 'HEAD'])).stdout.trim();
         const uri = pathToFileURL(root).href;
         const handle = (await backend.attach(uri)).projectHandle;
-        const task = (id: string, objective: string, createdAt: string) => ({ version: 1, id, createdAt,
-            objective, instructions: 'Answer concisely.', projectRoot: '.',
+        const task = (id: string, objective: string, createdAt: string,
+            instructions = 'Answer concisely.') => ({ version: 1, id, createdAt,
+            objective, instructions, projectRoot: '.',
             modelPolicy: { kind: 'exact', connectionId: 'local', modelId: model.id }, controls: {},
             authority: { profile: 'phase-8b-project' }, origin: { kind: 'direct' },
             reviewPolicy: { kind: 'required' }, completion: { validation: [
@@ -117,8 +118,8 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
         const decided = await backend.decideCandidate(handle, first.id, 0,
             held.candidateReview!.candidateFingerprint, 'reject');
         assert.equal(decided.status, 'cancelled');
-        await backend.createTask(handle, task('task-two', 'Follow-up Work turn',
-            new Date().toISOString()) as any);
+        await backend.createTask(handle, task('task-two', 'First Work turn',
+            new Date().toISOString(), 'Continue the first Work task with fresh instructions.') as any);
         const secondGrant = grant('grant-two', 'task-two', []);
         await assert.rejects(backend.continueWorkSession(handle, uri, first.id, first.id,
             'task-two', secondGrant, false, 'f'.repeat(40), false), /source HEAD changed/);
@@ -166,8 +167,10 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
             messages: [...completedSession.messages, { id: 'uncertain-message', text: 'Do not replay me',
                 queuedAt, status: 'queued' }] });
         await store.updateWorkSession(root, recovering, { ...recovering, revision: recovering.revision + 1,
-            messages: recovering.messages.map(message => message.id === 'uncertain-message' ?
-                { ...message, status: 'delivering' as const, deliveryStartedAt: new Date().toISOString() } : message) });
+            messages: [...recovering.messages.map(message => message.id === 'uncertain-message' ?
+                { ...message, status: 'delivering' as const, deliveryStartedAt: new Date().toISOString() } : message),
+                { id: 'safe-pending', text: 'Deliver after verified recovery',
+                    queuedAt: new Date().toISOString(), status: 'queued' as const }] });
         const restartedStore = new AgentStore();
         runtime = new AgentExecutionRuntime(restartedStore,
             { async resolve() { throw new Error('Exact model required'); } } as any,
@@ -177,21 +180,30 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
         assert.equal((await backend.readWorkSession(restartedHandle, first.id))?.status, 'recovery-required');
         assert.equal((await backend.readWorkSession(restartedHandle, first.id))?.candidateSnapshot?.runId, second.id);
         assert.equal((await backend.readRun(restartedHandle, pending.id))?.status, 'interrupted');
-        assert.equal((await backend.readWorkSession(restartedHandle, first.id))?.messages.at(-1)?.status, 'delivering');
-        await backend.createTask(restartedHandle, task('task-four', 'Deliberate recovery turn',
-            new Date().toISOString()) as any);
+        assert.deepEqual((await backend.readWorkSession(restartedHandle, first.id))?.messages.slice(-2)
+            .map(message => message.status), ['delivering', 'queued']);
+        await backend.createTask(restartedHandle, task('task-four', 'First Work turn',
+            new Date().toISOString(), 'Resume the first Work task after verified recovery.') as any);
         const fourthGrant = grant('grant-four', 'task-four', []);
         await assert.rejects(backend.continueWorkSession(restartedHandle, uri, first.id, pending.id,
             'task-four', fourthGrant, false, head, false), /explicit recovery decision/);
         const fourth = await backend.continueWorkSession(restartedHandle, uri, first.id, pending.id,
             'task-four', fourthGrant, false, head, true);
-        assert.equal((await backend.readWorkSession(restartedHandle, first.id))?.messages.at(-1)?.status, 'abandoned');
+        assert.equal((await backend.readWorkSession(restartedHandle, first.id))?.messages.at(-2)?.status,
+            'abandoned');
         for (let n = 0; n < 300 && (await backend.readWorkSession(restartedHandle, first.id))?.status !== 'awaiting-input'; n++)
             await tick();
         assert.equal((await backend.readWorkSession(restartedHandle, first.id))?.status, 'awaiting-input',
             JSON.stringify({ run: await backend.readRun(restartedHandle, fourth.id), seen: seen.length,
                 events: await backend.readEvents(restartedHandle, fourth.id, 0, 100) }));
-        assert.equal(seen.length, 5, 'uncertain message was never replayed');
+        for (let n = 0; n < 300; n++) {
+            const state = await backend.readWorkSession(restartedHandle, first.id);
+            if (state?.status === 'awaiting-input' && state.messages.at(-1)?.status === 'delivered') break;
+            await tick();
+        }
+        assert.equal((await backend.readWorkSession(restartedHandle, first.id))?.messages.at(-1)?.status,
+            'delivered', 'safe queued message is delivered after recovery');
+        assert.equal(seen.length, 6, 'uncertain message was never replayed and queued message ran once');
         const stopped = await backend.stop(restartedHandle, fourth.id);
         assert.equal(stopped.status, 'cancelled');
         assert.equal((await backend.readWorkSession(restartedHandle, first.id))?.status, 'stopped');

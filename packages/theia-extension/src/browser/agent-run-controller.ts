@@ -29,6 +29,7 @@ export class AgentRunController {
     pendingMCP: PendingWorkMCPObservation[] = [];
     objective = '';
     instructions = '';
+    forkedFromRunId?: string;
     validationCommand = '';
     worktreeReview?: WorktreeReview;
     commitMessage = 'Checkpoint before Work';
@@ -47,6 +48,7 @@ export class AgentRunController {
         this.task = undefined; this.events = []; this.sequence = 0; this.accepted = false; this.hostedProjectDataAuthorized = false;
         this.mcpOffer = undefined; this.mcpAccepted = false; this.pendingMCP = [];
         this.objective = ''; this.instructions = ''; this.validationCommand = ''; this.worktreeReview = undefined;
+        this.forkedFromRunId = undefined;
         this.changed();
         if (!project) return;
         try {
@@ -200,6 +202,7 @@ export class AgentRunController {
                 completion: { validation: this.validationCommand.trim() ?
                     [{ kind: 'test', label: 'Required validation', command: this.validationCommand.trim() }] : [],
                     requireValidationPass: !!this.validationCommand.trim() }, origin: { kind: 'direct' },
+                ...(this.forkedFromRunId ? { forkedFromRunId: this.forkedFromRunId } : {}),
                 reviewPolicy: { kind: 'required' as const } });
             this.task = await this.runtime.createTask(this.handle, task);
             const grantInput = { id: crypto.randomUUID(), revision: 1, taskId: task.id,
@@ -213,6 +216,7 @@ export class AgentRunController {
             const run = await start(this.handle, this.project, task.id, grant, hostedAuthorized,
                 continueDirty && !review.clean ? review.fingerprint : undefined);
             this.selected = run; this.accepted = false; this.hostedProjectDataAuthorized = false; this.mcpAccepted = false;
+            this.forkedFromRunId = undefined;
             await this.refresh();
             return run;
         } catch (error) { this.message = error instanceof Error ? error.message :

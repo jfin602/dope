@@ -30,6 +30,8 @@ export interface AgentTask {
     projectId?: string; modelPolicy: AgentModelPolicy; controls: ExecutionControls;
     authority: { profile: 'phase-8b-project' }; completion: CompletionPolicy;
     origin: AgentOrigin; planningMapId?: string; reviewPolicy?: { kind: 'required' };
+    /** A new, separately reviewed direct task; no grant or candidate is inherited. */
+    forkedFromRunId?: string;
     phaseStack?: { stackFingerprint: string; recommendedModel: 'gpt-6-sol';
         versionPolicy: { kind: 'target' | 'unchanged'; version: string } };
 }
@@ -198,7 +200,8 @@ export function parseAgentModelPolicy(value: unknown): AgentModelPolicy {
 }
 export function parseAgentTask(value: unknown): AgentTask {
     const x = record(value, ['version', 'id', 'createdAt', 'objective', 'instructions', 'projectRoot',
-        'projectId', 'modelPolicy', 'controls', 'authority', 'completion', 'origin', 'planningMapId', 'phaseStack', 'reviewPolicy']);
+        'projectId', 'modelPolicy', 'controls', 'authority', 'completion', 'origin', 'planningMapId',
+        'phaseStack', 'reviewPolicy', 'forkedFromRunId']);
     const controls = record(x.controls, ['reasoningEffort']);
     const authority = record(x.authority, ['profile']);
     const completion = record(x.completion, ['validation', 'requireValidationPass']);
@@ -212,6 +215,8 @@ export function parseAgentTask(value: unknown): AgentTask {
     const parsedOrigin: AgentOrigin = kind === 'direct' ? { kind } : kind === 'phase-stack' ?
         { kind, promptId: id(origin.promptId) } : kind === 'work-item' ?
             parseWorkItemOrigin(origin) : { kind, sessionId: id(origin.sessionId) };
+    if (x.forkedFromRunId !== undefined && kind !== 'direct')
+        throw new Error('Only a new direct Work task may fork a run');
     if (kind === 'work-item' && x.reviewPolicy === undefined ||
         x.reviewPolicy !== undefined && !['direct', 'work-item', 'phase-stack'].includes(kind))
         throw new Error('Review policy requires a direct, WorkItem or phase-stack task');
@@ -244,6 +249,7 @@ export function parseAgentTask(value: unknown): AgentTask {
         completion: { validation, requireValidationPass: bool(completion.requireValidationPass) },
         origin: parsedOrigin, ...(x.planningMapId === undefined ? {} : { planningMapId: id(x.planningMapId) }),
         ...(reviewPolicy ? { reviewPolicy: { kind: 'required' as const } } : {}),
+        ...(x.forkedFromRunId === undefined ? {} : { forkedFromRunId: id(x.forkedFromRunId) }),
         ...(phaseStack && versionPolicy ? { phaseStack: { stackFingerprint: phaseStack.stackFingerprint as string,
             recommendedModel: 'gpt-6-sol', versionPolicy: {
                 kind: select(versionPolicy.kind, ['target', 'unchanged'] as const), version: versionPolicy.version as string } } } : {}) });

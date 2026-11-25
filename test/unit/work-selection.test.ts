@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { WorkSelectionController, selectWorkView, workRows, workTitle } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
 import type { AgentRuntimeService } from '../../packages/contracts/src/agent-runtime-service.ts';
+import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/authority.js';
 
 const head = 'a'.repeat(40);
 const entries = [{ number: 1, title: 'First implementation', execution: 'agent-task' },
@@ -235,6 +236,79 @@ test('linked Work follow-up reopens the complete saved conversation in segment o
     assert.deepEqual(reads, ['first-run', 'second-run']);
     assert.deepEqual(controller.transcript.map(entry => entry.runId), reads);
     assert.equal(controller.transcriptState, 'recorded');
+});
+
+test('linked Work records identify a missing historical segment without inventing turns', async () => {
+    const runtime = { async readRun() { return { id: 'new-run', taskId: 'task', status: 'completed' }; },
+        async readTask() { return { id: 'task', objective: 'Follow-up', origin: { kind: 'direct' } }; },
+        async readWorkSessionForRun() { return { id: 'old-run', segments: [
+            { runId: 'old-run' }, { runId: 'new-run' }] }; },
+        async readSteering() { return undefined; }, async listActions() { return []; },
+        async readMapImpact() { return undefined; },
+        async readTranscript(_handle: string, runId: string) { return runId === 'old-run' ?
+            { state: 'not-recorded', entries: [], nextSequence: 0, hasMore: false, incomplete: false } :
+            { state: 'recorded', entries: [{ kind: 'message', runId, text: 'Actual turn' }],
+                nextSequence: 1, hasMore: false, incomplete: false }; },
+        async readEvents() { return { events: [], nextSequence: 0, hasMore: false }; }
+    } as unknown as AgentRuntimeService;
+    const controller = new WorkSelectionController(runtime, () => {});
+    controller.project = 'file:///project'; controller.handle = 'handle';
+    await controller.select({ kind: 'run', id: 'new-run' });
+    assert.deepEqual(controller.transcriptUnavailableSegments, ['old-run']);
+    assert.deepEqual(controller.transcript.map(entry => entry.runId), ['new-run']);
+});
+
+test('completed local Work follow-up creates a new exact-model task and fresh ceiling-bound grant', async () => {
+    const task: any = { version: 1, id: 'task-one', createdAt: '2026-11-24T00:00:00Z',
+        objective: 'Original Work', instructions: 'Original instructions', projectRoot: '.',
+        modelPolicy: { kind: 'follow-coding-agent' }, controls: {},
+        authority: { profile: 'phase-8b-project' }, origin: { kind: 'direct' },
+        completion: { validation: [], requireValidationPass: false }, reviewPolicy: { kind: 'required' } };
+    const toolSelection: any = { catalogRevision: 1, projectUri: 'file:///project', taskId: task.id,
+        grantRevision: 1, connectionId: 'local', modelId: 'model',
+        tools: [{ id: 'read_file', schemaRevision: 1 }] };
+    const run: any = { id: 'run-one', taskId: task.id, status: 'cancelled',
+        reviewDecision: { kind: 'reject' }, basis: { head: 'a'.repeat(40) }, toolSelection };
+    const permissions = createDefaultExecutionGrant({ id: 'preview', revision: 1, taskId: task.id,
+        acceptedAt: '2026-11-24T00:00:00Z' }).permissions;
+    const session: any = { id: run.id, runId: run.id, status: 'completed',
+        connectionId: 'local', modelId: 'model', permissionCeiling: permissions,
+        segments: [{ runId: run.id }] };
+    let created: any;
+    let continuation: any[] = [];
+    const runtime = { async readWorkSession() { return session; },
+        async readRun() { return run; }, async readTask() { return task; },
+        async previewWorktree() { return { clean: true, fingerprint: 'f'.repeat(64), paths: [] }; },
+        async createTask(_handle: string, next: any) { created = next; return next; },
+        async continueWorkSession(...args: any[]) { continuation = args; return { id: 'run-two', taskId: created.id }; },
+        async listTasks() { return [task, created]; }, async listRuns() { return [run]; }
+    } as unknown as AgentRuntimeService;
+    const controller = new WorkSelectionController(runtime, () => {}, async () => ({
+        target: { connectionId: 'local', modelId: 'model', locality: 'local', label: 'Local' }, reason: '' }));
+    controller.handle = 'handle'; controller.project = 'file:///project';
+    controller.selectedTask = task; controller.selectedRun = run; controller.session = session;
+    (controller as any).select = async () => undefined;
+    controller.openFollowUp(); controller.followUpInstructions = 'Next bounded turn';
+    controller.followUpAccepted = true;
+    const result = await controller.continueSession();
+    assert.equal(result?.id, 'run-two');
+    assert.equal(created.instructions, 'Next bounded turn');
+    assert.deepEqual(created.modelPolicy, { kind: 'exact', connectionId: 'local', modelId: 'model' });
+    assert.equal(continuation[2], session.id);
+    assert.equal(continuation[3], run.id);
+    assert.equal(continuation[4], created.id);
+    assert.equal(continuation[5].taskId, created.id);
+    assert.deepEqual(continuation[5].toolSelection.tools, toolSelection.tools);
+    assert.equal(continuation[6], false);
+    assert.equal(continuation[7], run.basis.head);
+    session.status = 'recovery-required'; run.status = 'interrupted'; run.reviewDecision = undefined;
+    controller.session = session; controller.selectedRun = run; controller.selectedTask = task;
+    controller.openFollowUp(); controller.followUpInstructions = 'Inspect recovered source';
+    controller.followUpAccepted = true;
+    assert.equal(await controller.continueSession(), undefined, 'uncertain effects need an explicit decision');
+    controller.followUpRecoveryDiscardAccepted = true;
+    assert.equal((await controller.continueSession())?.id, 'run-two');
+    assert.equal(continuation[8], true, 'recovery discards uncertain delivery and candidate effects');
 });
 
 test('Work composer retry keeps one message ID after an uncertain response', async () => {

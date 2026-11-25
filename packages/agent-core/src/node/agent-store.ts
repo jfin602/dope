@@ -650,6 +650,12 @@ export class AgentStore implements AgentTranscriptStorage {
 
     async createTask(root: string, value: AgentTask): Promise<AgentTask> {
         const task = checked(value, parseAgentTask);
+        if (task.forkedFromRunId) {
+            const source = await this.readRun(root, task.forkedFromRunId);
+            if (!source || !['completed', 'cancelled', 'failed', 'interrupted'].includes(source.status) ||
+                source.taskId === task.id || source.createdAt > task.createdAt)
+                throw new Error('Fork requires a saved terminal Work run in this project');
+        }
         const dir = (await this.collection(root, 'tasks', true))!;
         await this.locked(dir, async () => {
             if (await this.readTask(root, task.id)) throw new Error('Agent task already exists');

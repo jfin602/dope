@@ -84,6 +84,24 @@ test('Work candidate snapshots retain checked changed bytes across store restart
             /snapshot bytes changed/);
     }));
 
+test('a fork records a terminal source run in the same project and remains a separate task',
+    async () => folders(async (a, b) => {
+        const store = new AgentStore();
+        await store.createTask(a, task());
+        const original = await store.createRun(a, run());
+        const fork = { ...task('fork-task'), createdAt: later, forkedFromRunId: original.id };
+        await assert.rejects(store.createTask(a, fork), /terminal Work run/);
+        const running = await store.updateRun(a, original, { ...original, status: 'running', startedAt: later });
+        await store.updateRun(a, running, { ...running, status: 'completed', endedAt: later });
+        assert.deepEqual(await store.createTask(a, fork), fork);
+        assert.equal((await new AgentStore().readTask(a, fork.id))?.forkedFromRunId, original.id);
+        await assert.rejects(store.createTask(b, { ...task('foreign-fork'), createdAt: later,
+            forkedFromRunId: original.id }), /terminal Work run/);
+        await assert.rejects(store.createTask(a, { ...task('invalid-fork'), createdAt: later,
+            origin: { kind: 'phase-stack', promptId: 'p1' }, forkedFromRunId: original.id }),
+        /Only a new direct Work task/);
+    }));
+
 test('atomic task/run round trip, legal transitions, events and terminal restart truth', async () => folders(async (a) => {
     const store = new AgentStore();
     const changes: string[] = [];

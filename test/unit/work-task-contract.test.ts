@@ -66,5 +66,19 @@ test('Task Contract reconstructs exact accepted basis and one-to-many reviewed l
         assert.equal(projected.acceptance, 'unknown');
         assert.equal(projected.planning, 'unknown');
         assert.equal(projected.roadmap, 'unknown');
+        const followUp = { ...task, id: 'task-follow', instructions: 'Inspect the reviewed result and continue',
+            modelPolicy: { kind: 'exact', connectionId: 'local', modelId: 'sealed' } };
+        const followGrant = createDefaultExecutionGrant({ id: 'grant-follow', revision: 1,
+            taskId: followUp.id, acceptedAt: '2026-11-05T12:02:00Z' });
+        const linked = await projectWorkTaskContract(root, followUp as any, followGrant,
+            'b'.repeat(40), planning as any, roadmap as any, task as any);
+        assert.equal(linked.instructionsHash === first.instructionsHash, false);
+        assert.deepEqual(linked.acceptance, work.acceptanceCriteria);
+        assert.deepEqual(linked.roadmap, first.roadmap);
+        await assert.rejects(projectWorkTaskContract(root, followUp as any, followGrant,
+            'b'.repeat(40), changed as any, roadmap as any, task as any), /basis changed/);
+        await assert.rejects(projectWorkTaskContract(root, { ...followUp,
+            origin: { ...task.origin, workItemId: 'different' } } as any, followGrant, 'b'.repeat(40), planning as any,
+            roadmap as any, task as any), /follow-up changed/);
     } finally { await rm(root, { recursive: true, force: true }); }
 });

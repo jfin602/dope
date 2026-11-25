@@ -13,13 +13,22 @@ const digest = (value: unknown): string => createHash('sha256').update(
 /** Start-time snapshot from canonical owners. The snapshot is evidence, never an execution grant. */
 export async function projectWorkTaskContract(root: string, task: AgentTask, grant: ExecutionGrant,
     sourceHead: string, planning?: Pick<PlanningStore, 'read'>,
-    roadmap?: Pick<RoadmapStore, 'read'>): Promise<TaskContractSnapshot> {
+    roadmap?: Pick<RoadmapStore, 'read'>, followUpSourceTask?: AgentTask): Promise<TaskContractSnapshot> {
     if (await realpath(root) !== root || grant.taskId !== task.id || grant.projectRoot !== task.projectRoot)
         throw new Error('Task Contract project or grant mismatch');
     let acceptance: TaskContractSnapshot['acceptance'] = 'unknown';
     let planningRef: TaskContractSnapshot['planning'] = 'unknown';
     let roadmapRef: TaskContractSnapshot['roadmap'] = 'unknown';
     if (task.origin.kind === 'work-item') {
+        // A linked follow-up may contain new instructions, but its accepted WorkItem
+        // identity and original owner snapshot must still match the current owners.
+        const ownerTask = followUpSourceTask ?? task;
+        if (followUpSourceTask && (followUpSourceTask.origin.kind !== 'work-item' ||
+            JSON.stringify(followUpSourceTask.origin) !== JSON.stringify(task.origin) ||
+            followUpSourceTask.objective !== task.objective ||
+            followUpSourceTask.projectId !== task.projectId ||
+            followUpSourceTask.planningMapId !== task.planningMapId))
+            throw new Error('Work follow-up changed the accepted WorkItem identity');
         // Standalone runtimes without owner services retain the accepted task snapshot.
         // The product runtime supplies both services and performs the checks below.
         if (planning && roadmap) {
@@ -30,11 +39,11 @@ export async function projectWorkTaskContract(root: string, task: AgentTask, gra
         if (collection.projectId !== origin.projectId || task.projectId !== origin.projectId ||
             !map || map.projectId !== origin.projectId || map.revision !== origin.mapRevision ||
             JSON.stringify(map.basis) !== JSON.stringify(origin.basis) || !work ||
-            work.objective !== task.objective ||
+            work.objective !== ownerTask.objective ||
             JSON.stringify({ title: work.title, requirements: work.requirements, constraints: work.constraints,
                 acceptanceCriteria: work.acceptanceCriteria, validationTargets: work.validationTargets,
                 transformationIds: work.transformationIds, delegatedPaths: origin.scope.delegablePaths,
-                humanReservedPaths: work.humanReservedPaths ?? [] }) !== task.instructions)
+                humanReservedPaths: work.humanReservedPaths ?? [] }) !== ownerTask.instructions)
             throw new Error('Accepted WorkItem basis changed; review and prepare a new task');
         acceptance = [...work.acceptanceCriteria];
         planningRef = { projectId: collection.projectId, mapId: map.id, mapRevision: map.revision,

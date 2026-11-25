@@ -33,6 +33,7 @@ import { restoreWorkScroll, workDisclosureKeydown } from './work-transcript-pres
 import { renderWorkConversation } from './work-conversation-presentation';
 import { formatRunElapsed, formatRunElapsedCompact } from './run-elapsed';
 import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
+import type { AgentRun, AgentTask } from '@dope/agent-core';
 import type { AIRegistryService } from '@dope/contracts/lib/ai-registry-service';
 import type { AIRolePolicyService } from '@dope/contracts/lib/ai-role-policy-service';
 import { createDefaultExecutionGrant, EFFECT_KINDS, WORK_TOOL_CATALOG } from '@dope/agent-core';
@@ -119,6 +120,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     newWorkFromToolbar(): void {
         if (!this.canCreateWorkFromToolbar) return;
         this.workNewParent = '';
+        if (this.directController) this.directController.forkedFromRunId = undefined;
         this.composingWork = true;
         this.render();
     }
@@ -136,7 +138,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     backToWorkList(): void {
         if (!this.canBackToWorkList) return;
         if (this.panel.work) void this.selectWork();
-        else { this.composingWork = false; this.render(); }
+        else { this.composingWork = false;
+            if (this.directController) this.directController.forkedFromRunId = undefined;
+            this.render(); }
     }
     get canBackToChats(): boolean { return this.panel.mode === 'chat' && this.controller.mode === 'chat'; }
     get canShowChatSelectorActions(): boolean { return this.panel.mode === 'chat' && this.controller.mode === 'select-chat'; }
@@ -1577,10 +1581,30 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (canonical) this.lastWorkSelection = canonical;
         if (!selection) await this.workController?.refresh();
     }
+    private forkSelectedWork(run: AgentRun, task: AgentTask): void {
+        const draft = this.directController;
+        if (!draft || !['completed', 'cancelled', 'failed', 'interrupted'].includes(run.status) ||
+            task.id !== run.taskId || !this.panel.workspace || draft.project !== this.panel.workspace) return;
+        draft.edit(task.objective, task.origin.kind === 'direct' ? task.instructions : '');
+        draft.setValidation(task.completion.validation[0]?.command ?? '');
+        draft.forkedFromRunId = run.id;
+        draft.acceptGrant(false); draft.authorizeHostedProjectData(false);
+        if (run.provenance) draft.setPolicy({ kind: 'exact', connectionId: run.provenance.connectionId,
+            modelId: run.provenance.modelId });
+        this.panel.selectWork(undefined);
+        this.composingWork = true;
+        this.render();
+    }
     private renderWorkComposer(): void {
         const controller = this.directController;
         if (!controller) return;
         const form = document.createElement('form'); form.className = 'dope-work-composer';
+        if (controller.forkedFromRunId) {
+            const fork = document.createElement('p'); fork.className = 'dope-work-detail';
+            fork.textContent = `Fork from saved run ${controller.forkedFromRunId}. This creates a new task, ` +
+                'model, tool selection and grant for review; no candidate is carried over.';
+            form.append(fork);
+        }
         const prompt = document.createElement('textarea'); prompt.maxLength = 20000;
         prompt.setAttribute('aria-label', 'Work instructions'); prompt.placeholder = 'Describe one bounded task…';
         prompt.value = controller.instructions;
@@ -2434,7 +2458,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     scroll.append(state);
                     if (session.status === 'recovery-required') {
                         const recovery = document.createElement('p'); recovery.className = 'dope-work-warning';
-                        recovery.textContent = 'Recovery required. Pending delivery and candidate effects cannot be assumed safe. Verified continuation is a separate Work step.';
+                        recovery.textContent = 'Recovery required. In-flight delivery and candidate effects cannot be assumed safe. A reviewed recovery discards uncertain effects and keeps only messages still Queued.';
                         scroll.append(recovery);
                     }
                     if (run.status === 'running' && session.segments.at(-1)?.runId === run.id &&
@@ -2477,6 +2501,65 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         }
                         conversationComposer = form;
                     }
+                    if ((session.status === 'completed' && run.reviewDecision ||
+                        session.status === 'recovery-required' && run.status === 'interrupted') &&
+                        session.segments.at(-1)?.runId === run.id) {
+                        if (!controller.followUpOpen) {
+                            scroll.append(this.button(session.status === 'recovery-required' ?
+                                'Review Work recovery' : 'Continue this Work session', () => controller.openFollowUp()));
+                        } else {
+                            const follow = document.createElement('section');
+                            follow.className = 'dope-work-review';
+                            const title = document.createElement('h3');
+                            title.textContent = session.status === 'recovery-required' ?
+                                'Review deliberate recovery' : 'Review linked follow-up';
+                            const facts = document.createElement('p'); facts.className = 'dope-work-detail';
+                            facts.textContent = `Session ${session.id} · exact model ${session.connectionId} / ${session.modelId} · ` +
+                                `tools ${run.toolSelection?.tools.map(tool => tool.id).join(', ') || 'none'} ` +
+                                `within the original ceiling · same sandbox · fresh grant · source HEAD ${run.basis?.head ?? 'unavailable'}. ` +
+                                'The prior candidate decision remains separate. A new candidate needs validation and review.';
+                            const input = document.createElement('textarea'); input.maxLength = 20000;
+                            input.setAttribute('aria-label', 'Follow-up instructions');
+                            input.placeholder = 'Describe the next bounded turn…';
+                            input.value = controller.followUpInstructions;
+                            input.oninput = () => { controller.followUpInstructions = input.value;
+                                controller.followUpAccepted = false; controller.followUpDirtyReview = undefined; };
+                            const approval = document.createElement('label'); approval.className = 'dope-work-grant';
+                            const checkbox = document.createElement('input'); checkbox.type = 'checkbox';
+                            checkbox.checked = controller.followUpAccepted;
+                            checkbox.onchange = () => { controller.followUpAccepted = checkbox.checked; this.render(); };
+                            approval.append(checkbox, ' Accept a fresh grant within this session’s sealed ceiling');
+                            follow.append(title, facts, input, approval);
+                            if (session.status === 'recovery-required') {
+                                const discard = document.createElement('label'); discard.className = 'dope-work-grant';
+                                const check = document.createElement('input'); check.type = 'checkbox';
+                                check.checked = controller.followUpRecoveryDiscardAccepted;
+                                check.onchange = () => { controller.followUpRecoveryDiscardAccepted = check.checked; this.render(); };
+                                discard.append(check, ' Discard uncertain in-flight delivery and unverified candidate effects; ' +
+                                    'retain never-delivered Queued messages for FIFO delivery after the new turn');
+                                follow.append(discard);
+                            }
+                            if (controller.followUpDirtyReview && !controller.followUpDirtyReview.clean) {
+                                const dirty = document.createElement('p'); dirty.className = 'dope-work-warning';
+                                dirty.textContent = `Review ${controller.followUpDirtyReview.paths.length} current project changes ` +
+                                    'as the exact follow-up source basis: ' + controller.followUpDirtyReview.paths.join(', ');
+                                follow.append(dirty);
+                            }
+                            if (controller.followUpError) { const error = document.createElement('p');
+                                error.setAttribute('role', 'alert'); error.textContent = controller.followUpError;
+                                follow.append(error); }
+                            const actions = document.createElement('div'); actions.className = 'dope-work-conversation-actions';
+                            actions.append(this.button('Cancel', () => controller.cancelFollowUp(), controller.followUpBusy),
+                                this.button(controller.followUpDirtyReview ? 'Accept reviewed source and continue' :
+                                    session.status === 'recovery-required' ? 'Recover Work' : 'Continue Work',
+                                    () => void controller.continueSession(!!controller.followUpDirtyReview)
+                                    .then(next => { if (next) void this.selectWork({ kind: 'run', id: next.id }); }),
+                                controller.followUpBusy || !controller.followUpAccepted ||
+                                session.status === 'recovery-required' && !controller.followUpRecoveryDiscardAccepted ||
+                                !controller.followUpInstructions.trim() || !run.basis?.head));
+                            follow.append(actions); scroll.append(follow);
+                        }
+                    }
                 }
                 if (!session) {
                     const mode = document.createElement('p'); mode.className = 'dope-work-detail';
@@ -2485,10 +2568,28 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         'No persistent Work session is saved for this run. Conversation controls are unavailable.';
                     scroll.append(mode);
                 }
+                if (controller.transcriptUnavailableSegments.length || controller.transcriptIncomplete) {
+                    const gap = document.createElement('p'); gap.className = 'dope-work-warning';
+                    gap.textContent = controller.transcriptUnavailableSegments.length ?
+                        `Saved transcript evidence unavailable for ${controller.transcriptUnavailableSegments.length} ` +
+                        `run segment${controller.transcriptUnavailableSegments.length === 1 ? '' : 's'}. ` +
+                        'Recorded turns from other segments remain visible; missing turns cannot be reconstructed.' :
+                        'Saved transcript is incomplete. Missing turns cannot be reconstructed.';
+                    scroll.append(gap);
+                }
                 scroll.append(renderWorkConversation(this.markdown, controller.transcript,
                     session?.segments.some(segment => segment.runId === run.id) ? session : undefined,
                     controller.events));
                 const overview = workRunOverview(run, controller.selectedTask);
+                if (controller.selectedTask?.forkedFromRunId) {
+                    const origin = document.createElement('p'); origin.className = 'dope-work-detail';
+                    origin.append('Forked from saved Work run ', this.button(controller.selectedTask.forkedFromRunId,
+                        () => void this.selectWork({ kind: 'run', id: controller.selectedTask!.forkedFromRunId! })));
+                    scroll.append(origin);
+                }
+                if (controller.selectedTask && ['completed', 'cancelled', 'failed', 'interrupted'].includes(run.status))
+                    scroll.append(this.button('Fork as New Work', () =>
+                        this.forkSelectedWork(run, controller.selectedTask!)));
                 detail(overview.state, 'dope-work-detail');
                 detail(`Required validation: ${view.validation} · ${run.changedFiles.length} changed files · ` +
                     'Git checkpoint and owner qualification are separate', 'dope-work-detail');
