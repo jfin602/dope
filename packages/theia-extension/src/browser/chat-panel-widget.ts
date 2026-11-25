@@ -30,39 +30,21 @@ import { WorkSelectionNavigator } from './work-selection-navigator';
 import { WorkListOrganization, workRowKey, type WorkTree } from './work-list-organization';
 import type { WorkRow } from './work-selection-controller';
 import { restoreWorkScroll, workDisclosureKeydown } from './work-transcript-presentation';
-import { renderWorkConversation } from './work-conversation-presentation';
+import { renderWorkConversation, workSegmentReviewEnabled } from './work-conversation-presentation';
 import { formatRunElapsed, formatRunElapsedCompact } from './run-elapsed';
 import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 import type { AgentRun, AgentTask } from '@dope/agent-core';
 import type { AIRegistryService } from '@dope/contracts/lib/ai-registry-service';
 import type { AIRolePolicyService } from '@dope/contracts/lib/ai-role-policy-service';
-import { createDefaultExecutionGrant, EFFECT_KINDS, WORK_TOOL_CATALOG } from '@dope/agent-core';
+import { createDefaultExecutionGrant, EFFECT_KINDS, WORK_PERMISSION_MAXIMUM, WORK_TOOL_CATALOG,
+    verifiedNoEffectWorkSegment } from '@dope/agent-core';
 import { WorkToolPreferences, WORK_TOOL_PREFERENCES_KEY, hasApprovedWorkCommand } from './work-tool-preferences';
 import { AgentRunController } from './agent-run-controller';
 import type { HistoryFocusTarget } from '@dope/contracts/lib/history';
 import { panelFocusTarget } from './history-focus-target';
 import type { ChatPlanningSelection, PlanningSelection } from './chat-planning-selection';
 import { ReasoningRevealBuffer } from './reasoning-reveal';
-
-function copyChatText(text: string): Promise<void> {
-    // Keep the copy command inside the click gesture. Some desktop browser
-    // contexts expose Clipboard.writeText but reject it for an embedded editor.
-    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : undefined;
-    const selection = window.getSelection();
-    const ranges = selection ? Array.from({ length: selection.rangeCount }, (_, index) => selection.getRangeAt(index)) : [];
-    const input = document.createElement('textarea');
-    input.value = text;
-    input.setAttribute('aria-hidden', 'true');
-    input.style.cssText = 'position:fixed;left:-10000px;top:0;opacity:0';
-    document.body.append(input);
-    input.focus(); input.select();
-    const copied = document.execCommand('copy');
-    input.remove();
-    previousFocus?.focus();
-    if (selection) { selection.removeAllRanges(); for (const range of ranges) selection.addRange(range); }
-    return copied ? Promise.resolve() :
-        navigator.clipboard?.writeText(text) ?? Promise.reject(new Error('Clipboard unavailable'));
-}
+import { copyChatText } from './chat-copy-text';
 
 function workTitlePreview(title: string): string {
     const firstSentence = title.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? title;
@@ -117,6 +99,27 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         return this.panel.mode === 'work' && !this.panel.work && !this.composingWork && !!this.workController?.handle;
     }
     get canBackToWorkList(): boolean { return this.panel.mode === 'work' && (this.composingWork || !!this.panel.work); }
+    get canRefreshSelectedWork(): boolean {
+        return this.panel.mode === 'work' && !!this.panel.work && !!this.workController?.handle;
+    }
+    refreshSelectedWork(): void {
+        if (!this.canRefreshSelectedWork) return;
+        const work = this.panel.work!, controller = this.workController!;
+        if (work.kind === 'sequence') {
+            void controller.phase.refresh(); void controller.refresh();
+        } else if (work.kind === 'task') {
+            void controller.phase.refresh().then(() => controller.select(work));
+        } else void controller.select(work);
+    }
+    get canForkSelectedWork(): boolean {
+        const run = this.workController?.selectedRun, task = this.workController?.selectedTask;
+        return this.panel.mode === 'work' && this.panel.work?.kind === 'run' &&
+            this.panel.work.id === run?.id && !!task && task.id === run.taskId &&
+            ['completed', 'cancelled', 'failed', 'interrupted'].includes(run.status);
+    }
+    forkSelectedWorkFromToolbar(): void {
+        if (this.canForkSelectedWork) this.forkSelectedWork(this.workController!.selectedRun!, this.workController!.selectedTask!);
+    }
     newWorkFromToolbar(): void {
         if (!this.canCreateWorkFromToolbar) return;
         this.workNewParent = '';
@@ -358,6 +361,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private workPointerId?: number;
     private workScrollKey?: string;
     private workSelectionChanged = false;
+    private workDetailsOpen = false;
     private workScrollTop = 0;
     private cancelWorkAnimation?: () => void;
     private workAnimationUntil = 0;
@@ -1531,6 +1535,18 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         button.onclick = action;
         return button;
     }
+    private composerActionButton(action: () => void, mode: 'send' | 'stop', label: string,
+        disabled = false): HTMLButtonElement {
+        const button = this.button('', action, disabled);
+        button.className = 'dope-chat-composer-submit';
+        button.title = label;
+        button.setAttribute('aria-label', label);
+        const icon = document.createElement('span');
+        icon.className = codicon(mode === 'stop' ? 'debug-stop' : 'arrow-up');
+        icon.setAttribute('aria-hidden', 'true');
+        button.append(icon);
+        return button;
+    }
     private renderWorkTools(project: string, taskKey: string, locality: 'local' | 'hosted' | undefined,
         commandsAvailable: boolean): HTMLElement {
         const section = document.createElement('section'); section.className = 'dope-work-tools';
@@ -1909,12 +1925,15 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (key !== this.workScrollKey) {
             this.cancelWorkAnimation?.(); this.workAnimationUntil = 0;
             this.workScrollKey = key; this.workFollow.select(key); this.workSelectionChanged = true;
+            this.workDetailsOpen = false;
         }
         if (this.titleEditingWorkKey && this.titleEditingWorkKey !== key) this.titleEditingWorkKey = undefined;
         if (work) {
             const header = document.createElement('header');
             header.className = 'dope-chat-title-card dope-work-title-card';
             const title = this.workDisplayTitle(work);
+            const headingTitle = this.workList.title(key!) ??
+                (work.kind !== 'sequence' ? controller?.selectedTask?.objective : undefined) ?? title;
             if (this.titleEditingWorkKey === key) {
                 const input = document.createElement('input');
                 input.className = 'dope-chat-title-input'; input.setAttribute('aria-label', 'Work title');
@@ -1926,27 +1945,16 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 };
                 header.append(input);
             } else {
-                const heading = document.createElement('h2'); heading.textContent = title;
-                heading.title = controller?.selectedTask?.objective ?? title; header.append(heading);
+                const heading = document.createElement('h2'); heading.textContent = headingTitle;
+                heading.title = headingTitle; header.append(heading);
             }
-            const refresh = this.button('', () => {
-                if (work.kind === 'sequence') {
-                    void controller?.phase.refresh(); void controller?.refresh();
-                } else if (work.kind === 'task') {
-                    void controller?.phase.refresh().then(() => controller.select(work));
-                } else void controller?.select(work);
-            }, !controller?.handle);
-            refresh.className = 'dope-chat-title-edit';
-            refresh.setAttribute('aria-label', 'Refresh Work'); refresh.title = 'Refresh Work';
-            const refreshIcon = document.createElement('span'); refreshIcon.className = codicon('refresh');
-            refreshIcon.setAttribute('aria-hidden', 'true'); refresh.append(refreshIcon);
             const editTitle = this.button('', () => this.toggleWorkTitleEditing(key!, title), !this.panel.workspace);
             editTitle.className = 'dope-chat-title-edit';
             editTitle.setAttribute('aria-label', this.titleEditingWorkKey === key ? 'Save Work title' : 'Edit Work title');
             editTitle.title = this.titleEditingWorkKey === key ? 'Save Work title' : 'Edit Work title';
             const editIcon = document.createElement('span'); editIcon.className = codicon('edit');
             editIcon.setAttribute('aria-hidden', 'true'); editTitle.append(editIcon);
-            header.append(refresh, editTitle);
+            header.append(editTitle);
             this.content.append(header);
         }
         if (this.backendOffline || this.workAttachmentError) return;
@@ -2160,7 +2168,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const scroll = document.createElement('div'); scroll.className = 'dope-chat-scroll dope-work-scroll';
         scroll.setAttribute('role', 'log'); scroll.setAttribute('aria-label', 'Work transcript');
         scroll.addEventListener('keydown', workDisclosureKeydown);
-        const latest = this.button('Latest', () => {
+        const latest = this.button('', () => {
             this.workFollow.jump();
             this.workAnimationUntil = performance.now() + 200;
             this.cancelWorkAnimation?.();
@@ -2168,6 +2176,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 window.matchMedia('(prefers-reduced-motion: reduce)').matches);
             latest.hidden = true;
         });
+        latest.setAttribute('aria-label', 'Scroll to latest'); latest.title = 'Scroll to latest';
+        const down = document.createElement('span'); down.className = codicon('chevron-down');
+        down.setAttribute('aria-hidden', 'true'); latest.append(down);
         latest.className = 'dope-chat-latest dope-work-latest';
         scroll.onscroll = () => {
             this.workScrollTop = scroll.scrollTop;
@@ -2211,7 +2222,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         overview.setAttribute('role', 'status');
         overview.setAttribute('aria-live', 'polite');
         overview.textContent = `${view.origin === 'prompt-stack' ? 'Prompt Stack' : view.origin === 'work-item' ? 'WorkItem' : 'Direct Work'} · ${view.status}`;
-        scroll.append(overview);
+        if (work.kind !== 'run') scroll.append(overview);
         const displayedRun = work.kind === 'sequence' ? controller.phase.run :
             work.kind === 'run' ? controller.selectedRun : undefined;
         for (const pending of this.directController?.pendingMCP ?? []) {
@@ -2229,15 +2240,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     pending.runId, pending.id, false)));
             scroll.append(approval);
         }
-        if (displayedRun?.startedAt) scroll.append(this.elapsedClock(displayedRun.startedAt,
+        if (work.kind !== 'run' && displayedRun?.startedAt) scroll.append(this.elapsedClock(displayedRun.startedAt,
             displayedRun.endedAt, displayedRun.status === 'running'));
-        const decision = document.createElement('section'); decision.className = 'dope-work-start';
-        decision.setAttribute('aria-label', 'Next Work action');
-        const decisionTitle = document.createElement('h3'); decisionTitle.textContent = 'Next action'; decision.append(decisionTitle);
-        const decisionText = document.createElement('p'); decisionText.className = 'dope-work-next';
-        decisionText.textContent = work.kind === 'task' && view.origin === 'direct' ?
-            'This saved direct task has no Start control here. Use New Work to review a fresh execution grant.' : view.next;
-        decision.append(decisionText);
+        const decision = document.createElement('section'); decision.className = 'dope-work-actions';
+        decision.setAttribute('aria-label', 'Work actions');
         const primary = (label: string, action: () => void, enabled: boolean): HTMLButtonElement => {
             const button = this.button(label, action, !enabled);
             if (enabled && !decision.querySelector('.dope-work-primary')) button.className = 'dope-work-primary';
@@ -2252,6 +2258,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             return button;
         };
         let conversationComposer: HTMLElement | undefined;
+        let runSteerComposer: HTMLElement | undefined;
+        let runDetailsControl: HTMLDetailsElement | undefined;
+        let lockedConfig: HTMLDetailsElement | undefined;
         const transcriptButton = (runId: string): HTMLButtonElement => {
             return this.button('View Work conversation', () => void this.selectWork({ kind: 'run', id: runId }),
                 !this.panel.workspace || controller.project !== this.panel.workspace);
@@ -2444,33 +2453,26 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     config.className = 'dope-work-diagnostics dope-work-locked-config';
                     const label = document.createElement('summary'); label.textContent = 'Locked Work configuration';
                     const values = document.createElement('p');
-                    values.textContent = `Model: ${session.connectionId} / ${session.modelId} · ` +
+                    const currentSegment = session.segments.find(segment => segment.runId === run.id);
+                    values.textContent = `Model: ${currentSegment?.connectionId ?? session.connectionId} / ` +
+                        `${currentSegment?.modelId ?? session.modelId} · ` +
                         `Tools: ${run.toolSelection?.tools.map(tool => tool.id).join(', ') ?? 'selection unavailable'} · ` +
-                        `Sandbox: isolated candidate (binding ${session.sandboxHash.slice(0, 12)}) · ` +
-                        `Grant: ${session.grantId} revision ${session.grantRevision}`;
+                        `Sandbox: isolated candidate (binding ${(currentSegment?.sandboxHash ?? session.sandboxHash).slice(0, 12)}) · ` +
+                        `Grant: ${currentSegment?.grantId ?? session.grantId} revision ` +
+                        `${currentSegment?.grantRevision ?? session.grantRevision}`;
                     const ceiling = document.createElement('p');
-                    ceiling.textContent = 'Permission ceiling: ' + EFFECT_KINDS.map(kind =>
-                        `${kind} ${session.permissionCeiling[kind] ? 'allowed' : 'denied'}`).join(' · ');
-                    config.append(label, values, ceiling); scroll.append(config);
-                    const state = document.createElement('p');
-                    state.className = 'dope-work-system'; state.setAttribute('role', 'status');
-                    state.textContent = `Conversation ${session.status.replaceAll('-', ' ')}`;
-                    scroll.append(state);
-                    if (session.status === 'recovery-required') {
-                        const recovery = document.createElement('p'); recovery.className = 'dope-work-warning';
-                        recovery.textContent = 'Recovery required. In-flight delivery and candidate effects cannot be assumed safe. A reviewed recovery discards uncertain effects and keeps only messages still Queued.';
-                        scroll.append(recovery);
-                    }
+                    ceiling.textContent = 'Reviewed permissions: ' + EFFECT_KINDS.map(kind =>
+                        `${kind} ${(currentSegment?.permissions ?? session.permissionCeiling)[kind] ? 'allowed' : 'denied'}`).join(' · ');
+                    config.append(label, values, ceiling); lockedConfig = config;
                     if (run.status === 'running' && session.segments.at(-1)?.runId === run.id &&
                         ['running', 'awaiting-input'].includes(session.status)) {
                         const form = document.createElement('form');
-                        form.className = 'dope-work-conversation-composer';
+                        form.className = 'dope-work-conversation-composer dope-chat-composer';
                         form.setAttribute('aria-label', 'Work message composer');
-                        const input = document.createElement('textarea');
+                        const input = document.createElement('textarea'); input.rows = 1;
                         input.setAttribute('aria-label', 'Message Work agent');
                         input.placeholder = 'Message the Work agent…';
                         input.maxLength = 16000; input.value = this.workMessageDraft || controller.sessionRetryText;
-                        input.oninput = () => { this.workMessageDraft = input.value; };
                         const send = async () => {
                             const text = (this.workMessageDraft || controller.sessionRetryText).trim();
                             if (!text || controller.sessionBusy) return;
@@ -2482,14 +2484,21 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                             if (shouldSendChatInput(event)) { event.preventDefault(); void send(); }
                         };
                         form.onsubmit = event => { event.preventDefault(); void send(); };
-                        const actions = document.createElement('div');
-                        actions.className = 'dope-work-conversation-actions';
-                        actions.append(this.button('Queue message', () => void send(), controller.sessionBusy),
-                            this.button('Finish Work', () => void controller.finishSession(), controller.sessionBusy ||
-                                session.messages.some(message => ['queued', 'delivering'].includes(message.status))),
-                            this.button('Stop Work', () => void controller.stopSession(), controller.sessionBusy ||
-                                run.status !== 'running'));
-                        form.append(input, actions);
+                        const queue = this.composerActionButton(() => void send(), 'send', 'Queue message',
+                            controller.sessionBusy || !input.value.trim());
+                        input.oninput = () => { this.workMessageDraft = input.value; queue.disabled =
+                            controller.sessionBusy || !input.value.trim(); resizeChatInput(input); };
+                        const finish = this.button('Finish Work', () => void controller.finishSession(),
+                            controller.sessionBusy || session.messages.some(message =>
+                                ['queued', 'delivering'].includes(message.status)));
+                        finish.className = 'dope-work-conversation-finish';
+                        const toolbar = document.createElement('div'); toolbar.className = 'dope-chat-composer-toolbar';
+                        const mode = document.createElement('span'); mode.className = 'dope-work-composer-mode';
+                        mode.textContent = 'Queue for this run';
+                        toolbar.append(mode, finish, queue);
+                        const inputWrap = document.createElement('div'); inputWrap.className = 'dope-chat-input-wrap';
+                        inputWrap.append(input); form.append(inputWrap, toolbar);
+                        resizeChatInput(input);
                         if (controller.sessionError) {
                             const error = document.createElement('p'); error.setAttribute('role', 'alert');
                             error.textContent = controller.sessionError; form.append(error);
@@ -2501,42 +2510,124 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         }
                         conversationComposer = form;
                     }
-                    if ((session.status === 'completed' && run.reviewDecision ||
-                        session.status === 'recovery-required' && run.status === 'interrupted') &&
+                    if (['completed', 'stopped', 'recovery-required'].includes(session.status) &&
                         session.segments.at(-1)?.runId === run.id) {
-                        if (!controller.followUpOpen) {
-                            scroll.append(this.button(session.status === 'recovery-required' ?
-                                'Review Work recovery' : 'Continue this Work session', () => controller.openFollowUp()));
-                        } else {
+                        {
+                            const form = document.createElement('form');
+                            form.className = 'dope-work-conversation-composer dope-chat-composer';
+                            form.setAttribute('aria-label', 'New Work segment composer');
+                            const prompt = document.createElement('textarea'); prompt.rows = 1;
+                            prompt.setAttribute('aria-label', 'New Work prompt');
+                            prompt.placeholder = 'Continue this Work conversation…';
+                            prompt.maxLength = 16000;
+                            prompt.value = this.workMessageDraft;
+                            let reviewButton: HTMLButtonElement;
+                            prompt.oninput = () => { this.workMessageDraft = prompt.value;
+                                controller.followUpInstructions = prompt.value.trim();
+                                controller.followUpAccepted = false;
+                                reviewButton.disabled = !workSegmentReviewEnabled(prompt.value, controller.followUpBusy,
+                                    controller.followUpOpen, controller.followUpTargetsBusy, !!controller.followUpTarget);
+                                const approval = this.content.querySelector<HTMLInputElement>('.dope-work-grant-accept');
+                                if (approval) approval.checked = false;
+                                resizeChatInput(prompt); };
+                            const send = () => {
+                                const text = this.workMessageDraft.trim();
+                                if (!text || controller.followUpBusy) return;
+                                controller.followUpInstructions = text;
+                                if (!controller.followUpOpen) { controller.openFollowUp(); return; }
+                                if (!controller.followUpAccepted) return;
+                                void controller.continueSession(!!controller.followUpDirtyReview).then(next => {
+                                    if (next) { this.workMessageDraft = ''; void this.selectWork({ kind: 'run', id: next.id }); }
+                                });
+                            };
+                            prompt.onkeydown = event => { if (shouldSendChatInput(event)) {
+                                event.preventDefault(); send(); } };
+                            form.onsubmit = event => { event.preventDefault(); send(); };
+                            reviewButton = this.composerActionButton(send, 'send', controller.followUpOpen ?
+                                'Start reviewed segment' : 'Review new segment', !workSegmentReviewEnabled(this.workMessageDraft,
+                                    controller.followUpBusy, controller.followUpOpen, controller.followUpTargetsBusy,
+                                    !!controller.followUpTarget));
+                            const toolbar = document.createElement('div'); toolbar.className = 'dope-chat-composer-toolbar';
+                            const mode = document.createElement('span'); mode.className = 'dope-work-composer-mode';
+                            mode.textContent = 'New Work segment';
+                            toolbar.append(mode, reviewButton);
+                            const inputWrap = document.createElement('div'); inputWrap.className = 'dope-chat-input-wrap';
+                            inputWrap.append(prompt); form.append(inputWrap, toolbar);
+                            resizeChatInput(prompt);
+                            conversationComposer = form;
+                        }
+                        if (controller.followUpOpen) {
                             const follow = document.createElement('section');
                             follow.className = 'dope-work-review';
                             const title = document.createElement('h3');
-                            title.textContent = session.status === 'recovery-required' ?
-                                'Review deliberate recovery' : 'Review linked follow-up';
+                            title.textContent = 'Review new Work segment';
                             const facts = document.createElement('p'); facts.className = 'dope-work-detail';
-                            facts.textContent = `Session ${session.id} · exact model ${session.connectionId} / ${session.modelId} · ` +
-                                `tools ${run.toolSelection?.tools.map(tool => tool.id).join(', ') || 'none'} ` +
-                                `within the original ceiling · same sandbox · fresh grant · source HEAD ${run.basis?.head ?? 'unavailable'}. ` +
-                                'The prior candidate decision remains separate. A new candidate needs validation and review.';
-                            const input = document.createElement('textarea'); input.maxLength = 20000;
-                            input.setAttribute('aria-label', 'Follow-up instructions');
-                            input.placeholder = 'Describe the next bounded turn…';
-                            input.value = controller.followUpInstructions;
-                            input.oninput = () => { controller.followUpInstructions = input.value;
-                                controller.followUpAccepted = false; controller.followUpDirtyReview = undefined; };
+                            facts.textContent = `Conversation ${session.id} · fresh isolated Pi session and grant. ` +
+                                'The prior result and candidate decision remain separate. Current source is checked at Send.';
+                            const model = document.createElement('select'); model.setAttribute('aria-label', 'New segment model');
+                            model.append(new Option('Select an eligible local model', '', true,
+                                !controller.followUpTarget));
+                            for (const target of controller.followUpTargets) {
+                                const option = document.createElement('option');
+                                option.value = `${target.connectionId}\u0000${target.modelId}`;
+                                option.textContent = target.label;
+                                option.selected = target.connectionId === controller.followUpTarget?.connectionId &&
+                                    target.modelId === controller.followUpTarget?.modelId;
+                                model.append(option);
+                            }
+                            model.onchange = () => { controller.followUpTarget = controller.followUpTargets.find(target =>
+                                `${target.connectionId}\u0000${target.modelId}` === model.value);
+                                controller.followUpAccepted = false; this.render(); };
+                            const refreshModels = this.button('Refresh eligible models',
+                                () => void controller.refreshFollowUpTargets(), controller.followUpTargetsBusy);
+                            const modelStatus = document.createElement('p'); modelStatus.className = 'dope-work-detail';
+                            modelStatus.textContent = controller.followUpTargetReason;
+                            const tools = document.createElement('div'); tools.className = 'dope-work-tool-list';
+                            for (const tool of WORK_TOOL_CATALOG) {
+                                const label = document.createElement('label'); label.className = 'dope-work-tool-row';
+                                const check = document.createElement('input'); check.type = 'checkbox';
+                                check.checked = controller.followUpToolIds.includes(tool.id);
+                                check.onchange = () => { controller.followUpToolIds = check.checked ?
+                                    [...controller.followUpToolIds, tool.id] :
+                                    controller.followUpToolIds.filter(id => id !== tool.id);
+                                    controller.followUpAccepted = false; this.render(); };
+                                label.append(check, ` ${tool.id}`); tools.append(label);
+                            }
+                            const permissions = document.createElement('div'); permissions.className = 'dope-work-tool-list';
+                            for (const kind of EFFECT_KINDS) {
+                                const label = document.createElement('label'); label.className = 'dope-work-tool-row';
+                                const check = document.createElement('input'); check.type = 'checkbox';
+                                check.checked = !!controller.followUpPermissions?.[kind];
+                                check.disabled = !WORK_PERMISSION_MAXIMUM[kind];
+                                check.onchange = () => { if (controller.followUpPermissions)
+                                    controller.followUpPermissions[kind] = check.checked;
+                                    controller.followUpAccepted = false; this.render(); };
+                                label.append(check, ` ${kind}${WORK_PERMISSION_MAXIMUM[kind] ? '' : ' (unavailable)'}`);
+                                permissions.append(label);
+                            }
                             const approval = document.createElement('label'); approval.className = 'dope-work-grant';
                             const checkbox = document.createElement('input'); checkbox.type = 'checkbox';
+                            checkbox.className = 'dope-work-grant-accept';
                             checkbox.checked = controller.followUpAccepted;
                             checkbox.onchange = () => { controller.followUpAccepted = checkbox.checked; this.render(); };
-                            approval.append(checkbox, ' Accept a fresh grant within this session’s sealed ceiling');
-                            follow.append(title, facts, input, approval);
-                            if (session.status === 'recovery-required') {
+                            approval.append(checkbox, ' Accept this model, selected tools, sandbox permissions, ' +
+                                'source review and fresh grant');
+                            follow.append(title, facts, model, refreshModels, modelStatus, tools, permissions, approval);
+                            const verifiedNoEffect = verifiedNoEffectWorkSegment(run, session);
+                            const uncertain = run.status === 'interrupted' || run.status === 'failed' && !verifiedNoEffect ||
+                                run.status === 'cancelled' && !!run.candidateDelta?.effects.length;
+                            if (run.candidateReview && !run.reviewDecision) {
+                                const pending = document.createElement('p'); pending.className = 'dope-work-warning';
+                                pending.textContent = 'Decide the pending candidate above before starting another segment.';
+                                follow.append(pending);
+                            }
+                            if (uncertain) {
                                 const discard = document.createElement('label'); discard.className = 'dope-work-grant';
                                 const check = document.createElement('input'); check.type = 'checkbox';
                                 check.checked = controller.followUpRecoveryDiscardAccepted;
                                 check.onchange = () => { controller.followUpRecoveryDiscardAccepted = check.checked; this.render(); };
-                                discard.append(check, ' Discard uncertain in-flight delivery and unverified candidate effects; ' +
-                                    'retain never-delivered Queued messages for FIFO delivery after the new turn');
+                                discard.append(check, ' Discard unverified isolated effects and uncertain in-flight delivery; ' +
+                                    'retain never-delivered queued messages');
                                 follow.append(discard);
                             }
                             if (controller.followUpDirtyReview && !controller.followUpDirtyReview.clean) {
@@ -2549,14 +2640,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                                 error.setAttribute('role', 'alert'); error.textContent = controller.followUpError;
                                 follow.append(error); }
                             const actions = document.createElement('div'); actions.className = 'dope-work-conversation-actions';
-                            actions.append(this.button('Cancel', () => controller.cancelFollowUp(), controller.followUpBusy),
-                                this.button(controller.followUpDirtyReview ? 'Accept reviewed source and continue' :
-                                    session.status === 'recovery-required' ? 'Recover Work' : 'Continue Work',
-                                    () => void controller.continueSession(!!controller.followUpDirtyReview)
-                                    .then(next => { if (next) void this.selectWork({ kind: 'run', id: next.id }); }),
-                                controller.followUpBusy || !controller.followUpAccepted ||
-                                session.status === 'recovery-required' && !controller.followUpRecoveryDiscardAccepted ||
-                                !controller.followUpInstructions.trim() || !run.basis?.head));
+                            actions.append(this.button('Cancel review', () => controller.cancelFollowUp(), controller.followUpBusy));
                             follow.append(actions); scroll.append(follow);
                         }
                     }
@@ -2577,9 +2661,49 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         'Saved transcript is incomplete. Missing turns cannot be reconstructed.';
                     scroll.append(gap);
                 }
-                scroll.append(renderWorkConversation(this.markdown, controller.transcript,
+                const conversation = renderWorkConversation(this.markdown, controller.transcript,
                     session?.segments.some(segment => segment.runId === run.id) ? session : undefined,
-                    controller.events));
+                    session ? session.segments[0]?.prompt || controller.tasks.find(task => task.id === session.taskId)?.instructions :
+                        controller.selectedTask?.instructions || controller.selectedTask?.objective,
+                    controller.selectedTask?.id === run.taskId ? controller.steering : undefined, controller.runs, run);
+                conversation.dataset.color = this.workList.color(key!);
+                scroll.append(conversation);
+                requestAnimationFrame(() => {
+                    if (!conversation.isConnected) return;
+                    conversation.querySelectorAll<HTMLDetailsElement>(':scope > details.dope-work-run-activity')
+                        .forEach(activity => { activity.open = true; });
+                });
+                const steer = document.createElement('div');
+                steer.className = 'dope-chat-composer dope-work-steer-composer';
+                steer.setAttribute('aria-label', 'Work steering');
+                const steerInput = document.createElement('input');
+                steerInput.type = 'text';
+                steerInput.setAttribute('aria-label', 'Steering unavailable');
+                steerInput.placeholder = 'Steering unavailable';
+                steerInput.title = 'Active-turn steering is unavailable';
+                steerInput.disabled = true;
+                const stop = this.composerActionButton(() => {
+                    if (session?.segments.at(-1)?.runId === run.id) {
+                        void controller.stopSession();
+                    } else if (controller.selectedTask?.origin.kind === 'work-item') {
+                        void controller.stopOneShot();
+                    } else if (controller.selectedTask?.origin.kind === 'direct') {
+                        const project = this.panel.workspace;
+                        if (!project || controller.project !== project || this.panel.work?.kind !== 'run' ||
+                            this.panel.work.id !== run.id || controller.selectedTask?.id !== run.taskId || !this.directController) return;
+                        void this.directController.select(run.id).then(() => {
+                            if (this.panel.workspace === project && controller.project === project &&
+                                this.panel.work?.kind === 'run' && this.panel.work.id === run.id &&
+                                this.directController?.selected?.id === run.id) void this.directController.stop();
+                        });
+                    }
+                }, run.status === 'running' ? 'stop' : 'send', run.status === 'running' ? 'Stop Work' : 'Send steering',
+                run.status !== 'running' || controller.sessionBusy || !controller.selectedTask ||
+                    !!session && session.segments.at(-1)?.runId !== run.id ||
+                    !session && controller.selectedTask?.origin.kind === 'direct' && !this.directController);
+                if (run.status !== 'running') stop.title = 'Steering unavailable';
+                steer.append(steerInput, stop);
+                if (!session) runSteerComposer = steer;
                 const overview = workRunOverview(run, controller.selectedTask);
                 if (controller.selectedTask?.forkedFromRunId) {
                     const origin = document.createElement('p'); origin.className = 'dope-work-detail';
@@ -2587,27 +2711,58 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         () => void this.selectWork({ kind: 'run', id: controller.selectedTask!.forkedFromRunId! })));
                     scroll.append(origin);
                 }
-                if (controller.selectedTask && ['completed', 'cancelled', 'failed', 'interrupted'].includes(run.status))
-                    scroll.append(this.button('Fork as New Work', () =>
-                        this.forkSelectedWork(run, controller.selectedTask!)));
-                detail(overview.state, 'dope-work-detail');
-                detail(`Required validation: ${view.validation} · ${run.changedFiles.length} changed files · ` +
-                    'Git checkpoint and owner qualification are separate', 'dope-work-detail');
+                const runDetails = document.createElement('details');
+                runDetails.className = 'dope-work-run-details';
+                runDetailsControl = runDetails;
+                const runDetailsSummary = document.createElement('summary');
+                runDetailsSummary.textContent = 'Run details';
+                const runDetailsBody = document.createElement('div');
+                runDetailsBody.className = 'dope-work-run-details-body';
+                runDetails.append(runDetailsSummary, runDetailsBody);
+                if (lockedConfig) runDetailsBody.append(lockedConfig);
+                const runDetail = (text: string, className = 'dope-work-detail') => {
+                    const paragraph = document.createElement('p'); paragraph.className = className;
+                    paragraph.textContent = text; runDetailsBody.append(paragraph);
+                };
+                runDetail(overview.state);
+                if (session?.segments.some(segment => segment.runId === run.id)) {
+                    runDetail(`Conversation ${session.status.replaceAll('-', ' ')}`);
+                    const segments = document.createElement('details'); segments.className = 'dope-work-diagnostics';
+                    const segmentSummary = document.createElement('summary'); segmentSummary.textContent = 'Saved run segments';
+                    segments.append(segmentSummary);
+                    for (const segment of session.segments) {
+                        const saved = controller.runs.find(candidate => candidate.id === segment.runId);
+                        const item = document.createElement('p'); item.className = 'dope-work-detail';
+                        item.textContent = `Run ${segment.runId} · ${saved?.status ?? 'unavailable'} · ${segment.startedAt}` +
+                            `${saved?.outcome ? ` · ${saved.outcome.summary}` : ''}` +
+                            `${saved?.reviewDecision ? ` · Candidate ${saved.reviewDecision.kind}` :
+                                saved?.candidateReview ? ' · Candidate decision pending' : ''}`;
+                        segments.append(item);
+                    }
+                    runDetailsBody.append(segments);
+                    if (session.status === 'recovery-required') runDetail(
+                        verifiedNoEffectWorkSegment(run, session) ?
+                            'Saved Git and effect receipts verify no effect from this authority denial. A new segment can be reviewed here.' :
+                            'Recovery required. In-flight delivery and candidate effects cannot be assumed safe. ' +
+                            'A reviewed recovery discards uncertain effects and keeps only messages still Queued.',
+                        verifiedNoEffectWorkSegment(run, session) ? 'dope-work-detail' : 'dope-work-warning');
+                }
+                runDetail(`Required validation: ${view.validation} · ${run.changedFiles.length} changed files · ` +
+                    'Git checkpoint and owner qualification are separate');
                 if (run.toolSelection)
-                    detail(`Approved Pi tools (${run.toolSelection.tools.length}): ${run.toolSelection.tools.map(tool => tool.id).join(', ') || 'none'}`,
-                        'dope-work-detail');
+                    runDetail(`Approved Pi tools (${run.toolSelection.tools.length}): ${run.toolSelection.tools.map(tool => tool.id).join(', ') || 'none'}`);
                 if (view.validation === 'unavailable' || view.validation === 'failed')
-                    detail(`Required check ${view.validation === 'unavailable' ? 'did not complete' : 'failed'}: ` +
+                    runDetail(`Required check ${view.validation === 'unavailable' ? 'did not complete' : 'failed'}: ` +
                         `${run.validationResults.find(result => result.reason)?.reason ?? 'inspect the saved validation and transcript.'}`,
                         'dope-work-warning');
                 const provenance = document.createElement('details'); provenance.className = 'dope-work-diagnostics';
                 const provenanceTitle = document.createElement('summary'); provenanceTitle.textContent = 'Model and provenance';
                 const provenanceText = document.createElement('p');
                 provenanceText.textContent = run.provenance ? `${run.provenance.providerId} · ${run.provenance.modelId}` : 'Coding Agent';
-                provenance.append(provenanceTitle, provenanceText); scroll.append(provenance);
-                if (run.outcome) detail(`Run outcome: ${run.outcome.summary}`, 'dope-work-detail');
+                provenance.append(provenanceTitle, provenanceText); runDetailsBody.append(provenance);
+                if (run.outcome) runDetail(`Run outcome: ${run.outcome.summary}`);
                 if (run.resumedFrom)
-                    detail(`Resumed from run ${run.resumedFrom.runId} · restored candidate ${run.resumedFrom.candidateFingerprint.slice(0, 12)}`, 'dope-work-detail');
+                    runDetail(`Resumed from run ${run.resumedFrom.runId} · restored candidate ${run.resumedFrom.candidateFingerprint.slice(0, 12)}`);
                 const resume = controller.resumePreview;
                 if (resume?.sourceRunId === run.id && resume.eligible && !controller.resumeOpen)
                     primary('Resume from saved candidate', () => void controller.openResumePreview(), !controller.resumeBusy);
@@ -2650,19 +2805,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         controller.resumeTarget.locality === 'hosted' && !controller.resumeHostedAuthorized));
                     scroll.append(section);
                 }
-                if (!session && controller.selectedTask?.origin.kind === 'direct' && run.status === 'running')
-                    primary('Stop Work', () => {
-                        const project = this.panel.workspace;
-                        if (!project || controller.project !== project || this.panel.work?.kind !== 'run' ||
-                            this.panel.work.id !== run.id || controller.selectedTask?.id !== run.taskId || !this.directController) return;
-                        void this.directController.select(run.id).then(() => {
-                            if (this.panel.workspace === project && controller.project === project &&
-                                this.panel.work?.kind === 'run' && this.panel.work.id === run.id &&
-                                this.directController?.selected?.id === run.id) void this.directController.stop();
-                        });
-                    }, !!this.directController && controller.project === this.panel.workspace);
-                if (!session && controller.selectedTask?.origin.kind === 'work-item' && run.status === 'running')
-                    primary('Stop Work', () => void controller.stopOneShot(), !controller.sessionBusy);
                 if (!session && controller.sessionError) detail(controller.sessionError, 'dope-work-warning');
                 if (controller.transcriptState === 'not-recorded') detail('Transcript not recorded for this historical run.');
                 const diagnostics = document.createElement('details'); diagnostics.className = 'dope-work-diagnostics';
@@ -2678,19 +2820,19 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     const item = document.createElement('p'); item.textContent = `Changed · ${path}`; diagnostics.append(item);
                 }
                 if (run.changedFiles.length) { const status = document.createElement('small'); status.className = 'dope-work-system';
-                    status.textContent = `${run.changedFiles.length} changed file${run.changedFiles.length === 1 ? '' : 's'}`; scroll.append(status); }
+                    status.textContent = `${run.changedFiles.length} changed file${run.changedFiles.length === 1 ? '' : 's'}`; runDetailsBody.append(status); }
                 for (const result of run.validationResults) {
                     const item = document.createElement('p'); item.textContent = `Candidate validation · ${result.label} · ${result.status}` +
                         `${result.reason ? ` · ${result.reason}` : ''}`;
                     diagnostics.append(item);
                     if (result.status === 'failed') { const status = document.createElement('small');
                         status.className = 'dope-work-system dope-work-warning'; status.textContent = item.textContent;
-                        scroll.append(status); }
+                        runDetailsBody.append(status); }
                 }
                 if (run.validationResults.length && !run.validationResults.some(result => result.status === 'failed')) {
                     const status = document.createElement('small'); status.className = 'dope-work-system';
                     status.textContent = `${run.validationResults.length} candidate validation result${run.validationResults.length === 1 ? '' : 's'}`;
-                    scroll.append(status);
+                    runDetailsBody.append(status);
                 }
                 if (run.candidateReview && controller.selectedTask?.reviewPolicy?.kind === 'required') {
                     const review = run.candidateReview;
@@ -2749,24 +2891,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                             'Active-turn steering unavailable; explicitly stop and start a new task to change instructions.';
                         steering.append(item);
                     }
-                    if (run.status === 'running' && !run.candidateReview && !run.candidateDelta) {
-                        const kind = document.createElement('select'); kind.setAttribute('aria-label', 'Steering request kind');
-                        for (const value of ['instruction', 'focus'] as const) {
-                            const option = document.createElement('option'); option.value = value; option.textContent = value;
-                            kind.append(option);
-                        }
-                        kind.value = controller.steeringKind;
-                        kind.onchange = () => { controller.steeringKind = kind.value as 'instruction' | 'focus'; };
-                        const input = document.createElement('textarea'); input.setAttribute('aria-label', 'Steering request');
-                        input.maxLength = 4000; input.value = controller.steeringText;
-                        const send = this.button('Record steering request', () => void controller.requestSteering(),
-                            controller.steeringBusy || !controller.steeringText.trim());
-                        input.oninput = () => { controller.steeringText = input.value; send.disabled = controller.steeringBusy || !input.value.trim(); };
-                        const notice = document.createElement('p'); notice.className = 'dope-work-detail';
-                        notice.textContent = 'This records a request and an unsupported acknowledgement. It does not change the active turn.';
-                        steering.append(notice, kind, input, send);
-                    }
-                    scroll.append(steering);
+                    runDetailsBody.append(steering);
                 }
                 if (controller.actions.length) {
                     const actions = document.createElement('details'); actions.className = 'dope-work-diagnostics';
@@ -2801,21 +2926,31 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                             `${path.path} · unknown map impact (${path.reason})`;
                         section.append(item);
                     }
-                    scroll.append(section);
+                    runDetailsBody.append(section);
                 }
                 if (run.authorityDecision) { const item = document.createElement('p');
                     item.textContent = `Authority · ${run.authorityDecision.allowed ? 'allowed' : 'blocked'}`; diagnostics.append(item);
                     const status = document.createElement('small'); status.className = run.authorityDecision.allowed ?
                         'dope-work-system' : 'dope-work-system dope-work-warning';
-                    status.textContent = item.textContent; scroll.append(status); }
+                    status.textContent = item.textContent; runDetailsBody.append(status); }
                 if (run.capacityRetries) { const item = document.createElement('p');
                     item.textContent = `Retries · ${run.capacityRetries}`; diagnostics.append(item); }
                 if (run.outcome) { const item = document.createElement('p');
                     item.textContent = `${run.outcome.code} · ${run.outcome.summary}`; diagnostics.append(item);
                     const status = document.createElement('small'); status.className = run.status === 'completed' ?
                         'dope-work-system' : 'dope-work-system dope-work-warning';
-                    status.textContent = item.textContent; scroll.append(status); }
-                if (diagnostics.children.length > 1) scroll.append(diagnostics);
+                    status.textContent = item.textContent; runDetailsBody.append(status); }
+                if (diagnostics.children.length > 1) runDetailsBody.append(diagnostics);
+                if (controller.events.length) {
+                    const activity = document.createElement('details'); activity.className = 'dope-work-diagnostics';
+                    const activityTitle = document.createElement('summary'); activityTitle.textContent = 'Activity events';
+                    activity.append(activityTitle);
+                    for (const event of controller.events) {
+                        const item = document.createElement('p'); item.className = 'dope-work-detail';
+                        item.textContent = `${event.kind} · ${event.summary}`; activity.append(item);
+                    }
+                    runDetailsBody.append(activity);
+                }
             } else if (work.kind === 'task' && controller.selectedTask?.id === work.id) {
                 const task = controller.selectedTask;
                 detail(task.instructions);
@@ -2902,8 +3037,17 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             }
             else detail('Work record could not be found.');
         }
+        if (!decision.children.length) decision.remove();
         this.content.append(region);
+        if (runSteerComposer) this.content.append(runSteerComposer);
         if (conversationComposer) this.content.append(conversationComposer);
+        if (runDetailsControl) {
+            runDetailsControl.open = this.workDetailsOpen;
+            runDetailsControl.addEventListener('toggle', () => {
+                this.workDetailsOpen = runDetailsControl!.open;
+            });
+            this.content.append(runDetailsControl);
+        }
         latest.hidden = !this.workFollow.latestBelow;
     }
     private elapsedClock(startedAt: string, endedAt?: string, running = false): HTMLSpanElement {
@@ -3892,7 +4036,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }
         this.syncViewedProposal();
         this.syncAutoRoadmapPreview();
-        const toolbarState = `${this.canBackToChats}:${this.canCopyTranscript}:${this.canOpenChatSettings}:${this.isChatSettingsOpen}:${this.canShowChatSelectorActions}:${this.canUseChatSelectorActions}:${this.canShowWorkListActions}:${this.canCreateWorkFromToolbar}:${this.canBackToWorkList}`;
+        const toolbarState = `${this.canBackToChats}:${this.canCopyTranscript}:${this.canOpenChatSettings}:${this.isChatSettingsOpen}:${this.canShowChatSelectorActions}:${this.canUseChatSelectorActions}:${this.canShowWorkListActions}:${this.canCreateWorkFromToolbar}:${this.canBackToWorkList}:${this.canRefreshSelectedWork}:${this.canForkSelectedWork}`;
         if (toolbarState !== this.toolbarState) {
             this.toolbarState = toolbarState;
             ChatPanelWidget.toolbarChanged.fire();
@@ -4894,10 +5038,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         commandLabel.append(terminalIcon, commandMode);
         let submitButton: HTMLButtonElement;
         if (state.running) {
-            submitButton = this.button('', () => void state.cancel());
-            submitButton.title = 'Cancel'; submitButton.setAttribute('aria-label', 'Cancel');
-            const icon = document.createElement('span'); icon.className = codicon('debug-stop');
-            icon.setAttribute('aria-hidden', 'true'); submitButton.append(icon);
+            submitButton = this.composerActionButton(() => void state.cancel(), 'stop', 'Cancel');
         } else {
             const canSend = Boolean(selected || chat.settings.modelPolicy.type === 'follow-interactive' && !state.turnModel);
             const confirmHosted = () => window.confirm('Send this Chat message, history and selected project context to the hosted model chosen by Interactive?');
@@ -4909,10 +5050,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 if (current) current.scrollTop = previousTop;
                 this.scrollToLatest();
             };
-            submitButton = this.button('', submit, !canSend || state.pending || !hasSendableChatDraft(state.draft));
-            submitButton.title = 'Send'; submitButton.setAttribute('aria-label', 'Send');
-            const icon = document.createElement('span'); icon.className = codicon('arrow-up');
-            icon.setAttribute('aria-hidden', 'true'); submitButton.append(icon);
+            submitButton = this.composerActionButton(submit, 'send', 'Send',
+                !canSend || state.pending || !hasSendableChatDraft(state.draft));
             input.onkeydown = event => {
                 if (!event.isComposing && !skillPopup.hidden) {
                     if (event.key === 'Escape') { skillPopup.hidden = true; event.preventDefault(); return; }
@@ -4929,7 +5068,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 submit();
             };
         }
-        submitButton.classList.add('dope-chat-composer-submit');
         input.oninput = () => {
             state.setDraft(input.value);
             if (input.value !== state.draft) input.value = state.draft;

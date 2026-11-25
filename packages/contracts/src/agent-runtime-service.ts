@@ -31,7 +31,7 @@ export interface CandidateResumePreview {
     candidateFingerprint?: string; effects?: AgentRun['candidateDelta'];
     outcome?: AgentRun['outcome']; uncertainCommands?: string[]; transcriptIncomplete?: boolean;
 }
-export interface WorktreeReview { clean: boolean; fingerprint: string; paths: string[] }
+export interface WorktreeReview { clean: boolean; fingerprint: string; paths: string[]; head?: string }
 export interface AgentRuntimeService {
     attach(folderUri: string): Promise<{ projectHandle: string }>;
     workMCPObservationOffer(projectHandle: string, connectionId: string, modelId: string): Promise<WorkMCPObservationScope | undefined>;

@@ -278,37 +278,72 @@ test('completed local Work follow-up creates a new exact-model task and fresh ce
     let continuation: any[] = [];
     const runtime = { async readWorkSession() { return session; },
         async readRun() { return run; }, async readTask() { return task; },
-        async previewWorktree() { return { clean: true, fingerprint: 'f'.repeat(64), paths: [] }; },
+        async previewWorktree() { return { clean: true, fingerprint: 'f'.repeat(64), paths: [],
+            head: 'a'.repeat(40) }; },
         async createTask(_handle: string, next: any) { created = next; return next; },
         async continueWorkSession(...args: any[]) { continuation = args; return { id: 'run-two', taskId: created.id }; },
         async listTasks() { return [task, created]; }, async listRuns() { return [run]; }
     } as unknown as AgentRuntimeService;
-    const controller = new WorkSelectionController(runtime, () => {}, async () => ({
-        target: { connectionId: 'local', modelId: 'model', locality: 'local', label: 'Local' }, reason: '' }));
+    const controller = new WorkSelectionController(runtime, () => {}, async policy => ({
+        target: { connectionId: 'local', modelId: policy.kind === 'exact' ? policy.modelId : 'model',
+            locality: 'local', label: 'Local' },
+        targets: ['model', 'other-model'].map(modelId => ({ connectionId: 'local', modelId,
+            locality: 'local' as const, label: modelId })), reason: '' }));
     controller.handle = 'handle'; controller.project = 'file:///project';
     controller.selectedTask = task; controller.selectedRun = run; controller.session = session;
     (controller as any).select = async () => undefined;
     controller.openFollowUp(); controller.followUpInstructions = 'Next bounded turn';
+    await Promise.resolve();
+    controller.followUpTarget = controller.followUpTargets.find(target => target.modelId === 'other-model');
+    controller.followUpToolIds = ['read_file', 'list_files'];
     controller.followUpAccepted = true;
     const result = await controller.continueSession();
     assert.equal(result?.id, 'run-two');
     assert.equal(created.instructions, 'Next bounded turn');
-    assert.deepEqual(created.modelPolicy, { kind: 'exact', connectionId: 'local', modelId: 'model' });
+    assert.deepEqual(created.modelPolicy, { kind: 'exact', connectionId: 'local', modelId: 'other-model' });
     assert.equal(continuation[2], session.id);
     assert.equal(continuation[3], run.id);
     assert.equal(continuation[4], created.id);
     assert.equal(continuation[5].taskId, created.id);
-    assert.deepEqual(continuation[5].toolSelection.tools, toolSelection.tools);
+    assert.deepEqual(continuation[5].toolSelection.tools.map((tool: any) => tool.id), ['read_file', 'list_files']);
     assert.equal(continuation[6], false);
     assert.equal(continuation[7], run.basis.head);
     session.status = 'recovery-required'; run.status = 'interrupted'; run.reviewDecision = undefined;
     controller.session = session; controller.selectedRun = run; controller.selectedTask = task;
     controller.openFollowUp(); controller.followUpInstructions = 'Inspect recovered source';
+    await Promise.resolve();
     controller.followUpAccepted = true;
     assert.equal(await controller.continueSession(), undefined, 'uncertain effects need an explicit decision');
     controller.followUpRecoveryDiscardAccepted = true;
     assert.equal((await controller.continueSession())?.id, 'run-two');
     assert.equal(continuation[8], true, 'recovery discards uncertain delivery and candidate effects');
+});
+
+test('inline Work review refreshes eligible models without silently substituting a target', async () => {
+    const task: any = { id: 'task', objective: 'Inspect', completion: { validation: [] } };
+    const run: any = { id: 'run', taskId: task.id, status: 'failed',
+        toolSelection: { tools: [{ id: 'read_file' }] } };
+    const session: any = { id: 'run', status: 'recovery-required', connectionId: 'local',
+        modelId: 'original', permissionCeiling: createDefaultExecutionGrant({ id: 'grant', revision: 1,
+            taskId: task.id, acceptedAt: '2026-11-25T00:00:00Z' }).permissions,
+        segments: [{ runId: run.id, connectionId: 'local', modelId: 'original' }] };
+    let eligible: any[] = [];
+    const controller = new WorkSelectionController({} as AgentRuntimeService, () => {}, async () => ({
+        target: eligible[0], targets: eligible, reason: 'No eligible Coding Agent target' }));
+    controller.selectedTask = task; controller.selectedRun = run; controller.session = session;
+    controller.openFollowUp();
+    await Promise.resolve();
+    assert.equal(controller.followUpTarget, undefined);
+    assert.match(controller.followUpTargetReason, /No eligible/);
+    eligible = [{ connectionId: 'local', modelId: 'replacement', locality: 'local', label: 'Replacement' }];
+    await controller.refreshFollowUpTargets();
+    assert.equal(controller.followUpTargets.length, 1);
+    assert.equal(controller.followUpTarget, undefined, 'a different model requires explicit selection');
+    controller.followUpTarget = eligible[0];
+    controller.followUpAccepted = true;
+    await controller.refreshFollowUpTargets();
+    assert.equal(controller.followUpTarget?.modelId, 'replacement');
+    assert.equal(controller.followUpAccepted, false, 'refresh invalidates the earlier model review');
 });
 
 test('Work composer retry keeps one message ID after an uncertain response', async () => {

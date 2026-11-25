@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { WorkSelectionController, workManualGateReady, workRunOverview } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
 import { restoreWorkScroll, workCommandLabel,
-    workCommandOutput, workToolLabel, workToolDetails, workToolStatus } from '../../packages/theia-extension/lib/browser/work-transcript-presentation.js';
+    workCommandOutput, workToolStatus, workToolCall, workToolLabel } from '../../packages/theia-extension/lib/browser/work-transcript-presentation.js';
 import { ChatScrollFollow } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
 import type { AgentRuntimeService } from '../../packages/contracts/src/agent-runtime-service.ts';
@@ -140,7 +140,7 @@ test('a late transcript page cannot repopulate a cleared Work selection', async 
     assert.equal(controller.message, '');
 });
 
-test('Work tool cards report recorded request, result and error fields without grant metadata', () => {
+test('Work tool calls show validated arguments and withhold unavailable values', () => {
     const base: any = { kind: 'work', toolId: 'pi-1', toolName: 'read_file' };
     const events = [
         { ...base, phase: 'requested', detail: '{"fields":["path","offset"],"argumentType":"object"}' },
@@ -149,19 +149,14 @@ test('Work tool cards report recorded request, result and error fields without g
             stage: 'broker-execute', brokerInvoked: true, effectExecuted: false }
     ];
     assert.equal(workToolLabel(events[2], events), 'read_file · src/main.ts · Completed');
-    const details = workToolDetails(events);
-    assert.deepEqual(details.slice(0, 2), ['Request', 'fields: path, offset']);
-    assert.ok(details.includes('sourceIdentitySupplied: true'));
-    assert.ok(details.includes('Result'));
-    assert.ok(details.includes('nextOffset: 612'));
-    assert.ok(details.includes('Broker invoked: yes'));
-    assert.doesNotMatch(details.join('\n'), /grantRevision/u);
+    assert.equal(workToolCall(events), 'read_file({ path: "src/main.ts", offset: 100 })');
+    assert.equal(workToolCall([events[0], { ...base, phase: 'denied', code: 'INVALID_OR_UNAUTHORIZED_ARGUMENTS' }]),
+        'read_file({ path: [withheld], offset: [withheld] })');
+    assert.doesNotMatch(workToolCall(events), /grantRevision|contentSha256/u);
     assert.equal(workToolStatus('recoverable'), 'Invalid arguments');
     assert.equal(workToolStatus('denied'), 'Authority denied');
     assert.equal(workToolStatus('cancelled'), 'Cancelled');
-    assert.deepEqual(workToolDetails([{ ...base, phase: 'recoverable', code: 'INVALID_ARGUMENTS' }]),
-        ['Request', 'Metadata unavailable.', 'Execution', 'Lifecycle: Invalid arguments',
-            'Result', 'Metadata unavailable.', 'Code: INVALID_ARGUMENTS']);
+    assert.equal(workToolCall([{ ...base, phase: 'recoverable', code: 'INVALID_ARGUMENTS' }]), 'read_file()');
 });
 
 test('dockable Work conversation uses safe Markdown, correlated cards and paged saved evidence', async () => {

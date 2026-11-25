@@ -50,21 +50,12 @@ function metadata(detail?: string): Record<string, unknown> {
         return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
     } catch { return {}; }
 }
-const requestKeys = ['path', 'offset', 'maxBytes', 'maxEntries', 'sourceIdentitySupplied',
-    'commandId', 'kind', 'operation', 'contentBytes', 'contentSha256', 'outputRecordSupplied',
-    'fields', 'argumentType'];
-const resultKeys = ['endOffset', 'nextOffset', 'outputBytes', 'sourceHash', 'outputIdentity',
-    'captureTruncated', 'truncated', 'count', 'resultCount', 'fileBytes'];
-function fields(value: Record<string, unknown>, keys: string[]): string[] {
-    return keys.flatMap(key => value[key] === undefined ? [] :
-        [`${key}: ${Array.isArray(value[key]) ? (value[key] as unknown[]).join(', ') : String(value[key])}`]);
-}
 export function workToolStatus(phase: WorkToolEntry['phase']): string {
     return ({ requested: 'Running', validating: 'Validating', executing: 'Running', completed: 'Completed',
         failed: 'Failed', recoverable: 'Invalid arguments', denied: 'Authority denied', cancelled: 'Cancelled' })[phase];
 }
 
-/** R4-A detail is a bounded, sanitized summary; preserve its actual words rather than guessing fields. */
+/** Keep the concise saved-tool summary separate from its call-shaped detail. */
 export function workToolLabel(entry: WorkToolEntry, history: WorkToolEntry[] = [entry]): string {
     const data = history.map(item => metadata(item.detail)).find(item => typeof item.path === 'string' ||
         typeof item.commandId === 'string') ?? {};
@@ -74,17 +65,24 @@ export function workToolLabel(entry: WorkToolEntry, history: WorkToolEntry[] = [
     return `${entry.toolName}${concise ? ` · ${concise}` : ''} · ${workToolStatus(entry.phase)}`;
 }
 
-export function workToolDetails(entries: WorkToolEntry[]): string[] {
+/** Reconstruct a CLI-style call from the saved, bounded metadata; raw arguments are intentionally not recorded. */
+export function workToolCall(entries: WorkToolEntry[]): string {
     const latest = entries.at(-1);
-    if (!latest) return ['Metadata unavailable.'];
-    const request = entries.flatMap(entry => fields(metadata(entry.detail), requestKeys));
-    const result = entries.flatMap(entry => fields(metadata(entry.detail), resultKeys));
-    const lines = ['Request', ...(request.length ? [...new Set(request)] : ['Metadata unavailable.']),
-        'Execution', `Lifecycle: ${workToolStatus(latest.phase)}`];
-    if (latest.stage) lines.push(`Stage: ${latest.stage}`);
-    if (latest.brokerInvoked !== undefined) lines.push(`Broker invoked: ${latest.brokerInvoked ? 'yes' : 'no'}`);
-    if (latest.effectExecuted !== undefined) lines.push(`Effect executed: ${latest.effectExecuted ? 'yes' : 'no'}`);
-    lines.push('Result', ...(result.length ? [...new Set(result)] : ['Metadata unavailable.']));
-    if (latest.code) lines.push(`Code: ${latest.code}`);
-    return lines;
+    if (!latest) return 'tool()';
+    const validated = entries.find(entry => entry.phase === 'validating' &&
+        Object.keys(metadata(entry.detail)).length > 0);
+    const safeValues = metadata(validated?.detail);
+    const valueKeys = new Set(['path', 'offset', 'maxBytes', 'maxEntries', 'commandId', 'kind', 'operation']);
+    const names = entries.flatMap(entry => {
+        const data = metadata(entry.detail);
+        return Array.isArray(data.fields) ? data.fields.filter((name): name is string =>
+            typeof name === 'string' && /^[A-Za-z][A-Za-z0-9]{0,40}$/u.test(name)) : [];
+    }).slice(0, 8);
+    if (!names.length) names.push(...Object.keys(safeValues).filter(name => valueKeys.has(name)));
+    const args = [...new Set(names)].map(name => {
+        const value = safeValues[name];
+        return `${name}: ${valueKeys.has(name) && (typeof value === 'string' ||
+            typeof value === 'number' || typeof value === 'boolean') ? JSON.stringify(value) : '[withheld]'}`;
+    }).join(', ');
+    return `${latest.toolName}(${args ? `{ ${args} }` : ''})`;
 }

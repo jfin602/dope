@@ -588,12 +588,13 @@ test('conversation surface keeps shell, roles, color and safe Markdown boundarie
 
 test('trusted machine activity uses native disclosure, literal raw text and neutral narrow styling', async () => {
     const widget = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    const copy = await readFile(new URL('../../packages/theia-extension/src/browser/chat-copy-text.ts', import.meta.url), 'utf8');
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
     assert.match(widget, /planningActivityPresentation\(message\)/);
     assert.match(widget, /document\.createElement\('details'\)/);
     assert.match(widget, /summary\.setAttribute\('aria-label', `\$\{activity\.label\}: \$\{activity\.status\}\. Original JSON`\)/);
     assert.match(widget, /raw\.textContent = body/);
-    assert.match(widget, /navigator\.clipboard\?\.writeText\(text\)/);
+    assert.match(copy, /navigator\.clipboard\?\.writeText\(text\)/);
     assert.match(widget, /copyChatText\(body\)/);
     assert.match(widget, /summary\.textContent = outcome\.summary/);
     assert.match(widget, /if \(outcome && !proposalFinal && !isInlineRoadmapProposal\(message\)\) \{/);

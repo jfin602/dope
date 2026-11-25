@@ -1,9 +1,29 @@
 import { bounded, freeze, id, integer, record, select, timestamp } from './contracts';
-import { EFFECT_KINDS, type EffectKind, type ExecutionGrant } from './authority';
+import { EFFECT_KINDS, WORK_PERMISSION_MAXIMUM, type EffectKind, type ExecutionGrant } from './authority';
+import type { AgentRun } from './contracts';
 
 export type WorkSessionStatus = 'running' | 'awaiting-input' | 'finishing' |
     'completed' | 'stopped' | 'recovery-required';
 export type WorkMessageStatus = 'queued' | 'delivering' | 'delivered' | 'abandoned';
+
+/** A terminal authority denial is no-effect only when saved run and Git receipts agree. */
+export function verifiedNoEffectWorkRun(run: AgentRun): boolean {
+    return run.status === 'failed' && run.outcome?.code === 'authority-denied' &&
+        !!run.basis?.clean && !run.basis.metadataChanged && !!run.finalGit?.clean &&
+        !run.finalGit.truncated && !run.finalGit.statuses.length &&
+        !run.finalGit.headChanged && !run.finalGit.metadataChanged &&
+        run.finalGit.head === run.basis.head && !run.changedFiles.length &&
+        !!run.candidateDelta && !run.candidateDelta.effects.length && !run.appliedFiles?.length &&
+        !run.commandEvidence?.length && !run.candidateReview;
+}
+
+/** Unacknowledged delivery remains uncertain even when the Git tree is clean. */
+export function verifiedNoEffectWorkSegment(run: AgentRun, session: WorkSession): boolean {
+    return verifiedNoEffectWorkRun(run) && !session.messages.some(message =>
+        (!run.startedAt || message.queuedAt >= run.startedAt) &&
+        (message.status === 'delivering' || message.status === 'abandoned' && !!message.deliveryStartedAt)) &&
+        session.candidateSnapshot?.runId !== run.id;
+}
 
 export interface WorkSessionMessage {
     id: string; text: string; queuedAt: string; status: WorkMessageStatus;
@@ -13,6 +33,10 @@ export interface WorkSessionMessage {
 export interface WorkSessionSegment {
     runId: string; taskId: string; grantId: string; grantRevision: number;
     basisHead: string; startedAt: string;
+    /** Present for new segments; older saved segments retain their original run/task evidence. */
+    connectionId?: string; modelId?: string; toolSelectionHash?: string; sandboxHash?: string;
+    permissions?: ExecutionGrant['permissions'];
+    prompt?: string;
 }
 export interface WorkCandidateSnapshot {
     id: string; runId: string; sequence: number; at: string; fingerprint: string; deltaHash: string;
@@ -32,7 +56,7 @@ const statusTransitions: Readonly<Record<WorkSessionStatus, readonly WorkSession
     running: ['awaiting-input', 'finishing', 'stopped', 'recovery-required'],
     'awaiting-input': ['running', 'finishing', 'stopped', 'recovery-required'],
     finishing: ['completed', 'stopped', 'recovery-required'],
-    completed: ['running'], stopped: [], 'recovery-required': ['running', 'stopped']
+    completed: ['running'], stopped: ['running'], 'recovery-required': ['running', 'stopped']
 };
 export function canTransitionWorkSession(from: WorkSessionStatus, to: WorkSessionStatus): boolean {
     return from === to || statusTransitions[from].includes(to);
@@ -52,11 +76,22 @@ export function parseWorkSession(value: unknown): WorkSession {
         !Array.isArray(x.segments) || !x.segments.length || x.segments.length > 32)
         throw new Error('Invalid Work session');
     const segments = x.segments.map(raw => {
-        const s = record(raw, ['runId', 'taskId', 'grantId', 'grantRevision', 'basisHead', 'startedAt']);
+        const s = record(raw, ['runId', 'taskId', 'grantId', 'grantRevision', 'basisHead', 'startedAt',
+            'connectionId', 'modelId', 'toolSelectionHash', 'sandboxHash', 'permissions', 'prompt']);
         if (typeof s.basisHead !== 'string' || !/^[a-f0-9]{40}$/u.test(s.basisHead))
             throw new Error('Invalid Work segment basis');
+        const permissions = s.permissions === undefined ? undefined : record(s.permissions, EFFECT_KINDS);
+        if (permissions && EFFECT_KINDS.some(kind => typeof permissions[kind] !== 'boolean' ||
+            permissions[kind] && !WORK_PERMISSION_MAXIMUM[kind]))
+            throw new Error('Invalid Work segment permissions');
         return { runId: id(s.runId), taskId: id(s.taskId), grantId: id(s.grantId),
-            grantRevision: integer(s.grantRevision), basisHead: s.basisHead, startedAt: timestamp(s.startedAt) };
+            grantRevision: integer(s.grantRevision), basisHead: s.basisHead, startedAt: timestamp(s.startedAt),
+            ...(s.connectionId === undefined ? {} : { connectionId: id(s.connectionId) }),
+            ...(s.modelId === undefined ? {} : { modelId: bounded(s.modelId, 200, 'model') }),
+            ...(s.toolSelectionHash === undefined ? {} : { toolSelectionHash: hash(s.toolSelectionHash) }),
+            ...(s.sandboxHash === undefined ? {} : { sandboxHash: hash(s.sandboxHash) }),
+            ...(permissions === undefined ? {} : { permissions: freeze(permissions as Record<EffectKind, boolean>) }),
+            ...(s.prompt === undefined ? {} : { prompt: bounded(s.prompt, 20_000, 'Work segment prompt') }) };
     });
     if (new Set(segments.map(segment => segment.runId)).size !== segments.length ||
         segments[0].runId !== x.runId || segments[0].taskId !== x.taskId ||

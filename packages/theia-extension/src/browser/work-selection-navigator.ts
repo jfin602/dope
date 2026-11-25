@@ -24,10 +24,16 @@ export class WorkSelectionNavigator {
             // it here lets a concurrent History open create a second Work panel.
             if (!selection || this.panel.work?.kind !== selection.kind || this.panel.work.id !== selection.id)
                 this.panel.selectWork(undefined);
-            const canonical = await this.controller.select(selection, navigationOnly);
+            let canonical = await this.controller.select(selection, navigationOnly);
             if (request !== this.request || workspace !== this.panel.workspace ||
                 workspace !== this.controller.project) return;
             if (!canonical) return;
+            const latestRunId = selection.kind === 'run' && this.controller.session?.segments.at(-1)?.runId;
+            if (latestRunId && latestRunId !== selection.id) {
+                canonical = await this.controller.select({ kind: 'run', id: latestRunId }, navigationOnly);
+                if (!canonical || request !== this.request || workspace !== this.panel.workspace ||
+                    workspace !== this.controller.project) return;
+            }
             if (!this.panel.selectWork(canonical)) {
                 await this.controller.select(undefined);
                 return;

@@ -107,7 +107,7 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
     }
     async previewWorktree(handle: string) {
         const basis = await captureDirtyBasis(this.active(handle));
-        return { clean: basis.paths.length === 0, fingerprint: dirtyFingerprint(basis),
+        return { clean: basis.paths.length === 0, fingerprint: dirtyFingerprint(basis), head: basis.head,
             paths: basis.paths.map(item => item.path) };
     }
     async commitWorktree(handle: string, fingerprint: string, message: string): Promise<void> {

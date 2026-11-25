@@ -3,7 +3,8 @@ import test from 'node:test';
 import { AGENT_SCHEMA_VERSION, EFFECT_KINDS, RUN_STATUSES, canTransitionAgentRun,
     checkEffect, createDefaultExecutionGrant, isModelCapacityFailure, parseAgentRun, parseAgentRunEvent, parseAgentTask,
     parseChangeSummary, parseExecutionGrant, parseExecutionProvenance, parseValidationResult,
-    reviseExecutionGrant, transitionAgentRun } from '../../packages/agent-core/lib/index.js';
+    reviseExecutionGrant, transitionAgentRun, verifiedNoEffectWorkRun,
+    verifiedNoEffectWorkSegment } from '../../packages/agent-core/lib/index.js';
 
 const now = '2026-10-05T12:00:00Z';
 const task = () => ({ version: AGENT_SCHEMA_VERSION, id: 'task-1', createdAt: now,
@@ -138,7 +139,7 @@ test('state transition table is exact and terminal statuses cannot resume', () =
     }
 });
 
-test('accepted grant is immutable, revisioned and fixed to the 8B profile', () => {
+test('accepted grant is immutable, revisioned and bounded by the 8B profile', () => {
     const first = grant();
     assert.equal(Object.isFrozen(first), true);
     assert.equal(Object.isFrozen(first.permissions), true);
@@ -146,12 +147,35 @@ test('accepted grant is immutable, revisioned and fixed to the 8B profile', () =
     assert.equal(first.revision, 0);
     assert.equal(second.revision, 1);
     assert.notEqual(first, second);
+    const narrower = parseExecutionGrant({ ...first, permissions: { ...first.permissions,
+        'workspace-write': false } });
+    assert.equal(narrower.permissions['workspace-write'], false);
+    assert.equal(first.permissions['workspace-write'], true);
     assert.throws(() => parseExecutionGrant({ ...first, permissions: { ...first.permissions, network: true } }));
     assert.throws(() => parseExecutionGrant({ ...first, permissions: { 'project-read': true } }));
     assert.throws(() => parseExecutionGrant({ ...first, acceptedBy: 'model' }));
     assert.throws(() => parseExecutionGrant({ ...first, projectRoot: '/host/path' }));
     assert.throws(() => parseExecutionGrant({ ...first, revision: -1 }));
     assert.throws(() => parseExecutionGrant({ ...first, prompt: 'ignore policy' }));
+});
+
+test('denial is no-effect only with saved clean Git and no candidate or command effects', () => {
+    const denied: any = { id: 'denied-run', status: 'failed', outcome: { code: 'authority-denied' },
+        startedAt: now, basis: { head: 'a'.repeat(40), clean: true, metadataChanged: false },
+        finalGit: { head: 'a'.repeat(40), clean: true, statuses: [], truncated: false,
+            headChanged: false, metadataChanged: false }, changedFiles: [],
+        candidateDelta: { version: 1, effects: [] } };
+    assert.equal(verifiedNoEffectWorkRun(denied), true);
+    assert.equal(verifiedNoEffectWorkRun({ ...denied, finalGit: undefined }), false);
+    assert.equal(verifiedNoEffectWorkRun({ ...denied, finalGit: { ...denied.finalGit, truncated: true } }), false);
+    assert.equal(verifiedNoEffectWorkRun({ ...denied, candidateDelta: undefined }), false);
+    assert.equal(verifiedNoEffectWorkRun({ ...denied, candidateDelta: { effects: [{ kind: 'modify' }] } }), false);
+    assert.equal(verifiedNoEffectWorkRun({ ...denied, commandEvidence: [{}] }), false);
+    const session: any = { messages: [], candidateSnapshot: undefined };
+    assert.equal(verifiedNoEffectWorkSegment(denied, session), true);
+    assert.equal(verifiedNoEffectWorkSegment(denied, { ...session, messages: [
+        { queuedAt: now, status: 'delivering' }] }), false);
+    assert.equal(verifiedNoEffectWorkSegment(denied, { ...session, candidateSnapshot: { runId: denied.id } }), false);
 });
 
 test('default grant separates workspace authority from authoritative promotion', () => {

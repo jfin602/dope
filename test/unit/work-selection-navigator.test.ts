@@ -131,3 +131,21 @@ test('an existing Work owner keeps the canonical saved ID and receives focus on 
     assert.deepEqual(h.effects, []);
     other.dispose();
 });
+
+test('an older run entry reopens the latest segment of its saved Work conversation', async () => {
+    const owners = new WorkOpenOwners();
+    const panel = new SharedPanelState(owners, 'segmented-work', () => {}, () => {});
+    panel.attach(project);
+    const calls: string[] = [];
+    const controller: any = { project, session: undefined,
+        async select(selection: { kind: string; id: string }) {
+            calls.push(selection.id);
+            this.session = { segments: [{ runId: 'first' }, { runId: 'latest' }] };
+            return selection;
+        } };
+    const navigator = new WorkSelectionNavigator(panel, controller);
+    assert.deepEqual(await navigator.select({ kind: 'run', id: 'first' }), { kind: 'run', id: 'latest' });
+    assert.equal(panel.work?.id, 'latest');
+    assert.deepEqual(calls, ['first', 'latest']);
+    panel.dispose();
+});

@@ -9,7 +9,8 @@ import { AgentTaskSequence, assertUnstartedStackSupersession, canTransitionSeque
 import { ProposedAction, parseProposedAction } from '../proposed-action';
 import { AgentSteeringRequest, AgentSteeringState, parseAgentSteeringRequest, parseAgentSteeringState } from '../steering';
 import { AgentMapImpact, parseAgentMapImpact } from '../map-impact';
-import { WorkCandidateSnapshot, WorkSession, canTransitionWorkSession, parseWorkSession } from '../work-session';
+import { WorkCandidateSnapshot, WorkSession, canTransitionWorkSession, parseWorkSession,
+    verifiedNoEffectWorkSegment } from '../work-session';
 import { AGENT_TRANSCRIPT_BYTES_LIMIT, AGENT_TRANSCRIPT_ENTRY_LIMIT, AGENT_TRANSCRIPT_PAGE_LIMIT,
     AGENT_TRANSCRIPT_RECORD_BYTES_LIMIT, AgentTranscriptEntry, AgentTranscriptInput, AgentTranscriptRecord, AgentTranscriptStorage,
     parseAgentTranscriptRecord, prepareAgentTranscriptRecord } from '../transcript';
@@ -193,23 +194,31 @@ export class AgentStore implements AgentTranscriptStorage {
             if (current.candidateSnapshot && !next.candidateSnapshot)
                 throw new Error('Work candidate snapshot cannot be removed');
             if (next.segments.length > current.segments.length) {
-                if (!['completed', 'recovery-required'].includes(current.status) || next.status !== 'running')
+                if (!['completed', 'stopped', 'recovery-required'].includes(current.status) || next.status !== 'running')
                     throw new Error('Work segment requires a closed or reconciled predecessor');
                 const prior = current.segments.at(-1)!;
                 const source = await this.readRun(root, prior.runId);
                 const newSegment = next.segments.at(-1)!;
                 const run = await this.readRun(root, newSegment.runId);
-                const original = await this.readRun(root, current.runId);
-                const allowedTools = new Set(original?.toolSelection?.tools.map(tool => tool.id) ?? []);
+                const task = run && await this.readTask(root, run.taskId);
                 if (!source?.endedAt || !run || !['pending', 'running'].includes(run.status) ||
                     run.taskId !== newSegment.taskId || run.grantId !== newSegment.grantId ||
                     run.grantRevision !== newSegment.grantRevision || run.basis?.head !== newSegment.basisHead ||
                     run.createdAt !== newSegment.startedAt ||
-                    run.provenance?.connectionId !== current.connectionId ||
-                    run.provenance?.modelId !== current.modelId ||
-                    !original?.toolSelection || !run.toolSelection ||
-                    run.toolSelection.tools.some(tool => !allowedTools.has(tool.id)) ||
-                    (current.status === 'completed' ? !source.reviewDecision : source.status !== 'interrupted') ||
+                    run.provenance?.connectionId !== newSegment.connectionId ||
+                    run.provenance?.modelId !== newSegment.modelId ||
+                    !run.toolSelection || !newSegment.toolSelectionHash || !newSegment.sandboxHash ||
+                    !newSegment.permissions || !task || newSegment.prompt !== task.instructions ||
+                    newSegment.toolSelectionHash !== createHash('sha256').update(JSON.stringify(run.toolSelection)).digest('hex') ||
+                    newSegment.sandboxHash !== createHash('sha256').update(JSON.stringify({ adapter: 'pi-local-work',
+                        sandbox: 'local-tool-sandbox' })).digest('hex') ||
+                    run.taskContract?.grant.permissionsHash &&
+                        run.taskContract.grant.permissionsHash !== createHash('sha256').update(JSON.stringify({
+                            permissions: newSegment.permissions, toolSelection: run.toolSelection })).digest('hex') ||
+                    (current.status === 'completed' && source.candidateReview && !source.reviewDecision) ||
+                    (current.status === 'recovery-required' && !['interrupted', 'failed'].includes(source.status)) ||
+                    (current.status === 'stopped' && source.status !== 'cancelled' &&
+                        !(source.status === 'failed' && verifiedNoEffectWorkSegment(source, current))) ||
                     newSegment.startedAt < source.endedAt)
                     throw new Error('Work segment run evidence mismatch');
             }

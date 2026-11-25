@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -9,7 +10,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { AgentStore } from '../../packages/agent-core/lib/node/agent-store.js';
-import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/authority.js';
+import { createDefaultExecutionGrant, parseExecutionGrant } from '../../packages/agent-core/lib/authority.js';
 import { makeWorkToolSelection } from '../../packages/agent-core/lib/work-tool-selection.js';
 import { AgentExecutionRuntime } from '../../packages/theia-extension/lib/node/agent-execution-runtime.js';
 import { AgentRuntimeBackend } from '../../packages/theia-extension/lib/node/agent-runtime-backend.js';
@@ -113,6 +114,11 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
         assert.equal(held.candidateReview?.state, 'ready');
         assert.equal(held.validationResults[0]?.status, 'passed');
         assert.equal(held.validationResults[0]?.candidateFingerprint, held.candidateFingerprint);
+        await backend.createTask(handle, task('task-before-review', 'First Work turn',
+            new Date().toISOString(), 'Do not bypass the pending candidate.') as any);
+        await assert.rejects(backend.continueWorkSession(handle, uri, first.id, first.id,
+            'task-before-review', grant('grant-before-review', 'task-before-review'), false,
+            head, false), /reconciliation|reviewed predecessor/);
         await assert.rejects(backend.submitWorkMessage(handle, first.id, 'late-message', 'Change during review.'),
             /cannot accept messages/);
         const decided = await backend.decideCandidate(handle, first.id, 0,
@@ -123,17 +129,19 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
         const secondGrant = grant('grant-two', 'task-two', []);
         await assert.rejects(backend.continueWorkSession(handle, uri, first.id, first.id,
             'task-two', secondGrant, false, 'f'.repeat(40), false), /source HEAD changed/);
-        await assert.rejects(backend.continueWorkSession(handle, uri, first.id, first.id,
-            'task-two', grant('grant-expanded', 'task-two', ['read_file', 'edit_file']), false,
-            head, false), /exceeds original grant/);
+        const expandedBase = grant('grant-expanded', 'task-two', ['read_file', 'edit_file']);
+        const expandedGrant = parseExecutionGrant({ ...expandedBase, permissions: {
+            ...expandedBase.permissions, 'workspace-write': false } });
         const second = await backend.continueWorkSession(handle, uri, first.id, first.id,
-            'task-two', secondGrant, false, head, false);
+            'task-two', expandedGrant, false, head, false);
         assert.notEqual(second.id, first.id);
         const linked = await backend.readWorkSession(handle, first.id);
         assert.equal(linked?.id, first.id);
         assert.deepEqual(linked?.segments.map(segment => segment.runId), [first.id, second.id]);
         assert.equal(linked?.toolSelectionHash, waiting?.toolSelectionHash);
         assert.equal(second.provenance?.modelId, first.provenance?.modelId);
+        assert.deepEqual(linked?.segments[1].permissions, expandedGrant.permissions);
+        assert.deepEqual(second.toolSelection?.tools.map(tool => tool.id), ['read_file', 'edit_file']);
         for (let n = 0; n < 300 && (await backend.readWorkSession(handle, first.id))?.status !== 'awaiting-input'; n++)
             await tick();
         assert.equal((await backend.readWorkSession(handle, first.id))?.status, 'awaiting-input');
@@ -163,7 +171,12 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
         const recovering = await store.updateWorkSession(root, completedSession, { ...completedSession,
             status: 'running', revision: completedSession.revision + 1,
             segments: [...completedSession.segments, { runId: pending.id, taskId: pending.taskId,
-                grantId: pending.grantId, grantRevision: pending.grantRevision, basisHead: head, startedAt: thirdAt }],
+                grantId: pending.grantId, grantRevision: pending.grantRevision, basisHead: head, startedAt: thirdAt,
+                connectionId: 'local', modelId: model.id, prompt: 'Answer concisely.',
+                permissions: thirdGrant.permissions,
+                toolSelectionHash: createHash('sha256').update(JSON.stringify(thirdGrant.toolSelection)).digest('hex'),
+                sandboxHash: createHash('sha256').update(JSON.stringify({ adapter: 'pi-local-work',
+                    sandbox: 'local-tool-sandbox' })).digest('hex') }],
             messages: [...completedSession.messages, { id: 'uncertain-message', text: 'Do not replay me',
                 queuedAt, status: 'queued' }] });
         await store.updateWorkSession(root, recovering, { ...recovering, revision: recovering.revision + 1,
@@ -209,6 +222,50 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
         assert.equal((await backend.readWorkSession(restartedHandle, first.id))?.status, 'stopped');
         assert.equal((await backend.readWorkSession(restartedHandle, first.id))?.candidateSnapshot?.runId,
             fourth.id, 'Stop retains the last settled candidate snapshot');
+
+        // A recorded authority denial with no candidate, command, or applied effect
+        // permits a fresh run in the same conversation without an uncertainty discard.
+        await restartedStore.createTask(root, task('task-denied', 'Denied attempt',
+            new Date().toISOString(), 'Try a read.') as any);
+        const deniedGrant = grant('grant-denied', 'task-denied', ['read_file']);
+        const deniedAt = new Date().toISOString();
+        const deniedPending: any = { version: 1, id: 'denied-run', taskId: 'task-denied',
+            status: 'pending', grantId: deniedGrant.id, grantRevision: deniedGrant.revision,
+            toolSelection: deniedGrant.toolSelection, requestedPolicy: { kind: 'exact', connectionId: 'local',
+                modelId: model.id }, projectRoot: '.', createdAt: deniedAt,
+            basis: { head, clean: true }, changedFiles: [], validationResults: [] };
+        await restartedStore.createRun(root, deniedPending);
+        const deniedRunning = await restartedStore.updateRun(root, deniedPending, { ...deniedPending,
+            status: 'running', startedAt: deniedAt, provenance: second.provenance });
+        const stoppedSession = (await restartedStore.readWorkSession(root, first.id))!;
+        const deniedSegment = { runId: deniedPending.id, taskId: deniedPending.taskId,
+            grantId: deniedGrant.id, grantRevision: deniedGrant.revision, basisHead: head,
+            startedAt: deniedAt, connectionId: 'local', modelId: model.id, prompt: 'Try a read.',
+            permissions: deniedGrant.permissions,
+            toolSelectionHash: createHash('sha256').update(JSON.stringify(deniedGrant.toolSelection)).digest('hex'),
+            sandboxHash: createHash('sha256').update(JSON.stringify({ adapter: 'pi-local-work',
+                sandbox: 'local-tool-sandbox' })).digest('hex') };
+        const denialOpen = await restartedStore.updateWorkSession(root, stoppedSession, { ...stoppedSession,
+            status: 'running', revision: stoppedSession.revision + 1,
+            segments: [...stoppedSession.segments, deniedSegment] });
+        await restartedStore.updateRun(root, deniedRunning, { ...deniedRunning, status: 'failed',
+            endedAt: new Date().toISOString(), outcome: { code: 'authority-denied', summary: 'read_file denied' },
+            candidateDelta: { version: 1, effects: [] },
+            finalGit: { head, clean: true, headChanged: false, metadataChanged: false,
+                statuses: [], truncated: false } });
+        await restartedStore.updateWorkSession(root, denialOpen, { ...denialOpen,
+            status: 'stopped', revision: denialOpen.revision + 1 });
+        await tick();
+        await backend.createTask(restartedHandle, task('task-after-denial', 'First Work turn',
+            new Date().toISOString(), 'Continue after denied read.') as any);
+        const afterDenial = await backend.continueWorkSession(restartedHandle, uri, first.id, deniedPending.id,
+            'task-after-denial', grant('grant-after-denial', 'task-after-denial', ['read_file']),
+            false, head, false);
+        const afterSession = (await backend.readWorkSession(restartedHandle, first.id))!;
+        assert.equal(afterSession.id, first.id);
+        assert.equal(afterSession.segments.at(-1)?.runId, afterDenial.id);
+        assert.equal((await backend.readRun(restartedHandle, deniedPending.id))?.status, 'failed');
+        await backend.stop(restartedHandle, afterDenial.id);
     } finally {
         await runtime.dispose();
         backend.dispose();

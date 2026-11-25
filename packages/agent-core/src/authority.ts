@@ -49,6 +49,8 @@ const defaults: Readonly<Record<EffectKind, boolean>> = freeze({
     'private-state': false, 'outside-root': false, destructive: false,
     system: false, 'package-admin': false
 });
+/** Maximum permissions of the existing 8B Work profile; a reviewed grant may be narrower. */
+export const WORK_PERMISSION_MAXIMUM = defaults;
 /** The 8B profile is fixed; a later broader profile needs an explicit product decision. */
 export function parseExecutionGrant(value: unknown): ExecutionGrant {
     const x = record(value, ['version', 'id', 'revision', 'taskId', 'projectRoot',
@@ -60,7 +62,7 @@ export function parseExecutionGrant(value: unknown): ExecutionGrant {
     const parsed = {} as Record<EffectKind, boolean>;
     for (const kind of EFFECT_KINDS) {
         parsed[kind] = bool(permissions[kind]);
-        if (parsed[kind] !== defaults[kind]) throw new Error('Unsupported 8B grant permission');
+        if (parsed[kind] && !defaults[kind]) throw new Error('Unsupported 8B grant permission');
     }
     const acceptedAt = timestamp(x.acceptedAt);
     const toolSelection = x.toolSelection === undefined ? undefined : parseWorkToolSelection(x.toolSelection);

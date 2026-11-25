@@ -303,6 +303,14 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             tooltip: 'Back to Work list', group: 'navigation',
             isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canBackToWorkList,
             onDidChange: ChatPanelWidget.onDidChangeToolbar });
+        registry.registerItem({ id: 'dope.work.refresh', command: 'dope.work.refresh', icon: codicon('refresh'),
+            tooltip: 'Refresh Work', group: 'navigation',
+            isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canRefreshSelectedWork,
+            onDidChange: ChatPanelWidget.onDidChangeToolbar });
+        registry.registerItem({ id: 'dope.work.fork', command: 'dope.work.fork', icon: codicon('repo-forked'),
+            tooltip: 'Fork as New Work', group: 'navigation',
+            isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canForkSelectedWork,
+            onDidChange: ChatPanelWidget.onDidChangeToolbar });
         registry.registerItem({ id: 'dope.chat.aiCenter', command: 'dope.chat.aiCenter', icon: codicon('sparkle'),
             tooltip: 'AI Center', group: 'navigation',
             isVisible: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canShowChatSelectorActions,
@@ -352,6 +360,14 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         commands.registerCommand({ id: 'dope.work.back', label: 'Back to Work list' }, {
             execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) widget.backToWorkList(); },
             isEnabled: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canBackToWorkList
+        });
+        commands.registerCommand({ id: 'dope.work.refresh', label: 'Refresh Work' }, {
+            execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) widget.refreshSelectedWork(); },
+            isEnabled: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canRefreshSelectedWork
+        });
+        commands.registerCommand({ id: 'dope.work.fork', label: 'Fork as New Work' }, {
+            execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) widget.forkSelectedWorkFromToolbar(); },
+            isEnabled: (widget?: Widget) => widget instanceof ChatPanelWidget && widget.canForkSelectedWork
         });
         commands.registerCommand({ id: 'dope.chat.aiCenter', label: 'AI Center' }, {
             execute: (widget?: Widget) => { if (widget instanceof ChatPanelWidget) widget.openAICenterFromToolbar(); },

@@ -4,7 +4,9 @@ import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-serv
 import type { WorkMCPObservationScope } from '@dope/agent-core/lib/authority';
 import type { CandidateResumePreview, WorktreeReview } from '@dope/contracts/lib/agent-runtime-service';
 import { createDefaultExecutionGrant, createMCPObservationExecutionGrant, makeWorkToolSelection,
-    parseAgentTask, parseExecutionGrant } from '@dope/agent-core';
+    parseAgentTask, parseExecutionGrant, verifiedNoEffectWorkSegment } from '@dope/agent-core';
+import type { EffectKind } from '@dope/agent-core/lib/authority';
+import { WORK_TOOL_CATALOG, type WorkToolId } from '@dope/agent-core/lib/work-tool-selection';
 import { PhaseStackController } from './phase-stack-controller';
 import type { WorkSelection } from './shared-panel-state';
 import type { AgentTarget } from './agent-run-controller';
@@ -297,6 +299,13 @@ export class WorkSelectionController {
     followUpBusy = false;
     followUpDirtyReview?: WorktreeReview;
     followUpError = '';
+    followUpTargets: AgentTarget[] = [];
+    followUpTarget?: AgentTarget;
+    followUpTargetsBusy = false;
+    followUpTargetReason = '';
+    private followUpTargetsEpoch = 0;
+    followUpToolIds: WorkToolId[] = [];
+    followUpPermissions?: Record<EffectKind, boolean>;
     private readonly pendingSessionMessages = new Map<string, { id: string; text: string }>();
     get sessionRetryText(): string {
         return this.session ? this.pendingSessionMessages.get(this.session.id)?.text ?? '' : '';
@@ -491,18 +500,51 @@ export class WorkSelectionController {
     }
     openFollowUp(): void {
         if (!this.session || !this.selectedRun || !this.selectedTask ||
-            !(this.session.status === 'completed' && !!this.selectedRun.reviewDecision ||
-                this.session.status === 'recovery-required' && this.selectedRun.status === 'interrupted') ||
+            !['completed', 'stopped', 'recovery-required'].includes(this.session.status) ||
             this.session.segments.at(-1)?.runId !== this.selectedRun.id) return;
         this.followUpOpen = true;
-        this.followUpInstructions = '';
         this.followUpAccepted = false;
         this.followUpRecoveryDiscardAccepted = false;
         this.followUpDirtyReview = undefined;
         this.followUpError = '';
+        const segment = this.session.segments.at(-1)!;
+        this.followUpTarget = undefined;
+        this.followUpTargets = [];
+        this.followUpToolIds = this.selectedRun.toolSelection?.tools.map(tool => tool.id) ?? [];
+        this.followUpPermissions = { ...(segment.permissions ?? this.session.permissionCeiling) };
+        void this.refreshFollowUpTargets();
         this.changed();
     }
+    async refreshFollowUpTargets(): Promise<void> {
+        const segment = this.session?.segments.at(-1);
+        if (!this.followUpOpen || !segment) return;
+        const epoch = ++this.followUpTargetsEpoch;
+        const prior = this.followUpTarget ?? { connectionId: segment.connectionId ?? this.session!.connectionId,
+            modelId: segment.modelId ?? this.session!.modelId };
+        this.followUpTargetsBusy = true;
+        this.followUpTargetReason = 'Checking eligible local models…';
+        this.followUpAccepted = false;
+        this.changed();
+        try {
+            const result = await this.resolveTarget?.({ kind: 'follow-coding-agent' });
+            if (epoch !== this.followUpTargetsEpoch || !this.followUpOpen ||
+                this.session?.segments.at(-1)?.runId !== segment.runId) return;
+            this.followUpTargets = result?.targets?.filter(target => target.locality === 'local') ?? [];
+            this.followUpTarget = this.followUpTargets.find(target => target.connectionId === prior.connectionId &&
+                target.modelId === prior.modelId);
+            this.followUpTargetReason = this.followUpTargets.length ?
+                this.followUpTarget ? '' : 'The previous model is unavailable. Select an eligible local model.' :
+                result?.reason || 'No eligible loaded local model. Reconnect and verify Coding Agent tools in AI Center.';
+        } catch {
+            if (epoch !== this.followUpTargetsEpoch) return;
+            this.followUpTargets = []; this.followUpTarget = undefined;
+            this.followUpTargetReason = 'Eligible local models could not be read. Check AI Center and refresh.';
+        } finally {
+            if (epoch === this.followUpTargetsEpoch) { this.followUpTargetsBusy = false; this.changed(); }
+        }
+    }
     cancelFollowUp(): void {
+        ++this.followUpTargetsEpoch;
         this.followUpOpen = false; this.followUpAccepted = false;
         this.followUpRecoveryDiscardAccepted = false;
         this.followUpDirtyReview = undefined; this.followUpError = '';
@@ -513,9 +555,7 @@ export class WorkSelectionController {
         const session = this.session, task = this.selectedTask;
         if (!handle || !project || !shown || !session || !task || this.followUpBusy ||
             !this.followUpOpen || !this.followUpAccepted || !this.followUpInstructions.trim() ||
-            !(session.status === 'completed' && !!shown.reviewDecision ||
-                session.status === 'recovery-required' && shown.status === 'interrupted' &&
-                this.followUpRecoveryDiscardAccepted) ||
+            !['completed', 'stopped', 'recovery-required'].includes(session.status) ||
             session.segments.at(-1)?.runId !== shown.id || task.id !== shown.taskId) return;
         this.followUpBusy = true; this.followUpError = ''; this.changed();
         try {
@@ -523,7 +563,8 @@ export class WorkSelectionController {
                 this.runtime.readWorkSession(handle, session.id), this.runtime.readRun(handle, shown.id),
                 this.runtime.readTask(handle, task.id),
                 this.runtime.previewWorktree(handle),
-                this.resolveTarget?.({ kind: 'exact', connectionId: session.connectionId, modelId: session.modelId })
+                this.followUpTarget && this.resolveTarget?.({ kind: 'exact',
+                    connectionId: this.followUpTarget.connectionId, modelId: this.followUpTarget.modelId })
             ]);
             if (handle !== this.handle || project !== this.project ||
                 this.selectedRun?.id !== shown.id || this.session?.id !== session.id ||
@@ -531,28 +572,42 @@ export class WorkSelectionController {
                 JSON.stringify(freshRun) !== JSON.stringify(shown) ||
                 JSON.stringify(freshTask) !== JSON.stringify(task) ||
                 !shown.toolSelection || !target?.target || target.target.locality !== 'local' ||
-                target.target.connectionId !== session.connectionId || target.target.modelId !== session.modelId)
-                throw new Error('Saved Work or exact local model changed. Review the session again.');
+                target.target.connectionId !== this.followUpTarget?.connectionId ||
+                target.target.modelId !== this.followUpTarget?.modelId || !this.followUpPermissions)
+                throw new Error('Saved Work or selected local model changed. Review the segment again.');
+            if (shown.candidateReview && !shown.reviewDecision)
+                throw new Error('Resolve the pending candidate review before another Work segment.');
+            if (shown.status !== 'completed' && shown.appliedFiles?.length)
+                throw new Error('Earlier run applied project files; verify or restore that source before another segment.');
+            const verifiedNoEffect = verifiedNoEffectWorkSegment(shown, session);
+            const uncertain = shown.status === 'interrupted' || shown.status === 'failed' && !verifiedNoEffect ||
+                shown.status === 'cancelled' && !!shown.candidateDelta?.effects.length;
+            if (uncertain && !this.followUpRecoveryDiscardAccepted)
+                throw new Error('Review and discard uncertain isolated effects before starting another segment.');
             if (!review.clean && (!acceptDirty || review.fingerprint !== this.followUpDirtyReview?.fingerprint)) {
                 this.followUpDirtyReview = review; return;
             }
             if (review.clean && acceptDirty) throw new Error('Project changed since Work review');
-            if (!shown.basis?.head) throw new Error('Saved source HEAD unavailable for linked follow-up');
+            if (!review.head) throw new Error('Current source HEAD unavailable for new segment');
+            if (this.followUpToolIds.some(id => !WORK_TOOL_CATALOG.some(tool => tool.id === id)) ||
+                this.followUpToolIds.includes('read_command_output') && !this.followUpToolIds.includes('run_command') ||
+                this.followUpToolIds.includes('run_command') &&
+                    !task.completion.validation.some(item => hasApprovedWorkCommand(item.command)))
+                throw new Error('Selected tools require a fresh valid review.');
             const newTask = parseAgentTask({ ...task, id: crypto.randomUUID(),
                 createdAt: new Date().toISOString(), instructions: this.followUpInstructions.trim(),
-                modelPolicy: { kind: 'exact', connectionId: session.connectionId, modelId: session.modelId } });
+                modelPolicy: { kind: 'exact', connectionId: target.target.connectionId,
+                    modelId: target.target.modelId } });
             const selection = makeWorkToolSelection({ projectUri: project, taskId: newTask.id,
-                grantRevision: 1, connectionId: session.connectionId, modelId: session.modelId },
-                shown.toolSelection.tools.map(tool => tool.id));
-            if (JSON.stringify(selection.tools) !== JSON.stringify(shown.toolSelection.tools))
-                throw new Error('Work tool catalog changed. Start a separately reviewed fork.');
+                grantRevision: 1, connectionId: target.target.connectionId, modelId: target.target.modelId },
+                this.followUpToolIds);
             const base = createDefaultExecutionGrant({ id: crypto.randomUUID(), revision: 1,
                 taskId: newTask.id, acceptedAt: new Date().toISOString(), toolSelection: selection });
-            const grant = parseExecutionGrant({ ...base, permissions: session.permissionCeiling });
+            const grant = parseExecutionGrant({ ...base, permissions: this.followUpPermissions });
             await this.runtime.createTask(handle, newTask);
             const run = await this.runtime.continueWorkSession(handle, project, session.id, shown.id,
-                newTask.id, grant, false, shown.basis.head,
-                session.status === 'recovery-required',
+                newTask.id, grant, false, review.head,
+                this.followUpRecoveryDiscardAccepted,
                 review.clean ? undefined : review.fingerprint);
             this.cancelFollowUp();
             await this.refresh();

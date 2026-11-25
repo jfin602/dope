@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { AGENT_SCHEMA_VERSION, checkEffect, createBlockedProposedAction, isModelCapacityFailure, parseAgentTask, parseExecutionGrant, parseWorkMCPObservationReceipt, projectPath } from '@dope/agent-core';
+import { AGENT_SCHEMA_VERSION, checkEffect, createBlockedProposedAction, isModelCapacityFailure, parseAgentTask, parseExecutionGrant, parseWorkMCPObservationReceipt, projectPath, verifiedNoEffectWorkSegment } from '@dope/agent-core';
 import type { AgentExecutionAdapter, AgentExecutionEvent, AgentExecutionHandle, AgentModelPolicy, AgentRun,
     AgentRunEvent, AgentTask, ExecutionGrant, ExecutionProvenance, AgentExecutionRequest, AgentTranscriptInput,
     WorkDocumentRead, WorkSession } from '@dope/agent-core';
@@ -551,20 +551,33 @@ export class AgentExecutionRuntime {
             const task = await this.store.readTask(root, segment.taskId);
             if (task) lines.push({ at: segment.startedAt,
                 text: `Accepted objective for run ${segment.runId}: ${task.objective.slice(0, 500)}` });
+            if (task) lines.push({ at: segment.startedAt,
+                text: `DEVELOPER prompt for run ${segment.runId}: ${task.instructions.slice(0, 500)}` });
             let cursor = 0;
             let recorded = false;
             for (let page = 0; page < 20; page++) {
                 const batch = await this.store.readTranscript(root, segment.runId, cursor, 100);
                 recorded ||= batch.state === 'recorded';
                 unavailable ||= batch.incomplete;
-                for (const entry of batch.entries) if (entry.kind === 'message')
-                    lines.push({ at: entry.at,
-                        text: `Recorded assistant output from ${segment.runId}: ${entry.text.slice(0, 500)}` });
+                for (const entry of batch.entries) {
+                    if (entry.kind === 'message') lines.push({ at: entry.at,
+                        text: `UNVERIFIED model output from ${segment.runId}: ${entry.text.slice(0, 350)}` });
+                    if (entry.kind === 'work' && ['completed', 'denied', 'failed'].includes(entry.phase))
+                        lines.push({ at: entry.at,
+                            text: `SAVED broker tool receipt from ${segment.runId}: ${entry.toolName} ${entry.phase}` });
+                }
                 if (!batch.hasMore) break;
                 cursor = batch.nextSequence;
                 if (page === 19) unavailable = true;
             }
             if (!recorded) unavailable = true;
+            const run = await this.store.readRun(root, segment.runId);
+            if (run?.endedAt) lines.push({ at: run.endedAt,
+                text: `SAVED run result ${run.id}: ${run.status}; candidate ${run.reviewDecision?.kind ??
+                    (run.candidateReview ? 'pending review' : 'none recorded')}; ` +
+                    `applied files ${run.appliedFiles?.length ?? 0}; validation ` +
+                    run.validationResults.filter(result => result.owner === 'dope').slice(0, 3)
+                        .map(result => `${result.label}: ${result.status}`).join(', ') });
         }
         for (const message of session.messages) if (message.status === 'delivered')
             lines.push({ at: message.queuedAt,
@@ -679,21 +692,24 @@ export class AgentExecutionRuntime {
                 followUpSourceTask = originalTask;
                 if (!priorWorkSession || !sourceRun || !originalTask || !task ||
                     priorWorkSession.segments.at(-1)?.runId !== sourceRun.id ||
-                    !['completed', 'recovery-required'].includes(priorWorkSession.status) ||
+                    !['completed', 'stopped', 'recovery-required'].includes(priorWorkSession.status) ||
                     !sourceRun.endedAt || task.id === originalTask.id ||
                     task.createdAt < sourceRun.endedAt ||
                     task.objective !== originalTask.objective ||
                     task.projectId !== originalTask.projectId ||
                     JSON.stringify(task.origin) !== JSON.stringify(originalTask.origin) ||
                     task.modelPolicy.kind !== 'exact' ||
-                    task.modelPolicy.connectionId !== priorWorkSession.connectionId ||
-                    task.modelPolicy.modelId !== priorWorkSession.modelId ||
                     JSON.stringify(task.controls) !== JSON.stringify(originalTask.controls) ||
                     JSON.stringify(task.authority) !== JSON.stringify(originalTask.authority) ||
                     JSON.stringify(task.completion) !== JSON.stringify(originalTask.completion) ||
                     JSON.stringify(task.reviewPolicy) !== JSON.stringify(originalTask.reviewPolicy) ||
-                    (priorWorkSession.status === 'completed' ? !sourceRun.reviewDecision :
-                        sourceRun.status !== 'interrupted' || !followUp.discardUnverifiedCandidate))
+                    (sourceRun.candidateReview && !sourceRun.reviewDecision) ||
+                    (sourceRun.status !== 'completed' && !!sourceRun.appliedFiles?.length) ||
+                    (sourceRun.status === 'interrupted' && !followUp.discardUnverifiedCandidate) ||
+                    (sourceRun.status === 'failed' && !followUp.discardUnverifiedCandidate &&
+                        !verifiedNoEffectWorkSegment(sourceRun, priorWorkSession)) ||
+                    (sourceRun.status === 'cancelled' && !followUp.discardUnverifiedCandidate &&
+                        !!sourceRun.candidateDelta?.effects.length))
                     throw new Error('Work continuation requires reviewed predecessor or explicit recovery decision');
             }
             if (resume) {
@@ -732,25 +748,14 @@ export class AgentExecutionRuntime {
                 grant.acceptedAt < task.createdAt || resume && sourceRun &&
                     (grant.id === sourceRun.grantId || grant.acceptedAt < sourceRun.endedAt!))
                 throw new Error('Accepted ExecutionGrant does not match the task/project');
-            if (followUp && priorWorkSession) {
-                const originalRun = await this.store.readRun(root, priorWorkSession.runId);
-                const allowedTools = new Set(originalRun?.toolSelection?.tools.map(tool => tool.id) ?? []);
-                if (!grant.toolSelection || !originalRun?.toolSelection ||
-                    grant.toolSelection.tools.some(tool => !allowedTools.has(tool.id)) ||
-                    Object.entries(grant.permissions).some(([kind, allowed]) => allowed &&
-                        !priorWorkSession.permissionCeiling[kind as keyof typeof grant.permissions]) ||
-                    grant.mcpObservation || grant.acceptedAt < sourceRun!.endedAt!)
-                    throw new Error('Work continuation exceeds original grant or lacks fresh acceptance');
-            }
+            if (followUp && (!grant.toolSelection || grant.mcpObservation ||
+                grant.acceptedAt < sourceRun!.endedAt!))
+                throw new Error('Work segment requires fresh accepted tool and permission review');
             const selected = await this.select(task.modelPolicy, hostedAuthorized);
             if (persistentWork && (selected.adapter.id !== 'pi-local-work' || sequence || resume))
                 throw new Error('Persistent Work requires an embedded local Pi session');
-            if (followUp && priorWorkSession &&
-                (selected.provenance.connectionId !== priorWorkSession.connectionId ||
-                selected.provenance.modelId !== priorWorkSession.modelId ||
-                createHash('sha256').update(JSON.stringify({ adapter: selected.adapter.id,
-                    sandbox: 'local-tool-sandbox' })).digest('hex') !== priorWorkSession.sandboxHash))
-                throw new Error('Work continuation changed sealed model or sandbox');
+            if (followUp && selected.adapter.id !== 'pi-local-work')
+                throw new Error('A new Work segment requires an eligible local Pi model');
             if (selected.adapter.id === 'pi-local-work' && !grant.toolSelection)
                 throw new Error('Local Pi Work requires a reviewed tool selection');
             if (grant.toolSelection && (selected.provenance.runtimeKind !== 'local' ||
@@ -818,7 +823,11 @@ export class AgentExecutionRuntime {
             if (persistentWork) {
                 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
                 const segment = { runId: active.run.id, taskId: task.id, grantId: grant.id,
-                    grantRevision: grant.revision, basisHead: basis.head, startedAt: now };
+                    grantRevision: grant.revision, basisHead: basis.head, startedAt: now,
+                    connectionId: selected.provenance.connectionId, modelId: selected.provenance.modelId,
+                    toolSelectionHash: digest(grant.toolSelection ?? null),
+                    sandboxHash: digest({ adapter: selected.adapter.id, sandbox: 'local-tool-sandbox' }),
+                    permissions: grant.permissions, prompt: task.instructions };
                 if (followUp && priorWorkSession) {
                     const abandonedAt = new Date().toISOString();
                     await this.store.updateWorkSession(root, priorWorkSession, { ...priorWorkSession,
@@ -1251,8 +1260,11 @@ export class AgentExecutionRuntime {
                     ...(evidence ? { finalGit: evidence.final, changedFiles: evidence.changedFiles,
                         changeSummary: evidence.changeSummary } : {}),
                     ...(finalCode ? { outcome: { code: finalCode, summary: finalSummary } } : {}) }));
+                const saved = active.workSessionId ?
+                    await this.store.readWorkSession(active.root, active.workSessionId) : undefined;
                 await this.settleWorkSession(active, finalStatus === 'completed' ? 'completed' :
-                    finalStatus === 'cancelled' ? 'stopped' : 'recovery-required');
+                    finalStatus === 'cancelled' || saved && verifiedNoEffectWorkSegment(active.run!, saved) ?
+                        'stopped' : 'recovery-required');
                 await this.recordMapImpact(active.root, active.run!);
                 if (this.active.get(active.root) === active) this.active.delete(active.root);
                 await this.event(active, 'status', finalSummary, { status: finalStatus });
