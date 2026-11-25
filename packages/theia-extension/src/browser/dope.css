@@ -1688,10 +1688,6 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-panel .dope-chat-content-work .dope-chat-folder-delete { color: #ff766c; background: transparent; border: 0; }
 .dope-chat-panel .dope-chat-content-work .dope-chat-row-menu button.dope-chat-folder-delete[role="menuitem"] { color: var(--theia-errorForeground); }
 .dope-chat-panel .dope-chat-content-work .dope-chat-row-menu button.dope-chat-folder-delete:disabled { opacity: .5; cursor: default; }
-.dope-work-removed-section { margin: 9px 0 0; border-top: 1px solid var(--theia-widget-border); }
-.dope-work-removed-section > summary { padding: 7px 4px; color: var(--theia-descriptionForeground); font-size: 12px; cursor: pointer; }
-.dope-chat-panel .dope-work-selector-list button.dope-work-restore { width: 100%; padding: 5px 4px; overflow: hidden; border: 0; background: transparent; color: var(--theia-foreground); text-align: left; text-overflow: ellipsis; white-space: nowrap; }
-.dope-chat-panel .dope-work-selector-list button.dope-work-restore:hover { background: var(--theia-list-hoverBackground); }
 
 .dope-agent-run { box-sizing: border-box; height: 100%; overflow: auto; padding: 20px; color: var(--theia-editor-foreground); background: var(--theia-editor-background); }
 .dope-agent-run h2 { margin: 0 0 8px; }

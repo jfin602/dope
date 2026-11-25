@@ -1897,25 +1897,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             return list;
         };
         nav.append(renderTree(tree));
-        const removedRows = rows.filter(row => this.workList.isRemoved(workRowKey(row)));
-        if (removedRows.length) {
-            const removed = document.createElement('details');
-            removed.className = 'dope-work-removed-section';
-            const summary = document.createElement('summary');
-            summary.textContent = `Recently deleted (${removedRows.length})`;
-            const list = document.createElement('ul'); list.className = 'dope-chat-tree';
-            for (const row of removedRows) {
-                const item = document.createElement('li');
-                const title = this.workList.title(workRowKey(row)) ?? row.title;
-                const restore = this.button(`Restore ${title}`, () => {
-                    this.workList.restoreItem(workRowKey(row)); this.render();
-                });
-                restore.className = 'dope-work-restore';
-                item.append(restore); list.append(item);
-            }
-            removed.append(summary, list); nav.append(removed);
-        }
-        if (removedRows.length === rows.length) {
+        if (rows.every(row => this.workList.isRemoved(workRowKey(row)))) {
             const empty = document.createElement('p');
             empty.className = 'dope-work-list-empty';
             empty.setAttribute('role', 'status');
@@ -2141,7 +2123,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 menu.append(menuEntry('Copy title', () => copyWork(row.fullTitle ?? row.title, 'Title')),
                     menuEntry('Copy ID', () => copyWork(row.selection.id, 'ID')));
                 const remove = menuEntry('Delete Work', () => {
-                    if (row.running || !window.confirm(`Move “${displayTitle}” to Recently deleted? Saved Work evidence will remain available, and you can restore this item.`)) return;
+                    if (row.running || !window.confirm(`Remove “${displayTitle}” from this Work list? Saved Work evidence remains on disk.`)) return;
                     this.workList.removeItem(rowKey);
                     this.render();
                 });

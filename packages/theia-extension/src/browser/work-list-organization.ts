@@ -64,10 +64,6 @@ export class WorkListOrganization {
         this.state.removed.push(key);
         this.save();
     }
-    restoreItem(key: string): void {
-        this.state.removed = this.state.removed?.filter(value => value !== key) ?? [];
-        this.save();
-    }
     setItemTitle(key: string, title: string): boolean {
         const trimmed = title.trim();
         if (!trimmed || trimmed.length > 200) return false;
