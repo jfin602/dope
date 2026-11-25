@@ -4,6 +4,10 @@ Status: Accepted
 Date: 2026-10-05
 Complements: ADR 0004, ADR 0006, ADR 0017, ADR 0025, ADR 0026
 
+## Forward user-facing Work authorization amendment (2026-11-25)
+
+The owner-approved [unified Work tool authorization contract](../planning/p13/work-tool-selection-proposal.md) supersedes only ADR 0027's **separate visible Project Execution Grant review/acceptance workflow**. The developer now selects exact safely brokerable Pi tools in **Tools for this Work** and explicitly authorizes the task with a single **Start Work** action. The accepted `ExecutionGrant` persists as Dope's internal immutable effect authority/evidence record; its restrictions, project identity, host boundaries and elevation rules are **not** removed or expanded. The historical language below about accepting an ExecutionGrant describes this internal record, not a second UI checkbox or an abstract-effects tool catalog. Continue distinct hosted-data consent, MCP single-call authorization, source-basis approval and candidate review as applicable. This amendment is documentation only, not implemented or qualified.
+
 ## Context
 
 Product Phase 8 is the first phase that grants AI mutation/process/Git authority.
