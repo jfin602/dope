@@ -1,0 +1,25 @@
+TASK: Correction 14 / P2 — Independent segmented Work browser closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+
+VERSIONING
+- Required unchanged project version: `0.13.11`.
+- No manifest, dependency, pin, lockfile or package-version change.
+
+ENTRY
+Run separately after P1 finishes and reports its source and focused tests. Read BOOT.md, AGENTS.md, docs/workflow.md, the 2026-11-25 Work conversation amendment, this task README and P1's actual result. Inspect current HEAD, version, dirty tree, changed source/tests and the c14 P4 report; preserve all owner changes and historical evidence. Use the connected Codex browser with the actual updated Dope app, bundled Pi worker, an explicitly eligible local model and disposable Git projects. Record loaded model/context and exact product source. If the browser, model or app is unavailable, report BLOCKED rather than substituting a mock or API-only check.
+
+GOAL — INDEPENDENT T3 QUALIFICATION
+Qualify the finished source through the real UI, with timestamps/screenshots and saved owner records where needed:
+
+1. Reproduce a local Pi tool denial with **verified no effect** in a disposable project (the c14 P4 outside-root read is a suitable harmless case). Confirm the failed Pi segment's Error disclosure, tool status, final message and run ID stay intact. Type a new prompt in the same bottom composer, approve only the required inline grant, and observe a fresh Pi session/new run ID directly below a visible separator in the **same Dope Work conversation**. Confirm no Fork, separate recovery screen or Chat navigation is required, and no outside-file contents appear.
+2. While the new Pi segment runs, submit two bounded messages; prove saved Queued → Delivered IDs and FIFO behavior after the safe turn boundary. After it ends, prove terminal Send starts another segment rather than addressing a dead Pi worker. Reopen the Work conversation after panel navigation and backend restart; earlier status/tool/final text and segment order must survive without duplicate execution or fabricated history.
+3. Exercise a real candidate edit in an isolated fixture: Finish and guarded Accept or Reject, then another prompt. Check the new segment's source basis and that earlier candidate decision and History are unchanged. Attempt a next prompt while candidate effects are unresolved; verify the required review/restore gate, no silent promotion and no Roadmap Gate award. Exercise Stop and subsequent same-conversation Send.
+4. Force or reproduce a controlled backend interruption with an uncertain in-flight message/tool boundary. Verify specific inline reconciliation, never-delivered queue preservation, no automatic replay of uncertain effects, and a new segment only after the recorded decision. Distinguish this from the ordinary no-effect failure in case 1.
+5. Verify selected model, tools, grant and sandbox facts per segment. If a second eligible local model is available, change model inline and prove the fresh segment uses it; otherwise record that exact case as an evidence gap, not PASS. Test denied permission expansion, wrong project/source drift and stale/repeated Send where feasible without unsafe actions. Hosted Work must still be labeled one-shot.
+6. Check one normal and one narrow dock, keyboard focus/Enter behavior, transcript scroll, safe rendering of hostile text and an alternate theme. Do not infer native Electron, touch or screen-reader parity from browser screenshots.
+
+VERDICT AND RECORD
+Write one source-bound report under docs/tasks/c14-work-segments/qualification/ with exact source, model, fixture, actions, screenshots/receipts, focused regression/build results from P1, new tests only if a concrete defect requires repair, and PASS/NOT GREEN/EVIDENCE GAP per case. Qualification is independent: do not silently repair product code in this prompt or count the c14 P4 result as proof of the changed behavior. If a defect is found, report NOT GREEN with a narrow repair entry; any later fix needs a fresh exact-source replay of affected cases. Record unobserved native/hosted cases honestly. Do not self-commit, auto-run follow-on work, advance version, close a Phase or award Roadmap GREEN.

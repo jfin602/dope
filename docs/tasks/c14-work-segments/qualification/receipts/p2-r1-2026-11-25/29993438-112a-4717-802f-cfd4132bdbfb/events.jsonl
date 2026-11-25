@@ -1,0 +1,9 @@
+{"version":1,"runId":"29993438-112a-4717-802f-cfd4132bdbfb","sequence":1,"at":"2026-11-25T17:11:32.793Z","kind":"status","summary":"Agent run started","status":"running"}
+{"version":1,"runId":"29993438-112a-4717-802f-cfd4132bdbfb","sequence":2,"at":"2026-11-25T17:11:33.917Z","kind":"message","summary":"Provider status received"}
+{"version":1,"runId":"29993438-112a-4717-802f-cfd4132bdbfb","sequence":3,"at":"2026-11-25T17:11:34.253Z","kind":"message","summary":"Provider status received"}
+{"version":1,"runId":"29993438-112a-4717-802f-cfd4132bdbfb","sequence":4,"at":"2026-11-25T17:11:34.255Z","kind":"message","summary":"Pi session started"}
+{"version":1,"runId":"29993438-112a-4717-802f-cfd4132bdbfb","sequence":5,"at":"2026-11-25T17:11:34.257Z","kind":"message","summary":"Pi model turn running"}
+{"version":1,"runId":"29993438-112a-4717-802f-cfd4132bdbfb","sequence":6,"at":"2026-11-25T17:11:43.774Z","kind":"message","summary":"Pi read_file started"}
+{"version":1,"runId":"29993438-112a-4717-802f-cfd4132bdbfb","sequence":7,"at":"2026-11-25T17:11:43.785Z","kind":"message","summary":"Pi Work tool stopped at request-parse"}
+{"version":1,"runId":"29993438-112a-4717-802f-cfd4132bdbfb","sequence":8,"at":"2026-11-25T17:11:43.787Z","kind":"authority","summary":"Execution authority denied"}
+{"version":1,"runId":"29993438-112a-4717-802f-cfd4132bdbfb","sequence":9,"at":"2026-11-25T17:11:43.850Z","kind":"status","summary":"Execution authority denied","status":"failed"}

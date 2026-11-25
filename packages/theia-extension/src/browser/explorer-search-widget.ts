@@ -1,6 +1,6 @@
 import * as React from '@theia/core/shared/react';
 import { inject, injectable } from '@theia/core/shared/inversify';
-import { TreeModel, TreeNode, TreeWidget } from '@theia/core/lib/browser';
+import { ExpandableTreeNode, TreeModel, TreeNode, TreeWidget } from '@theia/core/lib/browser';
 import URI from '@theia/core/lib/common/uri';
 import { FileNavigatorWidget } from '@theia/navigator/lib/browser/navigator-widget';
 import { WorkspaceSearchFilterService } from '@theia/workspace/lib/browser';
@@ -20,6 +20,89 @@ export class ExplorerSearchWidget extends FileNavigatorWidget {
     private timer: ReturnType<typeof setTimeout> | undefined;
     private readonly searchInput = React.createRef<HTMLInputElement>();
     private controlsNode: HTMLDivElement | undefined;
+    private creation: { parent: URI; name: string; error: string; busy: boolean;
+        submit: (name: string) => Promise<string | undefined> } | undefined;
+    private readonly creationInput = React.createRef<HTMLInputElement>();
+
+    /** Show the naming field in the existing Explorer tree, under the chosen directory. */
+    async startFileCreation(parent: URI, submit: (name: string) => Promise<string | undefined>): Promise<void> {
+        this.clearSearch();
+        const node = await this.model.revealFile(parent);
+        if (node && ExpandableTreeNode.is(node) && !node.expanded) await this.model.expandNode(node);
+        this.creation = { parent, name: '', error: '', busy: false, submit };
+        this.updateRows();
+    }
+
+    private cancelFileCreation(): void {
+        if (!this.creation || this.creation.busy) return;
+        this.creation = undefined;
+        this.updateRows();
+        this.node.focus();
+    }
+
+    private async commitFileCreation(): Promise<void> {
+        const creation = this.creation;
+        if (!creation || creation.busy) return;
+        if (!creation.name.trim()) {
+            creation.error = 'Enter a file name';
+            this.update();
+            return;
+        }
+        creation.busy = true;
+        const error = await creation.submit(creation.name);
+        if (this.creation !== creation) return;
+        creation.busy = false;
+        if (error) {
+            creation.error = error;
+            this.update();
+            this.creationInput.current?.focus();
+        } else {
+            this.creation = undefined;
+            this.updateRows();
+        }
+    }
+
+    protected override doUpdateRows(): void {
+        super.doUpdateRows();
+        if (!this.creation) return;
+        const rows = Array.from(this.rows.entries());
+        const parentIndex = rows.findIndex(([, row]) => 'uri' in row.node &&
+            (row.node as TreeNode & { uri: URI }).uri.toString() === this.creation?.parent.toString());
+        const depth = parentIndex < 0 ? 0 : rows[parentIndex][1].depth + 1;
+        const index = parentIndex < 0 ? 0 : parentIndex + 1;
+        rows.splice(index, 0, ['dope-inline-new-file', { node: { id: 'dope-inline-new-file', parent: undefined }, index, depth }]);
+        this.rows = new Map(rows.map(([id, row], position) => [id, { ...row, index: position }]));
+        this.update();
+    }
+
+    protected override doRenderNodeRow(row: TreeWidget.NodeRow): React.ReactNode {
+        if (row.node.id !== 'dope-inline-new-file' || !this.creation) return super.doRenderNodeRow(row);
+        const creation = this.creation;
+        return React.createElement('div', {
+            className: 'dope-explorer-new-file-row',
+            style: { paddingLeft: `${this.getPaddingLeft(row.node, { depth: row.depth })}px` },
+            onKeyDown: (event: React.KeyboardEvent) => event.stopPropagation()
+        },
+        React.createElement('span', { className: 'codicon codicon-new-file', 'aria-hidden': true }),
+        React.createElement('div', { className: 'dope-explorer-new-file-field' },
+            React.createElement('input', {
+                ref: node => { this.creationInput.current = node; if (node && document.activeElement !== node) node.focus(); },
+                type: 'text', 'aria-label': 'New file name', 'aria-invalid': !!creation.error,
+                'aria-describedby': creation.error ? 'dope-explorer-new-file-error' : undefined,
+                value: creation.name, disabled: creation.busy,
+                onChange: (event: React.ChangeEvent<HTMLInputElement>) => {
+                    creation.name = event.currentTarget.value;
+                    creation.error = '';
+                    this.update();
+                },
+                onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => {
+                    if (event.key === 'Enter') { event.preventDefault(); void this.commitFileCreation(); }
+                    if (event.key === 'Escape') { event.preventDefault(); this.cancelFileCreation(); }
+                },
+                onBlur: () => { if (!creation.busy) this.cancelFileCreation(); }
+            }),
+            creation.error ? React.createElement('div', { id: 'dope-explorer-new-file-error', role: 'alert' }, creation.error) : undefined));
+    }
 
     private readonly setControlsNode = (node: HTMLDivElement | null): void => {
         this.controlsNode?.removeEventListener('keydown', this.handleControlKeyDown, true);

@@ -86,6 +86,8 @@ import { createFileNavigatorContainer } from '@theia/navigator/lib/browser/navig
 import { EXPLORER_VIEW_CONTAINER_ID } from '@theia/navigator/lib/browser/navigator-widget-factory';
 import { SearchInWorkspaceFrontendContribution } from '@theia/search-in-workspace/lib/browser/search-in-workspace-frontend-contribution';
 import { ExplorerSearchWidget } from './explorer-search-widget';
+import { ExplorerInlineNewFileCommands } from './explorer-inline-new-file';
+import { WorkspaceCommandContribution } from '@theia/workspace/lib/browser/workspace-commands';
 import { SearchNavigationContribution } from './search-navigation-contribution';
 import { RoadmapNavigationContribution, roadmapLauncherFactory } from './roadmap-navigation-contribution';
 import type { RoadmapChange, RoadmapIndex } from '@dope/project-intelligence/lib/node/roadmap-store';
@@ -191,6 +193,7 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         child.rebind(FileNavigatorWidget).to(ExplorerSearchWidget);
         return child.get(FileNavigatorWidget);
     });
+    rebind(WorkspaceCommandContribution).to(ExplorerInlineNewFileCommands).inSingletonScope();
     bind(FrontendApplicationContribution).toDynamicValue(context => ({
         onDidInitializeLayout: async () => {
             const explorer = await context.container.get(WidgetManager).getWidget<ViewContainer>(EXPLORER_VIEW_CONTAINER_ID);

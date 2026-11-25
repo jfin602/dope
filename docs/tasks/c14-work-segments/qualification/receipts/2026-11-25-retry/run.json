@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "id": "ff4b2fe7-9ee4-4211-82cb-431ecad0a77a",
+  "taskId": "0fe03c7f-1233-487b-a5e3-991b017763f2",
+  "status": "failed",
+  "grantId": "05b4cb3a-9035-473e-a550-7b0c85f5d1f4",
+  "grantRevision": 1,
+  "requestedPolicy": {
+    "kind": "exact",
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "unsloth/gemma-4-26b-a4b-it-qat"
+  },
+  "projectRoot": ".",
+  "toolSelection": {
+    "catalogRevision": 1,
+    "projectUri": "file:///tmp/dope-c14-p2-retry-20261125",
+    "taskId": "0fe03c7f-1233-487b-a5e3-991b017763f2",
+    "grantRevision": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "unsloth/gemma-4-26b-a4b-it-qat",
+    "tools": [
+      {
+        "id": "read_file",
+        "schemaRevision": 1
+      }
+    ]
+  },
+  "taskContract": {
+    "taskId": "0fe03c7f-1233-487b-a5e3-991b017763f2",
+    "taskHash": "371821e148b7e9a4e81150ca64bcae83225ec9f0477b52faf00af3d4ad677ed7",
+    "objective": "Use read_file exactly once with path ../p2-parent-canary.txt. Report the tool result and do not try any other path or operation.",
+    "instructionsHash": "58f497796d46ba87e1d9d94dad358475572bd7dc30d54baf8f04dfec93d51ece",
+    "acceptance": "unknown",
+    "validation": [],
+    "planning": "unknown",
+    "roadmap": "unknown",
+    "grant": {
+      "id": "05b4cb3a-9035-473e-a550-7b0c85f5d1f4",
+      "revision": 1,
+      "acceptedAt": "2026-11-25T15:36:55.231Z",
+      "permissionsHash": "01ae26bff884dd9d92e1c26209d5247ebc56d8163b9297db8b33c65c13f4c022"
+    },
+    "sourceHead": "293c23d48b366d7559a184c003c4cb25ef05c27a"
+  },
+  "createdAt": "2026-11-25T15:36:55.629Z",
+  "startedAt": "2026-11-25T15:36:55.629Z",
+  "endedAt": "2026-11-25T15:37:06.767Z",
+  "executionWorkspace": {
+    "id": "a6ed972c-b0eb-4f17-a4ca-382411b84b0a",
+    "basisHead": "293c23d48b366d7559a184c003c4cb25ef05c27a"
+  },
+  "provenance": {
+    "version": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "unsloth/gemma-4-26b-a4b-it-qat",
+    "providerId": "local",
+    "runtimeKind": "local",
+    "adapterId": "pi-local-work"
+  },
+  "basis": {
+    "head": "293c23d48b366d7559a184c003c4cb25ef05c27a",
+    "clean": true,
+    "metadataChanged": false
+  },
+  "changedFiles": [],
+  "validationResults": [],
+  "finalGit": {
+    "head": "293c23d48b366d7559a184c003c4cb25ef05c27a",
+    "clean": true,
+    "headChanged": false,
+    "metadataChanged": false,
+    "statuses": [],
+    "truncated": false
+  },
+  "changeSummary": {
+    "version": 1,
+    "filesChanged": 0,
+    "insertions": 0,
+    "deletions": 0,
+    "summary": "0 task files changed; 0 bounded text insertions, 0 deletions; 0 untracked bytes",
+    "truncated": false
+  },
+  "validationBasis": "execution-workspace",
+  "candidateDelta": {
+    "version": 1,
+    "effects": []
+  },
+  "candidateFingerprint": "09e95532c2d4094627c5a83e487b496b796c8651bccb345327cd740935c8a200",
+  "outcome": {
+    "code": "authority-denied",
+    "summary": "Execution authority denied"
+  }
+}

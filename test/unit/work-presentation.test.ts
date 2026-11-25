@@ -57,8 +57,29 @@ test('Work controls and critical blockers remain visible; verbose evidence is di
     assert.match(widget, /acceptLabel\.append\(accept, ' Accept project execution grant'\)/);
     assert.match(widget, /start\.disabled = !controller\.canStart/);
     assert.match(widget, /start\.disabled = !phase\.canStart/);
-    assert.match(css, /\.dope-work-composer textarea \{[^}]*resize: none/);
+    assert.match(css, /\.dope-chat-composer textarea \{[^}]*resize: none/);
     assert.match(css, /\.dope-chat-panel button:disabled/);
+});
+
+test('Prepare Work keeps editable settings above a fixed Chat-style composer', () => {
+    assert.match(widget, /this\.composingWork && !this\.panel\.work \? 'PREPARE WORK'/);
+    assert.match(widget, /settings\.className = 'dope-work-prepare-settings'/);
+    assert.match(widget, /composer\.className = 'dope-chat-composer dope-work-prepare-composer'/);
+    assert.match(widget, /form\.append\(settings, composer\)/);
+    assert.match(widget, /controller\.setValidation\(validation\.value, false\)/);
+    assert.match(widget, /settings\.append\(\.\.\.\(unavailable \? \[readiness\] : \[\]\), toolSection, validationLabel,/);
+    assert.match(widget, /validationLabel\.append\('Validation command \(optional\)', validation\)/);
+    assert.match(widget, /toolbar\.append\(more, modelPicker, start\)/);
+    assert.match(widget, /menuAction\('Tools for this Work', 'tools', \(\) => toolSection\)/);
+    assert.match(widget, /this\.aiCenter\?\.openFromWork\(this\.id\)/);
+    assert.match(widget, /codicon\(start\.disabled \? 'circle-slash' : 'arrow-up'\)/);
+    assert.match(css, /\.dope-work-prepare-settings \{[^}]*flex: 1;[^}]*overflow: auto/);
+    assert.match(css, /\.dope-work-composer > \.dope-work-prepare-composer \{/);
+    assert.match(widget, /readiness\.className = 'dope-chat-error-bubble dope-work-prepare-readiness'/);
+    assert.match(css, /\.dope-chat-error-bubble \{[^}]*border: 1px solid var\(--theia-errorForeground/);
+    assert.match(css, /\.dope-chat-content-work \.dope-work-prepare-readiness button:not\(\.dope-work-primary\) \{[^}]*background: var\(--theia-errorForeground/);
+    assert.match(css, /button\.dope-chat-composer-more:not\(\.dope-work-primary\) \{ border: 0; background: transparent; \}/);
+    assert.match(css, /button\.dope-work-prepare-submit:disabled \{[^}]*background: transparent; border: 0/);
 });
 
 test('Work detail uses the P1 projection and preserves guarded controller callbacks', () => {

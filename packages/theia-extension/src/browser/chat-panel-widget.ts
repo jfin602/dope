@@ -1550,6 +1550,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     private renderWorkTools(project: string, taskKey: string, locality: 'local' | 'hosted' | undefined,
         commandsAvailable: boolean): HTMLElement {
         const section = document.createElement('section'); section.className = 'dope-work-tools';
+        section.tabIndex = -1;
         const heading = document.createElement('h3'); heading.textContent = 'Tools for this Work'; section.append(heading);
         if (locality === 'hosted') {
             const note = document.createElement('p'); note.className = 'dope-work-warning';
@@ -1615,18 +1616,26 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const controller = this.directController;
         if (!controller) return;
         const form = document.createElement('form'); form.className = 'dope-work-composer';
+        form.setAttribute('aria-label', 'Prepare Work');
+        const settings = document.createElement('section'); settings.className = 'dope-work-prepare-settings';
         if (controller.forkedFromRunId) {
             const fork = document.createElement('p'); fork.className = 'dope-work-detail';
             fork.textContent = `Fork from saved run ${controller.forkedFromRunId}. This creates a new task, ` +
                 'model, tool selection and grant for review; no candidate is carried over.';
-            form.append(fork);
+            settings.append(fork);
         }
-        const prompt = document.createElement('textarea'); prompt.maxLength = 20000;
+        const prompt = document.createElement('textarea'); prompt.rows = 1; prompt.maxLength = 20000;
         prompt.setAttribute('aria-label', 'Work instructions'); prompt.placeholder = 'Describe one bounded task…';
         prompt.value = controller.instructions;
-        const start = this.button('Start Work', () => void submit(), !controller.canStart);
+        const start = this.composerActionButton(() => void submit(), 'send', 'Start Work', !controller.canStart);
+        start.classList.add('dope-work-prepare-submit');
+        const syncStart = () => {
+            start.disabled = !controller.canStart;
+            const icon = start.firstElementChild as HTMLElement;
+            icon.className = codicon(start.disabled ? 'circle-slash' : 'arrow-up');
+        };
         const edit = () => { controller.edit(prompt.value.trim().split('\n')[0].slice(0, 1000), prompt.value);
-            start.disabled = !controller.canStart; };
+            syncStart(); resizeChatInput(prompt); };
         prompt.oninput = edit;
         prompt.onkeydown = event => { if (shouldSendChatInput(event)) { event.preventDefault(); void submit(); } };
         const model = document.createElement('select'); model.setAttribute('aria-label', 'Coding Agent model');
@@ -1634,20 +1643,27 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         for (const target of controller.exactTargets) { const option = document.createElement('option');
             option.value = `${target.connectionId}\u0000${target.modelId}`; option.textContent = target.label; model.append(option); }
         model.value = controller.policy.kind === 'exact' ? `${controller.policy.connectionId}\u0000${controller.policy.modelId}` : 'follow';
-        model.onchange = () => { const target = controller.exactTargets.find(item =>
+        const selectedModel = model.value;
+        model.append(new Option('Manage Models', '__manage_models__'));
+        model.onchange = () => { if (model.value === '__manage_models__') {
+            model.value = selectedModel;
+            void this.aiCenter?.openFromWork(this.id);
+            return;
+        } const target = controller.exactTargets.find(item =>
             `${item.connectionId}\u0000${item.modelId}` === model.value);
             controller.setPolicy(target ? { kind: 'exact', connectionId: target.connectionId, modelId: target.modelId } :
                 { kind: 'follow-coding-agent' }); };
         const validation = document.createElement('input'); validation.type = 'text'; validation.maxLength = 160;
         validation.value = controller.validationCommand; validation.setAttribute('aria-label', 'Validation command (optional)');
-        validation.placeholder = 'Validation command (optional)';
+        const validationLabel = document.createElement('label'); validationLabel.className = 'dope-work-validation-label';
+        validationLabel.append('Validation command (optional)', validation);
         let toolSection = this.renderWorkTools(controller.project ?? '', 'direct', controller.resolved?.locality,
             hasApprovedWorkCommand(controller.validationCommand));
-        validation.oninput = () => { controller.setValidation(validation.value);
+        validation.oninput = () => { controller.setValidation(validation.value, false);
             const next = this.renderWorkTools(controller.project ?? '', 'direct', controller.resolved?.locality,
                 hasApprovedWorkCommand(controller.validationCommand));
             toolSection.replaceWith(next); toolSection = next;
-            start.disabled = !controller.canStart; };
+            syncStart(); };
         const grant = createDefaultExecutionGrant({ id: 'preview', revision: 1, taskId: 'preview',
             acceptedAt: new Date().toISOString() });
         const review = document.createElement('details'); review.className = 'dope-work-diagnostics';
@@ -1659,18 +1675,26 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         const mcp = document.createElement('input'); mcp.type = 'checkbox';
         mcp.checked = controller.mcpAccepted;
         mcp.onchange = () => { controller.acceptMCPObservation(mcp.checked);
-            start.disabled = !controller.canStart; };
+            syncStart(); };
         if (controller.mcpOffer) mcpLabel.append(mcp,
             ` Allow one ${controller.mcpOffer.serverId} ${controller.mcpOffer.toolName} observation for this Work task; approve the call separately`);
         const hostedLabel = document.createElement('label'); hostedLabel.className = 'dope-work-grant';
         const hosted = document.createElement('input'); hosted.type = 'checkbox';
         hosted.checked = controller.hostedProjectDataAuthorized;
-        hosted.onchange = () => { controller.authorizeHostedProjectData(hosted.checked); start.disabled = !controller.canStart; };
+        hosted.onchange = () => { controller.authorizeHostedProjectData(hosted.checked); syncStart(); };
         hostedLabel.append(hosted, ' Authorize sending project data to the hosted Coding Agent');
         const hostedMode = document.createElement('p'); hostedMode.className = 'dope-work-detail';
         hostedMode.textContent = 'Hosted Work runs once. This model does not support queued messages, Finish Work, or a persistent conversation.';
         const status = document.createElement('p'); status.setAttribute('role', 'status');
         status.textContent = controller.message || controller.targetMessage;
+        const unavailable = !controller.resolved;
+        if (unavailable) status.className = 'dope-work-prepare-warning';
+        const readiness = document.createElement('div');
+        readiness.className = 'dope-chat-error-bubble dope-work-prepare-readiness';
+        if (unavailable) {
+            const openAI = this.button('Open AI Center', () => { void this.aiCenter?.openFromWork(this.id); });
+            readiness.append(status, openAI);
+        }
         const finishStart = async (run: Awaited<ReturnType<typeof controller.start>>) => {
             if (run) {
                 if (this.workNewParent) this.workList.placeItem(`run:${run.id}`, this.workNewParent);
@@ -1703,9 +1727,50 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             dirtyPanel.append(title, detail, paths, commit, actions);
         }
         form.onsubmit = event => { event.preventDefault(); void submit(); };
-        form.append(prompt, model, validation, toolSection, ...(controller.mcpOffer ? [mcpLabel] : []),
+        settings.append(...(unavailable ? [readiness] : []), toolSection, validationLabel,
+            ...(controller.mcpOffer ? [mcpLabel] : []),
             ...(controller.resolved?.locality === 'hosted' ? [hostedMode, hostedLabel] : []), review,
-            ...(dirty && !dirty.clean ? [dirtyPanel] : []), status, start);
+            ...(dirty && !dirty.clean ? [dirtyPanel] : []), ...(unavailable ? [] : [status]));
+        const composer = document.createElement('div'); composer.className = 'dope-chat-composer dope-work-prepare-composer';
+        const inputWrap = document.createElement('div'); inputWrap.className = 'dope-chat-input-wrap';
+        inputWrap.append(prompt);
+        const toolbar = document.createElement('div'); toolbar.className = 'dope-chat-composer-toolbar';
+        const menu = document.createElement('div'); menu.className = 'dope-chat-composer-menu'; menu.popover = 'auto';
+        menu.id = `${this.id}-work-composer-actions`;
+        menu.setAttribute('role', 'dialog'); menu.setAttribute('aria-label', 'Work settings');
+        const more = this.button('', () => {
+            if (menu.matches(':popover-open')) { menu.hidePopover(); return; }
+            const bounds = more.getBoundingClientRect();
+            menu.style.left = `${Math.max(8, Math.min(bounds.left, window.innerWidth - 208))}px`;
+            menu.style.bottom = `${Math.max(8, window.innerHeight - bounds.top + 6)}px`;
+            menu.showPopover();
+            menu.querySelector<HTMLElement>('button')?.focus();
+        });
+        more.className = 'dope-chat-composer-more'; more.title = 'Work settings';
+        more.setAttribute('aria-label', 'Work settings'); more.setAttribute('aria-haspopup', 'dialog');
+        more.setAttribute('aria-controls', menu.id); more.setAttribute('aria-expanded', 'false');
+        const addIcon = document.createElement('span'); addIcon.className = codicon('add');
+        addIcon.setAttribute('aria-hidden', 'true'); more.append(addIcon);
+        menu.addEventListener('toggle', () => more.setAttribute('aria-expanded', String(menu.matches(':popover-open'))));
+        const menuAction = (label: string, icon: string, getTarget: () => HTMLElement) => {
+            const action = this.button('', () => { menu.hidePopover(); const target = getTarget();
+                target.scrollIntoView({ block: 'nearest' });
+                target.focus(); });
+            const glyph = document.createElement('span'); glyph.className = codicon(icon);
+            glyph.setAttribute('aria-hidden', 'true'); action.append(glyph, document.createTextNode(label));
+            menu.append(action);
+        };
+        menuAction('Tools for this Work', 'tools', () => toolSection);
+        menuAction('Validation command', 'check', () => validation);
+        menuAction('Review project execution grant', 'shield', () => summary);
+        const modelPicker = document.createElement('label'); modelPicker.className = 'dope-chat-model-picker';
+        const modelIcon = document.createElement('span'); modelIcon.className = codicon('sparkle');
+        modelIcon.setAttribute('aria-hidden', 'true'); modelPicker.append(modelIcon, model);
+        toolbar.append(more, modelPicker, start);
+        composer.append(menu, inputWrap, toolbar);
+        syncStart();
+        resizeChatInput(prompt);
+        form.append(settings, composer);
         this.content.append(form);
     }
     private clearWorkListDrop(): void {
@@ -4058,7 +4123,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (this.id !== chatLauncherIds.left && this.id !== chatLauncherIds.right &&
             this.id !== workLauncherIds.left && this.id !== workLauncherIds.right)
             this.title.iconClass = codicon(this.panel.mode === 'work' ? 'tools' : 'comment-discussion');
-        this.title.label = this.title.caption = this.panel.mode === 'work' ? 'Work' :
+        this.title.label = this.title.caption = this.panel.mode === 'work' ?
+            this.composingWork && !this.panel.work ? 'PREPARE WORK' : 'Work' :
             this.settingsOpen ? 'CHAT SETTINGS' : 'Chat';
         this.content.className = this.panel.mode === 'work' ? 'dope-chat-content dope-chat-content-work' :
             state.mode !== 'chat' ? 'dope-chat-content dope-chat-content-select' :

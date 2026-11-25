@@ -137,8 +137,8 @@ export class AgentRunController {
         this.mcpOffer = undefined; this.mcpAccepted = false; this.resolved = undefined; void this.resolveTarget(); this.changed(); }
     edit(objective: string, instructions: string): void { this.objective = objective; this.instructions = instructions;
         this.accepted = false; this.worktreeReview = undefined; }
-    setValidation(command: string): void { this.validationCommand = command; this.accepted = false;
-        this.worktreeReview = undefined; this.changed(); }
+    setValidation(command: string, notify = true): void { this.validationCommand = command; this.accepted = false;
+        this.worktreeReview = undefined; if (notify) this.changed(); }
     cancelWorktreeReview(): void { this.worktreeReview = undefined; this.message = ''; this.changed(); }
     async commitWorktree(): Promise<AgentRun | undefined> {
         if (!this.handle || !this.worktreeReview || this.busy) return;

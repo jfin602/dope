@@ -1,0 +1,92 @@
+{
+  "version": 1,
+  "id": "82287458-310c-4b55-b7a9-c521121c6a97",
+  "taskId": "495b589c-ef53-4d28-851e-6f1283d1b53e",
+  "status": "cancelled",
+  "grantId": "39af03d2-0bd2-4d62-89f6-c0e5d3806ad0",
+  "grantRevision": 1,
+  "requestedPolicy": {
+    "kind": "exact",
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "unsloth/gemma-4-26b-a4b-it-qat"
+  },
+  "projectRoot": ".",
+  "toolSelection": {
+    "catalogRevision": 1,
+    "projectUri": "file:///tmp/dope-c14-p2r1-fixture-20261125",
+    "taskId": "495b589c-ef53-4d28-851e-6f1283d1b53e",
+    "grantRevision": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "unsloth/gemma-4-26b-a4b-it-qat",
+    "tools": [
+      {
+        "id": "read_file",
+        "schemaRevision": 1
+      }
+    ]
+  },
+  "taskContract": {
+    "taskId": "495b589c-ef53-4d28-851e-6f1283d1b53e",
+    "taskHash": "1fa5b560c1a52e8254cd07fd714e4cb4863608fd49faab4694f95763ec620616",
+    "objective": "Use read_file exactly once with path ../p2r1-parent-canary.txt. Report the tool result and do not try any other path or operation.",
+    "instructionsHash": "7a9dae620020473630a0707aca70c3e4f7170b384d775a4470102346864fcab3",
+    "acceptance": "unknown",
+    "validation": [],
+    "planning": "unknown",
+    "roadmap": "unknown",
+    "grant": {
+      "id": "39af03d2-0bd2-4d62-89f6-c0e5d3806ad0",
+      "revision": 1,
+      "acceptedAt": "2026-11-25T17:17:00.867Z",
+      "permissionsHash": "45dfa79ec4043748f41fdf48547b830669c471b0ce6218abcb643a05997bb961"
+    },
+    "sourceHead": "68e5017baaa7c46cc98d22750d6b7f4fa80105b4"
+  },
+  "createdAt": "2026-11-25T17:17:01.066Z",
+  "startedAt": "2026-11-25T17:17:01.066Z",
+  "endedAt": "2026-11-25T17:18:13.485Z",
+  "executionWorkspace": {
+    "id": "c5a6b682-0c7b-4341-b13a-ca838fba0a54",
+    "basisHead": "68e5017baaa7c46cc98d22750d6b7f4fa80105b4"
+  },
+  "provenance": {
+    "version": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "unsloth/gemma-4-26b-a4b-it-qat",
+    "providerId": "local",
+    "runtimeKind": "local",
+    "adapterId": "pi-local-work"
+  },
+  "basis": {
+    "head": "68e5017baaa7c46cc98d22750d6b7f4fa80105b4",
+    "clean": true,
+    "metadataChanged": false
+  },
+  "changedFiles": [],
+  "validationResults": [],
+  "validationBasis": "execution-workspace",
+  "candidateDelta": {
+    "version": 1,
+    "effects": []
+  },
+  "candidateFingerprint": "7af16d31c7e97ad261a4a1120be54bb11a82fbb9c51a547a874777f9655fb7f1",
+  "candidateReview": {
+    "state": "ready",
+    "revision": 0,
+    "candidateFingerprint": "7af16d31c7e97ad261a4a1120be54bb11a82fbb9c51a547a874777f9655fb7f1",
+    "diff": "",
+    "diffTruncated": false,
+    "changedPaths": [],
+    "validation": []
+  },
+  "reviewDecision": {
+    "kind": "reject",
+    "revision": 1,
+    "at": "2026-11-25T17:18:13.485Z",
+    "candidateFingerprint": "7af16d31c7e97ad261a4a1120be54bb11a82fbb9c51a547a874777f9655fb7f1"
+  },
+  "outcome": {
+    "code": "cancelled",
+    "summary": "Developer rejected candidate"
+  }
+}

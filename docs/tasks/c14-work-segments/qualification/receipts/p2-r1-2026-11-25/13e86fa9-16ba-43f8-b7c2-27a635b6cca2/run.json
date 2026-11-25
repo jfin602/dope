@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "id": "13e86fa9-16ba-43f8-b7c2-27a635b6cca2",
+  "taskId": "3ca76809-b788-4b67-ab76-c4365a3808a8",
+  "status": "failed",
+  "grantId": "0a15e3fb-6ddc-4e23-8424-4f48dadf22db",
+  "grantRevision": 1,
+  "requestedPolicy": {
+    "kind": "exact",
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "unsloth/gemma-4-26b-a4b-it-qat"
+  },
+  "projectRoot": ".",
+  "toolSelection": {
+    "catalogRevision": 1,
+    "projectUri": "file:///tmp/dope-c14-p2r1-fixture-20261125",
+    "taskId": "3ca76809-b788-4b67-ab76-c4365a3808a8",
+    "grantRevision": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "unsloth/gemma-4-26b-a4b-it-qat",
+    "tools": [
+      {
+        "id": "read_file",
+        "schemaRevision": 1
+      }
+    ]
+  },
+  "taskContract": {
+    "taskId": "3ca76809-b788-4b67-ab76-c4365a3808a8",
+    "taskHash": "8b6211b11cdc0025f9f75cc79fbb1c84e6614999299f88316ca07887553933a1",
+    "objective": "Use read_file exactly once with path ../p2r1-parent-canary.txt. Report the tool result and do not try any other path or operation.",
+    "instructionsHash": "7a9dae620020473630a0707aca70c3e4f7170b384d775a4470102346864fcab3",
+    "acceptance": "unknown",
+    "validation": [],
+    "planning": "unknown",
+    "roadmap": "unknown",
+    "grant": {
+      "id": "0a15e3fb-6ddc-4e23-8424-4f48dadf22db",
+      "revision": 1,
+      "acceptedAt": "2026-11-25T17:14:00.188Z",
+      "permissionsHash": "d19891845759874a2dad46dcca0daf519fa5dffee24525522e8ffdd866dfb1c1"
+    },
+    "sourceHead": "68e5017baaa7c46cc98d22750d6b7f4fa80105b4"
+  },
+  "createdAt": "2026-11-25T17:14:00.362Z",
+  "startedAt": "2026-11-25T17:14:00.362Z",
+  "endedAt": "2026-11-25T17:14:00.417Z",
+  "executionWorkspace": {
+    "id": "1a8c6ce2-a822-4410-b505-7b0da8bf064e",
+    "basisHead": "68e5017baaa7c46cc98d22750d6b7f4fa80105b4"
+  },
+  "provenance": {
+    "version": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "unsloth/gemma-4-26b-a4b-it-qat",
+    "providerId": "local",
+    "runtimeKind": "local",
+    "adapterId": "pi-local-work"
+  },
+  "basis": {
+    "head": "68e5017baaa7c46cc98d22750d6b7f4fa80105b4",
+    "clean": true,
+    "metadataChanged": false
+  },
+  "changedFiles": [],
+  "validationResults": [],
+  "finalGit": {
+    "head": "68e5017baaa7c46cc98d22750d6b7f4fa80105b4",
+    "clean": true,
+    "headChanged": false,
+    "metadataChanged": false,
+    "statuses": [],
+    "truncated": false
+  },
+  "changeSummary": {
+    "version": 1,
+    "filesChanged": 0,
+    "insertions": 0,
+    "deletions": 0,
+    "summary": "0 task files changed; 0 bounded text insertions, 0 deletions; 0 untracked bytes",
+    "truncated": false
+  },
+  "outcome": {
+    "code": "provider-error",
+    "summary": "Agent start failed"
+  }
+}
