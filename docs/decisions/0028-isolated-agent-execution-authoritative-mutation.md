@@ -5,6 +5,10 @@ Date: 2026-10-06
 Complements: ADR 0003, ADR 0004, ADR 0006, ADR 0027
 Supersedes: the Phase 8B assumption that a provider sandbox may write the authoritative project root directly when its coarse sandbox appears to match the ExecutionGrant
 
+## Forward UI authorization clarification (2026-11-25)
+
+The [unified Work tool authorization contract](../planning/p13/work-tool-selection-proposal.md) removes duplicate **user-facing** Project Execution Grant controls and makes **Tools for this Work** plus explicit **Start Work** the sole ordinary execution-tool approval surface. ADR 0028's **internal** `ExecutionGrant`, isolated `ExecutionWorkspace`, strict effect ceiling, `CandidateDelta`, Dope-owned validation, developer promotion and host restrictions remain mandatory without change. Tool selection authorizes model exposure only within those limits; it cannot grant direct authoritative writes or avoid independently required consent/review. This is a documentation amendment, not product implementation or qualification.
+
 ## Context
 
 Phase 8B qualification stopped after Cycle 1 with a real authority-enforcement contradiction.
