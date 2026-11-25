@@ -1,5 +1,5 @@
-import type { AgentMapImpact, AgentRun, AgentSteeringRequest, AgentSteeringState, AgentTask,
-    AgentTranscriptEntry, AgentTaskSequence, ProposedAction } from '@dope/agent-core';
+import type { AgentMapImpact, AgentRun, AgentSteeringRequest, AgentSteeringState, AgentTask, WorkSession,
+    AgentRunEvent, AgentTranscriptEntry, AgentTaskSequence, ProposedAction } from '@dope/agent-core';
 import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 import type { WorkMCPObservationScope } from '@dope/agent-core/lib/authority';
 import type { CandidateResumePreview, WorktreeReview } from '@dope/contracts/lib/agent-runtime-service';
@@ -286,6 +286,16 @@ export class WorkSelectionController {
     tasks: AgentTask[] = [];
     runs: AgentRun[] = [];
     selectedRun?: AgentRun;
+    session?: WorkSession;
+    sessionBusy = false;
+    sessionError = '';
+    private readonly pendingSessionMessages = new Map<string, { id: string; text: string }>();
+    get sessionRetryText(): string {
+        return this.session ? this.pendingSessionMessages.get(this.session.id)?.text ?? '' : '';
+    }
+    get sessionRetryId(): string {
+        return this.session ? this.pendingSessionMessages.get(this.session.id)?.id ?? '' : '';
+    }
     selectedTask?: AgentTask;
     resumePreview?: CandidateResumePreview;
     resumeOpen = false;
@@ -294,6 +304,7 @@ export class WorkSelectionController {
     resumeBusy = false;
     resumeTarget?: AgentTarget;
     transcript: AgentTranscriptEntry[] = [];
+    events: AgentRunEvent[] = [];
     transcriptState: 'recorded' | 'not-recorded' = 'not-recorded';
     transcriptIncomplete = false;
     message = '';
@@ -359,7 +370,8 @@ export class WorkSelectionController {
         this.startBusy = false; this.acceptedStartGrant = false; this.hostedProjectDataAuthorized = false;
         this.selectedTaskId = undefined; this.startTarget = undefined; this.startWorktreeReview = undefined;
         this.startMCPOffer = undefined; this.startMCPAccepted = false;
-        this.selectedRun = undefined; this.selectedTask = undefined; this.transcript = []; this.message = '';
+        this.selectedRun = undefined; this.selectedTask = undefined; this.session = undefined; this.transcript = []; this.message = '';
+        this.pendingSessionMessages.clear();
         this.resumePreview = undefined; this.resumeOpen = false; this.resumeAccepted = false;
         this.selectionState = 'idle';
         this.steering = undefined; this.actions = []; this.mapImpact = undefined; this.steeringText = '';
@@ -403,6 +415,68 @@ export class WorkSelectionController {
         } catch (error) { if (serial === this.serial) { this.message = 'Work history could not be read.'; this.changed(); }
             if (strict) throw error; }
     }
+    async submitSessionMessage(text: string): Promise<void> {
+        const handle = this.handle, session = this.session, run = this.selectedRun;
+        if (!handle || !session || !run || this.sessionBusy || run.status !== 'running' || !text.trim() ||
+            session.segments.at(-1)?.runId !== run.id ||
+            !['running', 'awaiting-input'].includes(session.status)) return;
+        const body = text.trim();
+        const retry = this.pendingSessionMessages.get(session.id);
+        if (retry && retry.text !== body) {
+            this.sessionError = 'Retry the pending message unchanged before writing a new one.';
+            this.changed(); return;
+        }
+        const pending = retry ?? { id: crypto.randomUUID(), text: body };
+        this.pendingSessionMessages.set(session.id, pending);
+        this.sessionBusy = true; this.sessionError = ''; this.changed();
+        try {
+            await this.runtime.submitWorkMessage(handle, session.id, pending.id, pending.text);
+            this.pendingSessionMessages.delete(session.id);
+        } catch (error) {
+            if (this.selectedRun?.id === run.id && this.session?.id === session.id)
+                this.sessionError = error instanceof Error ? error.message : 'Work message could not be queued.';
+        } finally { this.sessionBusy = false; this.changed(); }
+        if (!this.pendingSessionMessages.has(session.id) && this.selectedRun?.id === run.id)
+            await this.select({ kind: 'run', id: run.id }).catch(() => {});
+    }
+    async finishSession(): Promise<void> {
+        const handle = this.handle, session = this.session, run = this.selectedRun;
+        if (!handle || !session || !run || this.sessionBusy || run.status !== 'running' ||
+            session.segments.at(-1)?.runId !== run.id ||
+            !['running', 'awaiting-input'].includes(session.status)) return;
+        this.sessionBusy = true; this.sessionError = ''; this.changed();
+        try {
+            await this.runtime.finishWorkSession(handle, session.id);
+            if (this.selectedRun?.id === run.id) await this.select({ kind: 'run', id: run.id });
+        } catch (error) {
+            this.sessionError = error instanceof Error ? error.message : 'Work could not finish.';
+        } finally { this.sessionBusy = false; this.changed(); }
+    }
+    async stopSession(): Promise<void> {
+        const handle = this.handle, session = this.session, run = this.selectedRun;
+        if (!handle || !session || !run || this.sessionBusy || run.status !== 'running' ||
+            session.segments.at(-1)?.runId !== run.id) return;
+        this.sessionBusy = true; this.sessionError = ''; this.changed();
+        try {
+            await this.runtime.stop(handle, run.id);
+            if (this.selectedRun?.id === run.id) await this.select({ kind: 'run', id: run.id });
+        } catch (error) {
+            this.sessionError = error instanceof Error ? error.message : 'Work could not stop.';
+        } finally { this.sessionBusy = false; this.changed(); }
+    }
+    async stopOneShot(): Promise<void> {
+        const handle = this.handle, run = this.selectedRun, task = this.selectedTask;
+        if (!handle || !run || !task || task.id !== run.taskId || this.session || this.sessionBusy ||
+            run.status !== 'running' || task.origin.kind !== 'work-item') return;
+        this.sessionBusy = true; this.changed();
+        try {
+            await this.runtime.stop(handle, run.id);
+            if (this.selectedRun?.id === run.id) await this.select({ kind: 'run', id: run.id });
+        } catch (error) {
+            if (this.selectedRun?.id === run.id)
+                this.sessionError = error instanceof Error ? error.message : 'Work could not stop.';
+        } finally { this.sessionBusy = false; this.changed(); }
+    }
     async scan(): Promise<void> {
         await Promise.all([this.phase.scan(), this.refresh()]);
     }
@@ -436,7 +510,9 @@ export class WorkSelectionController {
         this.acceptedStartGrant = false; this.hostedProjectDataAuthorized = false; this.startTarget = undefined;
         this.startWorktreeReview = undefined;
         this.startMCPOffer = undefined; this.startMCPAccepted = false;
-        this.selectedRun = undefined; this.selectedTask = undefined; this.transcript = []; this.transcriptIncomplete = false;
+        this.selectedRun = undefined; this.selectedTask = undefined; this.session = undefined;
+        this.transcript = []; this.events = []; this.transcriptState = 'not-recorded'; this.transcriptIncomplete = false;
+        this.sessionError = '';
         this.resumePreview = undefined; this.resumeOpen = false; this.resumeAccepted = false;
         this.steering = undefined; this.actions = []; this.mapImpact = undefined; this.steeringText = '';
         this.message = ''; this.phase.message = ''; this.phase.selected = undefined; this.phase.run = undefined;
@@ -468,6 +544,9 @@ export class WorkSelectionController {
                 selection.kind === 'task' ? await this.runtime.readTask(handle, selection.id) : undefined;
             if (serial !== this.serial || handle !== this.handle) return;
             this.selectedRun = run; this.selectedTask = task;
+            this.session = run ? await (this.runtime.readWorkSessionForRun?.(handle, run.id) ??
+                this.runtime.readWorkSession?.(handle, run.id)) : undefined;
+            if (serial !== this.serial || handle !== this.handle) return;
             if (run && ['failed', 'cancelled', 'interrupted'].includes(run.status)) {
                 void this.runtime.previewCandidateResume(handle, run.id).then(preview => {
                     if (serial !== this.serial || handle !== this.handle || this.selectedRun?.id !== run.id) return;
@@ -499,16 +578,28 @@ export class WorkSelectionController {
                 this.steering = steering;
                 this.actions = actions.filter(action => action.runId === run.id);
                 this.mapImpact = impact;
-                let cursor = 0;
-                while (true) {
-                    const result = await this.runtime.readTranscript(handle, run.id, cursor, 100);
-                    if (serial !== this.serial || handle !== this.handle) return;
-                    this.transcriptState = result.state;
-                    this.transcriptIncomplete ||= result.incomplete;
-                    this.transcript.push(...result.entries);
-                    if (!result.hasMore) break;
-                    if (result.nextSequence <= cursor) throw new Error('Transcript pagination did not advance');
-                    cursor = result.nextSequence;
+                const runIds = this.session?.segments.map(segment => segment.runId) ?? [run.id];
+                for (const runId of runIds) {
+                    let cursor = 0;
+                    while (true) {
+                        const result = await this.runtime.readTranscript(handle, runId, cursor, 100);
+                        if (serial !== this.serial || handle !== this.handle) return;
+                        if (result.state === 'recorded') this.transcriptState = 'recorded';
+                        this.transcriptIncomplete ||= result.incomplete;
+                        this.transcript.push(...result.entries);
+                        if (!result.hasMore) break;
+                        if (result.nextSequence <= cursor) throw new Error('Transcript pagination did not advance');
+                        cursor = result.nextSequence;
+                    }
+                    cursor = 0;
+                    while (true) {
+                        const result = await this.runtime.readEvents(handle, runId, cursor, 100);
+                        if (serial !== this.serial || handle !== this.handle) return;
+                        this.events.push(...result.events);
+                        if (!result.hasMore) break;
+                        if (result.nextSequence <= cursor) throw new Error('Event pagination did not advance');
+                        cursor = result.nextSequence;
+                    }
                 }
             }
             if (task && (selection.kind === 'task' || run?.taskId === task.id)) {
@@ -681,7 +772,9 @@ export class WorkSelectionController {
             // Consume acceptance before the RPC; a failed attempt requires a fresh review.
             const hostedAuthorized = shownTarget.locality === 'hosted' && this.hostedProjectDataAuthorized;
             this.acceptedStartGrant = false; this.hostedProjectDataAuthorized = false; this.startMCPAccepted = false;
-            const run = await this.runtime.start(handle, project, task.id, grant, hostedAuthorized,
+            const start = shownTarget.locality === 'local' ? this.runtime.startWorkSession.bind(this.runtime) :
+                this.runtime.start.bind(this.runtime);
+            const run = await start(handle, project, task.id, grant, hostedAuthorized,
                 continueDirty && !review.clean ? review.fingerprint : undefined);
             if (run.taskId !== task.id || run.projectId !== task.projectId)
                 throw new Error('AgentRun identity did not match the selected saved task. Refresh Work.');

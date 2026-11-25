@@ -120,11 +120,11 @@ test('shared Chat and Work code blocks copy only their current visible text', as
 test('shared renderer stays in Chat and Work and code copy has no command path', async () => {
     const [chat, work, renderer] = await Promise.all([
         readFile('packages/theia-extension/src/browser/chat-panel-widget.ts', 'utf8'),
-        readFile('packages/theia-extension/src/browser/agent-transcript-widget.ts', 'utf8'),
+        readFile('packages/theia-extension/src/browser/work-conversation-presentation.ts', 'utf8'),
         readFile('packages/theia-extension/src/browser/untrusted-message-markdown.ts', 'utf8')
     ]);
     assert.match(chat, /renderUntrustedMessageMarkdown\(this\.markdown/);
-    assert.match(work, /renderUntrustedMessageMarkdown\(this\.markdown/);
+    assert.match(work, /renderUntrustedMessageMarkdown\(markdown, entry\.text\)/);
     assert.match(renderer, /navigator\.clipboard\?\.writeText\(content\)/);
     assert.doesNotMatch(renderer, /gen-roadmap|executeCommand|sendMessage|submitMessage/);
 });

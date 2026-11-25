@@ -1,0 +1,11 @@
+# c14 Work redesign — P2-R1 local Pi boundary (2026-11-24)
+
+Status: forward recovery scope for the owner-requested P2-R1. The two runner P2 attempts remain `PARTIAL`; this document does not qualify their source or create a P2 checkpoint.
+
+The persistent conversational Work lifecycle in this correction applies to **embedded local Pi** execution. This is the runtime proved by P1-R2: one supervised Pi session, an isolated candidate, durable queued messages, explicit Finish/Stop, and linked run evidence. The P1 service rejects a hosted target for `startWorkSession`. Do not make hosted execution appear to have those capabilities.
+
+Preserve the existing hosted New Work and hosted WorkItem one-shot paths, their project-data authorization, grants, candidate review, transcript, and history. Label their one-shot behavior in setup and reopened Work so a user can see that Queue, Finish, and conversational follow-up are unavailable. Do not silently switch a selected hosted model to local, disable hosted Work, or infer that a hosted run is a persistent session. Hosted conversational parity requires a separate runtime design and qualification; it is outside this c14 correction.
+
+For **local Pi**, both New Work and a saved WorkItem start must enter P1's durable Work session through the existing authorized task and grant. P2-R1 completes this start-to-panel bridge, truthful queue and lifecycle controls, and full saved conversation reopening. P3 retains persistence, old-record compatibility, recovery/follow-up/fork, grant, candidate, and Roadmap integration gates. The P4 connected-browser closeout qualifies the local Pi conversational path and preserves explicit limits for hosted and native coverage. No Interrupt/Pause/Resume is added; the earlier [P1-R2 amendment](scope-amendment-2026-11-24.md) still controls that behavior.
+
+The authored P1–P4 `.txt` files, both P2 runner results, `.codex-runs` evidence, and earlier qualification reports remain unchanged. A manual P2-R1 PASS requires a source-bound report and the exact P2 runner checkpoint subject with a truthful single `PHASE_VERDICT: PASS` body receipt. Only then can the unchanged runner identify P1–P2 as complete and start P3. This scope decision does not award product Roadmap Gate GREEN or change version `0.13.11`.

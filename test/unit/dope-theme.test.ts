@@ -148,9 +148,9 @@ test('Work uses paired Light (Theia) action colors and local readable surfaces',
   assert.ok(contrast(mix('#333333', '#FFFFFF', 0.65), '#FFFFFF') >= 3, 'light surface focus');
 
   const scope = css.slice(css.indexOf('/* Work uses matched Theia surface/text pairs'));
-  assert.match(scope, /:is\(\.dope-chat-content-work, \.dope-agent-transcript-panel\) \{[^}]*--dope-work-text: var\(--theia-editor-foreground/);
+  assert.match(scope, /\.dope-chat-content-work \{[^}]*--dope-work-text: var\(--theia-editor-foreground/);
   assert.match(scope, /--dope-work-primary: var\(--theia-button-background\);\s*--dope-work-primary-text: var\(--theia-button-foreground\);/);
-  assert.match(scope, /\.dope-dark :is\(\.dope-chat-content-work, \.dope-agent-transcript-panel\) \{[^}]*--dope-work-primary: var\(--dope-action-background\);[^}]*--dope-work-primary-text: var\(--dope-on-primary\);/);
+  assert.match(scope, /\.dope-dark \.dope-chat-content-work \{[^}]*--dope-work-primary: var\(--dope-action-background\);[^}]*--dope-work-primary-text: var\(--dope-on-primary\);/);
   for (const selector of ['dope-work-next', 'dope-work-progress', 'dope-work-command', 'dope-work-diagnostics', 'dope-work-row-meta', 'dope-work-transcript-status']) {
     assert.match(scope, new RegExp(`\\.${selector}\\b`), selector);
   }

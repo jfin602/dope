@@ -208,7 +208,9 @@ export class AgentRunController {
                         hasApprovedWorkCommand(this.validationCommand)) } : {}) };
             const grant = mcpScope ? createMCPObservationExecutionGrant({ ...grantInput,
                 mcpObservation: mcpScope }) : createDefaultExecutionGrant(grantInput);
-            const run = await this.runtime.start(this.handle, this.project, task.id, grant, hostedAuthorized,
+            const start = fresh.locality === 'local' ? this.runtime.startWorkSession.bind(this.runtime) :
+                this.runtime.start.bind(this.runtime);
+            const run = await start(this.handle, this.project, task.id, grant, hostedAuthorized,
                 continueDirty && !review.clean ? review.fingerprint : undefined);
             this.selected = run; this.accepted = false; this.hostedProjectDataAuthorized = false; this.mcpAccepted = false;
             await this.refresh();

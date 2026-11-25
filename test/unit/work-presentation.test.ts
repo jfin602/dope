@@ -7,29 +7,20 @@ const css = await readFile(new URL('../../packages/theia-extension/src/browser/d
 const tooltip = await readFile(new URL('../../packages/theia-extension/src/browser/dope-tooltip.ts', import.meta.url), 'utf8');
 const frontend = await readFile(new URL('../../packages/theia-extension/src/browser/frontend-module.ts', import.meta.url), 'utf8');
 
-test('Select Work has distinct truthful groups and compact accessible row anatomy', () => {
+test('Select Work retains truthful activity groups in its organized compact rows', () => {
     assert.match(widget, /const groups = workRows\(controller\.tasks, controller\.runs, controller\.phase\.sequences\)/);
-    assert.match(widget, /\['Running', groups\.running\]/);
-    assert.match(widget, /\['History', groups\.history\]/);
-    assert.match(widget, /label\.textContent = 'Prompt Stacks'/);
-    assert.match(widget, /button\.className = 'dope-work-row'/);
-    assert.match(widget, /title\.className = 'dope-work-row-title'; title\.textContent = row\.title/);
-    assert.match(widget, /meta\.className = 'dope-work-row-meta'/);
-    assert.match(widget, /meta\.append\(time, state\)/);
-    assert.match(widget, /state\.dataset\.dopeTooltip = row\.activity/);
-    assert.match(widget, /button\.dataset\.dopeTooltip = workTitlePreview\(row\.fullTitle/);
+    assert.match(widget, /renderWorkList\(\[\.\.\.groups\.running, \.\.\.groups\.history\], rowButton\)/);
+    assert.match(widget, /button\.className = 'dope-chat-select dope-work-row'/);
+    assert.match(widget, /title\.className = 'dope-work-row-title'; title\.textContent = displayTitle/);
+    assert.match(widget, /state\.setAttribute\('aria-label', `\$\{row\.status\}: \$\{row\.activity\}`\)/);
+    assert.match(widget, /button\.dataset\.dopeTooltip = workTitlePreview\(displayTitle\)/);
     assert.match(css, /\.dope-tooltip \{/);
     assert.match(widget, /menu\.append\(menuEntry\('Open Work'/);
     assert.match(widget, /menuEntry\('Copy ID'/);
-    assert.match(css, /dope-work-status-pill\[data-status="completed"\]/);
-    assert.match(css, /dope-work-status-pill:is\(\[data-status="failed"\]/);
-    assert.match(widget, /progress\.textContent = row\.stack/);
     assert.match(widget, /button\.setAttribute\('aria-current'/);
-    assert.match(widget, /cue\.setAttribute\('aria-hidden', 'true'\)/);
+    assert.match(widget, /cue\.dataset\.color = this\.workList\.color\(rowKey\); cue\.setAttribute\('aria-hidden', 'true'\)/);
     assert.match(css, /button\.dope-work-row:focus-visible|\.dope-chat-panel button:focus-visible/);
-    assert.match(css, /button\.dope-work-row\[aria-current="true"\]/);
-    assert.match(css, /dope-work-row\[data-status="running"\]/);
-    assert.match(css, /data-status="blocked"/);
+    assert.match(widget, /state\.dataset\.status = row\.status/);
 });
 
 test('one app-wide tooltip presenter styles title attributes with top-level CSS controls', () => {
@@ -53,7 +44,8 @@ test('Prompt Stack discovery preserves folder refresh, invalid warnings, and sto
 });
 
 test('Work controls and critical blockers remain visible; verbose evidence is disclosed', () => {
-    for (const control of ['Start', 'Resume', 'Stop', 'Open Transcript', 'Verify manual gate',
+    for (const control of ['Start', 'Resume', 'Stop', 'View Work conversation', 'Queue message',
+        'Finish Work', 'Verify manual gate',
         'Verify checkpoint', 'Reconcile repository', 'Continue with dirty worktree']) {
         assert.ok(widget.includes(`'${control}'`) || widget.includes(`? '${control}'`), control);
     }

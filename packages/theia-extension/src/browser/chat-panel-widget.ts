@@ -30,6 +30,7 @@ import { WorkSelectionNavigator } from './work-selection-navigator';
 import { WorkListOrganization, workRowKey, type WorkTree } from './work-list-organization';
 import type { WorkRow } from './work-selection-controller';
 import { restoreWorkScroll, workDisclosureKeydown } from './work-transcript-presentation';
+import { renderWorkConversation } from './work-conversation-presentation';
 import { formatRunElapsed, formatRunElapsedCompact } from './run-elapsed';
 import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 import type { AIRegistryService } from '@dope/contracts/lib/ai-registry-service';
@@ -95,6 +96,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (event.key === WORK_TOOL_PREFERENCES_KEY && this.panel.mode === 'work') this.render();
     };
     private composingWork = false;
+    private workMessageDraft = '';
+    private workRefreshTimer?: ReturnType<typeof setTimeout>;
     private readonly workList = new WorkListOrganization(window.localStorage);
     private workListProject = '';
     private readonly openWorkFolders = new Set<string>();
@@ -387,7 +390,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         private readonly editors?: EditorManager, private readonly map?: SoftwareMapController,
         private readonly aiCenter?: AICenterContribution, onModelsChanged?: Event<void>,
         runtime?: AgentRuntimeService, registry?: AIRegistryService, roles?: AIRolePolicyService,
-        private readonly openTranscript?: (project: string, runId: string) => Promise<void>,
         private readonly planningSelection?: ChatPlanningSelection,
         private readonly openPromptSource?: (project: string, path: string, promptText: string,
             isCurrent: () => boolean) => Promise<void>,
@@ -1509,6 +1511,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         await Promise.all([this.workController?.refresh(), this.directController?.refresh()]);
         if (this.panel.work) await this.workController?.select(this.panel.work);
     }
+    scheduleWorkRefresh(): void {
+        if (this.workRefreshTimer || this.isDisposed || this.panel.mode !== 'work') return;
+        this.workRefreshTimer = setTimeout(() => {
+            this.workRefreshTimer = undefined;
+            void this.refreshWork();
+        }, 120);
+    }
 
     private button(label: string, action: () => void, disabled = false): HTMLButtonElement {
         const button = document.createElement('button');
@@ -1561,6 +1570,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     }
     private async selectWork(selection?: WorkSelection, navigationOnly = false): Promise<void> {
         this.composingWork = false;
+        if (!selection || this.lastWorkSelection?.kind !== selection.kind ||
+            this.lastWorkSelection.id !== selection.id) this.workMessageDraft = '';
         if (selection) this.promptStacksOnly = false;
         const canonical = await this.workNavigator?.select(selection, navigationOnly);
         if (canonical) this.lastWorkSelection = canonical;
@@ -1616,6 +1627,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         hosted.checked = controller.hostedProjectDataAuthorized;
         hosted.onchange = () => { controller.authorizeHostedProjectData(hosted.checked); start.disabled = !controller.canStart; };
         hostedLabel.append(hosted, ' Authorize sending project data to the hosted Coding Agent');
+        const hostedMode = document.createElement('p'); hostedMode.className = 'dope-work-detail';
+        hostedMode.textContent = 'Hosted Work runs once. This model does not support queued messages, Finish Work, or a persistent conversation.';
         const status = document.createElement('p'); status.setAttribute('role', 'status');
         status.textContent = controller.message || controller.targetMessage;
         const finishStart = async (run: Awaited<ReturnType<typeof controller.start>>) => {
@@ -1651,7 +1664,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }
         form.onsubmit = event => { event.preventDefault(); void submit(); };
         form.append(prompt, model, validation, toolSection, ...(controller.mcpOffer ? [mcpLabel] : []),
-            ...(controller.resolved?.locality === 'hosted' ? [hostedLabel] : []), review,
+            ...(controller.resolved?.locality === 'hosted' ? [hostedMode, hostedLabel] : []), review,
             ...(dirty && !dirty.clean ? [dirtyPanel] : []), status, start);
         this.content.append(form);
     }
@@ -2069,13 +2082,6 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 const divider = document.createElement('div'); divider.className = 'dope-chat-menu-divider';
                 menu.append(colorLabel, colors, divider);
                 menu.append(menuEntry('Open Work', () => void this.selectWork(row.selection)));
-                if (row.selection.kind === 'run' && this.panel.workspace && this.openTranscript) {
-                    const project = this.panel.workspace;
-                    menu.append(menuEntry('Open Transcript', () => {
-                        if (this.panel.workspace === project && controller.project === project)
-                            void this.openTranscript?.(project, row.selection.id);
-                    }));
-                }
                 const copyWork = (value: string, label: string) => {
                     const copied = navigator.clipboard?.writeText(value) ?? copyChatText(value);
                     void copied.then(() => { more.dataset.dopeTooltip = `${label} copied`; },
@@ -2221,13 +2227,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             decision.append(button);
             return button;
         };
+        let conversationComposer: HTMLElement | undefined;
         const transcriptButton = (runId: string): HTMLButtonElement => {
-            const project = this.panel.workspace;
-            return this.button('Open Transcript', () => {
-                if (project && this.panel.workspace === project && controller.project === project &&
-                    this.panel.work?.kind === work.kind && this.panel.work.id === work.id)
-                    void this.openTranscript?.(project, runId);
-            }, !project || controller.project !== project || !this.openTranscript);
+            return this.button('View Work conversation', () => void this.selectWork({ kind: 'run', id: runId }),
+                !this.panel.workspace || controller.project !== this.panel.workspace);
         };
         scroll.append(decision);
         if (work.kind === 'sequence') {
@@ -2323,7 +2326,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     for (const runId of sequence.runIds) {
                         const run = controller.runs.find(candidate => candidate.id === runId);
                         const button = transcriptButton(runId);
-                        button.textContent = `${run ? `Run · ${run.status}` : 'Saved run'} · Open Transcript`;
+                        button.textContent = `${run ? `Run · ${run.status}` : 'Saved run'} · View Work conversation`;
                         previousRuns.append(button);
                     }
                     scroll.append(previousRuns);
@@ -2411,6 +2414,80 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         } else {
             const run = work.kind === 'run' && controller.selectedRun?.id === work.id ? controller.selectedRun : undefined;
             if (run) {
+                const session = controller.session;
+                if (session?.segments.some(segment => segment.runId === run.id)) {
+                    const config = document.createElement('details');
+                    config.className = 'dope-work-diagnostics dope-work-locked-config';
+                    const label = document.createElement('summary'); label.textContent = 'Locked Work configuration';
+                    const values = document.createElement('p');
+                    values.textContent = `Model: ${session.connectionId} / ${session.modelId} · ` +
+                        `Tools: ${run.toolSelection?.tools.map(tool => tool.id).join(', ') ?? 'selection unavailable'} · ` +
+                        `Sandbox: isolated candidate (binding ${session.sandboxHash.slice(0, 12)}) · ` +
+                        `Grant: ${session.grantId} revision ${session.grantRevision}`;
+                    const ceiling = document.createElement('p');
+                    ceiling.textContent = 'Permission ceiling: ' + EFFECT_KINDS.map(kind =>
+                        `${kind} ${session.permissionCeiling[kind] ? 'allowed' : 'denied'}`).join(' · ');
+                    config.append(label, values, ceiling); scroll.append(config);
+                    const state = document.createElement('p');
+                    state.className = 'dope-work-system'; state.setAttribute('role', 'status');
+                    state.textContent = `Conversation ${session.status.replaceAll('-', ' ')}`;
+                    scroll.append(state);
+                    if (session.status === 'recovery-required') {
+                        const recovery = document.createElement('p'); recovery.className = 'dope-work-warning';
+                        recovery.textContent = 'Recovery required. Pending delivery and candidate effects cannot be assumed safe. Verified continuation is a separate Work step.';
+                        scroll.append(recovery);
+                    }
+                    if (run.status === 'running' && session.segments.at(-1)?.runId === run.id &&
+                        ['running', 'awaiting-input'].includes(session.status)) {
+                        const form = document.createElement('form');
+                        form.className = 'dope-work-conversation-composer';
+                        form.setAttribute('aria-label', 'Work message composer');
+                        const input = document.createElement('textarea');
+                        input.setAttribute('aria-label', 'Message Work agent');
+                        input.placeholder = 'Message the Work agent…';
+                        input.maxLength = 16000; input.value = this.workMessageDraft || controller.sessionRetryText;
+                        input.oninput = () => { this.workMessageDraft = input.value; };
+                        const send = async () => {
+                            const text = (this.workMessageDraft || controller.sessionRetryText).trim();
+                            if (!text || controller.sessionBusy) return;
+                            await controller.submitSessionMessage(text);
+                            if (!controller.sessionError) this.workMessageDraft = '';
+                            this.render();
+                        };
+                        input.onkeydown = event => {
+                            if (shouldSendChatInput(event)) { event.preventDefault(); void send(); }
+                        };
+                        form.onsubmit = event => { event.preventDefault(); void send(); };
+                        const actions = document.createElement('div');
+                        actions.className = 'dope-work-conversation-actions';
+                        actions.append(this.button('Queue message', () => void send(), controller.sessionBusy),
+                            this.button('Finish Work', () => void controller.finishSession(), controller.sessionBusy ||
+                                session.messages.some(message => ['queued', 'delivering'].includes(message.status))),
+                            this.button('Stop Work', () => void controller.stopSession(), controller.sessionBusy ||
+                                run.status !== 'running'));
+                        form.append(input, actions);
+                        if (controller.sessionError) {
+                            const error = document.createElement('p'); error.setAttribute('role', 'alert');
+                            error.textContent = controller.sessionError; form.append(error);
+                        }
+                        if (controller.sessionRetryId) {
+                            const retry = document.createElement('small'); retry.className = 'dope-work-detail';
+                            retry.textContent = `Unconfirmed message ID ${controller.sessionRetryId}. Retry the same text with this ID.`;
+                            form.append(retry);
+                        }
+                        conversationComposer = form;
+                    }
+                }
+                if (!session) {
+                    const mode = document.createElement('p'); mode.className = 'dope-work-detail';
+                    mode.textContent = run.provenance?.runtimeKind === 'hosted' ?
+                        'Hosted Work is a one-shot run. Queued messages, Finish Work, and a persistent conversation are unavailable.' :
+                        'No persistent Work session is saved for this run. Conversation controls are unavailable.';
+                    scroll.append(mode);
+                }
+                scroll.append(renderWorkConversation(this.markdown, controller.transcript,
+                    session?.segments.some(segment => segment.runId === run.id) ? session : undefined,
+                    controller.events));
                 const overview = workRunOverview(run, controller.selectedTask);
                 detail(overview.state, 'dope-work-detail');
                 detail(`Required validation: ${view.validation} · ${run.changedFiles.length} changed files · ` +
@@ -2472,7 +2549,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         controller.resumeTarget.locality === 'hosted' && !controller.resumeHostedAuthorized));
                     scroll.append(section);
                 }
-                if (controller.selectedTask?.origin.kind === 'direct' && run.status === 'running')
+                if (!session && controller.selectedTask?.origin.kind === 'direct' && run.status === 'running')
                     primary('Stop Work', () => {
                         const project = this.panel.workspace;
                         if (!project || controller.project !== project || this.panel.work?.kind !== 'run' ||
@@ -2483,7 +2560,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                                 this.directController?.selected?.id === run.id) void this.directController.stop();
                         });
                     }, !!this.directController && controller.project === this.panel.workspace);
-                if (this.panel.workspace) scroll.append(transcriptButton(run.id));
+                if (!session && controller.selectedTask?.origin.kind === 'work-item' && run.status === 'running')
+                    primary('Stop Work', () => void controller.stopOneShot(), !controller.sessionBusy);
+                if (!session && controller.sessionError) detail(controller.sessionError, 'dope-work-warning');
                 if (controller.transcriptState === 'not-recorded') detail('Transcript not recorded for this historical run.');
                 const diagnostics = document.createElement('details'); diagnostics.className = 'dope-work-diagnostics';
                 const summary = document.createElement('summary'); summary.textContent = 'Run diagnostics'; diagnostics.append(summary);
@@ -2664,6 +2743,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     for (const kind of EFFECT_KINDS) { const item = document.createElement('div');
                         item.textContent = `${grant.permissions[kind] ? 'Allowed' : 'Denied'} · ${kind}`; review.append(item); }
                     section.append(review);
+                    const acceptLabel = document.createElement('label'); acceptLabel.className = 'dope-work-grant';
+                    const accept = document.createElement('input'); accept.type = 'checkbox';
+                    accept.checked = controller.acceptedStartGrant;
+                    accept.onchange = () => controller.acceptStartGrant(accept.checked);
+                    acceptLabel.append(accept, ' Accept project execution grant'); section.append(acceptLabel);
                     section.append(this.renderWorkTools(controller.project ?? '', `task:${task.id}`,
                         controller.startTarget?.locality,
                         task.completion.validation.some(item => hasApprovedWorkCommand(item.command))));
@@ -2677,6 +2761,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         section.append(mcpLabel);
                     }
                     if (controller.startTarget?.locality === 'hosted') {
+                        info('Hosted Work runs once. Queued messages, Finish Work, and a persistent conversation are unavailable.');
                         const hostedLabel = document.createElement('label'); hostedLabel.className = 'dope-work-grant';
                         const hosted = document.createElement('input'); hosted.type = 'checkbox';
                         hosted.checked = controller.hostedProjectDataAuthorized;
@@ -2717,6 +2802,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             else detail('Work record could not be found.');
         }
         this.content.append(region);
+        if (conversationComposer) this.content.append(conversationComposer);
         latest.hidden = !this.workFollow.latestBelow;
     }
     private elapsedClock(startedAt: string, endedAt?: string, running = false): HTMLSpanElement {
@@ -3794,7 +3880,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             this.workSelectionChanged = false;
             this.syncElapsedTicker();
             if (focused) this.content.querySelectorAll<HTMLElement>('[aria-label]').forEach(element => {
-                if (element.getAttribute('aria-label') === focused) element.focus({ preventScroll: true });
+                if (element.getAttribute('aria-label') === focused) {
+                    element.focus({ preventScroll: true });
+                    if (element instanceof HTMLTextAreaElement && selection)
+                        element.setSelectionRange(selection[0], selection[1]);
+                }
             });
             if (focusedWorkKey) this.content.querySelectorAll<HTMLElement>('[data-work-key]').forEach(element => {
                 if (element.dataset.workKey === focusedWorkKey) element.focus({ preventScroll: true });
@@ -4876,6 +4966,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         }
     }
     override dispose(): void {
+        if (this.workRefreshTimer) clearTimeout(this.workRefreshTimer);
         window.removeEventListener('storage', this.workToolsStorageChanged);
         const viewed = this.viewedProposal;
         if (viewed) {

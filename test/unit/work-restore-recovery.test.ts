@@ -53,6 +53,7 @@ function fixture() {
             return { state: 'recorded', incomplete: false, entries: [{ sequence: 1, text: 'Saved transcript' }],
                 hasMore: false, nextSequence: 1 };
         },
+        async readEvents() { return { events: [], hasMore: false, nextSequence: 0 }; },
         async startSequence() { effects.push('start'); },
         async prepareSequenceTask() { effects.push('grant'); },
         async acceptSequenceDirtyBasis() { effects.push('dirty'); },

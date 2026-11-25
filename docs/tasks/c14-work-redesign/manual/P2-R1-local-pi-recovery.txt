@@ -1,0 +1,46 @@
+# c14-work-redesign — P2-R1 manual recovery: dockable local Pi Work conversation
+
+Model: GPT-6 Sol High
+Execution: Manual Codex recovery of P2 only; do not invoke the phase runner during this task
+Repository: /home/jfin/dev/dope
+Required product version: 0.13.11, unchanged
+
+## Owner scope and existing evidence
+
+Read `docs/tasks/c14-work-redesign/scope-amendment-2026-11-24-p2-r1.md` and the earlier `scope-amendment-2026-11-24.md`. Conversational Work in c14 is the embedded **local Pi** path. Hosted New Work and hosted WorkItem remain authorized one-shot Work, visibly labeled as such; they must not display Queue, Finish, persistent-session or follow-up claims. Preserve hosted model selection, project-data consent, grants, candidate review, transcripts and history. Do not implement a hosted persistent runtime in P2-R1. Interrupt/Pause/Resume remains deferred.
+
+P1 is committed at `6052c54bc245744e65274e6242e3051da3014448`. Two runner attempts at P2 returned `PARTIAL`; read both `.codex-runs/c14-work-redesign/2026-11-25T03-21-09-167Z/P2.final.txt` and `.codex-runs/c14-work-redesign/2026-11-25T03-47-31-444Z/P2.final.txt`. Their uncommitted P2 implementation and tests are intentional work to continue. Preserve all earlier reports, run artifacts, authored P1–P4 prompt bytes, and unrelated owner changes. No reset, clean, checkout, stash, or wholesale overwrite.
+
+## Preflight
+
+Read `BOOT.md`, `AGENTS.md`, `docs/workflow.md`, `docs/ui/work-conversational-session-contract.md`, the c14 README/plan, `P2-conversational-panel.txt`, the P1-R2 PASS report, and the runner checkpoint code. Inspect actual HEAD, full dirty status, package version, current panel/controller/backend, WorkItem start, hosted start, session store, transcript/event owners, and focused tests. If HEAD or owner work differs, reconcile the actual source before editing; never assume the earlier P2 diff is complete or safe.
+
+## Repair P2 and verify parity
+
+1. Keep the existing New Work setup and selected model/permission review. A local Pi New Work Start must use the P1 persistent session API and transform the **same dockable Work panel** into a live conversation. A saved local Pi WorkItem Start must use that same API with its persisted task ID and its own reviewed grant; retain WorkItem identity and scope checks. Do not create a second runtime, worker, grant owner, or candidate owner.
+
+2. Keep hosted New Work and hosted WorkItem on the existing one-shot API, with normal hosted consent. Show a concise one-shot explanation before Start and in their reopened run. Offer only controls that the saved run actually supports. A hosted or legacy run must never inherit the local session composer, Queue, Finish, or session status from another selected run. Test that switching between local, hosted and historical runs cannot leak controls or drafts.
+
+3. Check the dirty P2 panel against the real persisted types. Render full linked local-session transcript and typed status/tool/authority/diagnostic events in saved order, with safe Markdown/text boundaries, truthful Queued/Delivered/Recovery required states, exact retry ID, compact locked model/tool/sandbox/grant disclosure, and Stop/Finish eligibility. Do not fabricate legacy evidence or claim an unavailable transcript is live. Preserve Chat and Work authority separation.
+
+4. Verify Work History and Select Work reopen the same canonical panel and actual saved run without mutation. Verify left/right/bottom/center and narrow sizing, keyboard focus/caret, scrolling and theme. Retire the old center-only transcript only after its relevant safe rendering, history, event and navigation behavior is present in the dockable panel. Keep candidate decisions, MCP observation approval, source evidence, and Roadmap grants outside presentation-only code.
+
+5. Do not absorb P3's broader restart/follow-up/fork and Roadmap integration work into this recovery. If a P2-visible behavior depends on an unfinished P3 capability, label it truthfully and record the dependency. Do not loosen a security gate to make P2 pass.
+
+## Required PASS evidence
+
+Run changed-package builds and typecheck. Run focused tests covering local direct and local WorkItem setup-to-session, hosted one-shot preservation and consent, no cross-run controls, session history/event order, queued/delivered and retry truth, legacy missing evidence, safe rendering, Stop/Finish, docking, keyboard/caret, theme, candidate/grant non-regression, and the real supervised Pi/Work adapter. Verify `npm run codex:phase:validate -- c14-work-redesign`, `git diff --check`, and unchanged `0.13.11`. Use the connected browser only if needed for a disputed P2 behavior; P4 remains the independent required browser closeout. A Chromium launch failure in an unrelated code-copy test is an environment gap to classify, not fabricated UI proof or an automatic P2 failure.
+
+Write `docs/tasks/c14-work-redesign/qualification/2026-11-24-p2-r1-manual-recovery.md` with exact source HEAD, changed files, commands/results, local and hosted paths, remaining P3/P4 gates, and an honest P2-R1 verdict. Preserve both runner `PARTIAL` receipts.
+
+## Manual checkpoint and P3 clearance
+
+This separate owner-directed manual recovery may create the P2 checkpoint **only if every P2-R1 requirement above passes on the reviewed source**. The runner prompt's no-self-commit rule governs runner execution; this manual recovery follows the P1-R2 checkpoint convention. Inspect `scripts/codex-phase-core.mjs` and `scripts/codex-phase.mjs` before committing.
+
+After a truthful PASS, commit only reviewed P2 implementation/tests and the P2-R1 scope/routing/qualification documents with the exact runner subject:
+
+`c14-work-redesign/P2: One dockable Work conversation panel`
+
+Include one `PHASE_VERDICT: PASS` line in the commit body, with concise test and limit evidence. Verify the direct parent is the P1 checkpoint (unless inspected intervening owner commits require a safe source-bound explanation), exact subject/body, unchanged version, and clean tree or explicitly identified unrelated owner dirt. Use a read-only check of runner prefix detection to confirm P1 and P2 are recognized and P3 is next. **Do not** invoke `npm run codex:phase -- c14-work-redesign` to test that result; it would start P3. Do not run P3 or P4, edit `.codex-runs`, or make a fake checkpoint.
+
+If any required P2 behavior or safety gate remains unverified, do not commit with the exact P2 subject or PASS receipt. Report `PARTIAL`, `NOT GREEN`, or `BLOCKED` with the precise remaining issue. The final response must state whether the owner can now deliberately run the unchanged phase runner to start P3. A P2 checkpoint does not award product Gate GREEN.

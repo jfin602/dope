@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { WorkSelectionController, workManualGateReady, workRunOverview } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
-import { agentTranscriptWidgetId, openAgentTranscript, restoreWorkScroll, workCommandLabel,
+import { restoreWorkScroll, workCommandLabel,
     workCommandOutput, workToolLabel, workToolDetails, workToolStatus } from '../../packages/theia-extension/lib/browser/work-transcript-presentation.js';
 import { ChatScrollFollow } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
@@ -89,6 +89,7 @@ test('Work reads every saved page from the beginning, including truncation state
         async readTask() { return { id: 'task', origin: { kind: 'direct' } }; },
         async readSteering() { return undefined; }, async listActions() { return []; },
         async readMapImpact() { return undefined; },
+        async readEvents() { return { events: [], nextSequence: 0, hasMore: false }; },
         async readTranscript(_handle: string, _runId: string, cursor: number) {
             cursors.push(cursor);
             return { state: 'recorded', entries: [{ kind: 'message', sequence: cursor + 1,
@@ -163,16 +164,16 @@ test('Work tool cards report recorded request, result and error fields without g
             'Result', 'Metadata unavailable.', 'Code: INVALID_ARGUMENTS']);
 });
 
-test('Work widget uses safe Markdown, correlated cards, incremental reads and clean final separation', async () => {
-    const widget = await readFile(new URL('../../packages/theia-extension/src/browser/agent-transcript-widget.ts', import.meta.url), 'utf8');
+test('dockable Work conversation uses safe Markdown, correlated cards and paged saved evidence', async () => {
+    const widget = await readFile(new URL('../../packages/theia-extension/src/browser/work-conversation-presentation.ts', import.meta.url), 'utf8');
+    const controller = await readFile(new URL('../../packages/theia-extension/src/browser/work-selection-controller.ts', import.meta.url), 'utf8');
     const css = await readFile(new URL('../../packages/theia-extension/src/browser/dope.css', import.meta.url), 'utf8');
-    assert.match(widget, /new ReasoningRevealBuffer\('paragraphs'\)/u);
-    assert.match(widget, /this\.tools\.get\(entry\.toolId\)/u);
-    assert.match(widget, /readTranscript\(this\.handle, run\.id, cursor, 100\)/u);
+    assert.match(widget, /const toolKey = `\$\{entry\.runId\}\\u0000\$\{entry\.toolId\}`/u);
+    assert.match(widget, /tools\.get\(toolKey\)/u);
+    assert.match(controller, /readTranscript\(handle, runId, cursor, 100\)/u);
     assert.match(widget, /entry\.kind === 'message'/u);
-    assert.match(widget, /heading\.textContent = 'Final result'/u);
-    assert.match(widget, /renderUntrustedMessageMarkdown\(this\.markdown, entry\.text\)/u);
-    assert.match(widget, /this\.follow\.jump\(\)/u);
+    assert.match(widget, /renderUntrustedMessageMarkdown\(markdown, entry\.text\)/u);
+    assert.match(widget, /body\.textContent = item\.message\.text/u);
     assert.match(css, /prefers-reduced-motion: reduce/u);
     const follow = new ChatScrollFollow();
     follow.select('run:one');
@@ -182,28 +183,4 @@ test('Work widget uses safe Markdown, correlated cards, incremental reads and cl
     assert.equal(follow.latestBelow, true);
     follow.jump();
     assert.equal(restoreWorkScroll(follow, 250, 2200, 200, false), 2200);
-});
-
-test('explicit center transcript action reuses one tab for the same project and run', async () => {
-    const options = { project: 'file:///project', runId: 'saved-run' };
-    const widgets = new Map<string, { id: string; isAttached: boolean }>();
-    let added = 0;
-    const activated: string[] = [];
-    const create = async (input: typeof options) => {
-        const id = agentTranscriptWidgetId(input);
-        if (!widgets.has(id)) widgets.set(id, { id, isAttached: false });
-        return widgets.get(id)!;
-    };
-    const shell = { async addWidget(widget: { id: string; isAttached: boolean }, location: { area: 'main' }) {
-        assert.equal(location.area, 'main'); added++; widget.isAttached = true;
-    }, async activateWidget(id: string) { activated.push(id); } };
-    await openAgentTranscript(options, create, shell);
-    await openAgentTranscript(options, create, shell);
-    const otherRun = { ...options, runId: 'different-run' };
-    await openAgentTranscript(otherRun, create, shell);
-    assert.equal(widgets.size, 2);
-    assert.equal(added, 2);
-    assert.deepEqual(activated, [agentTranscriptWidgetId(options), agentTranscriptWidgetId(options),
-        agentTranscriptWidgetId(otherRun)]);
-    assert.notEqual(agentTranscriptWidgetId({ ...options, project: 'file:///other' }), agentTranscriptWidgetId(options));
 });

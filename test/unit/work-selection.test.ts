@@ -211,6 +211,118 @@ test('Work discovers default Prompt Stacks and reopens completed history without
     assert.equal(creates, 0);
 });
 
+test('linked Work follow-up reopens the complete saved conversation in segment order', async () => {
+    const selected: any = { id: 'second-run', taskId: 'second-task', status: 'running' };
+    const session: any = { id: 'first-run', runId: 'first-run', status: 'awaiting-input',
+        messages: [{ id: 'follow-up', text: 'Continue', queuedAt: '2026-11-24T00:00:01Z', status: 'delivered' }],
+        segments: [{ runId: 'first-run' }, { runId: 'second-run' }] };
+    const reads: string[] = [];
+    const runtime = { async readRun() { return selected; }, async readTask() { return {
+        id: 'second-task', objective: 'Continue', origin: { kind: 'direct' }, completion: { validation: [] } }; },
+        async readWorkSessionForRun(_handle: string, runId: string) {
+            assert.equal(runId, 'second-run'); return session; },
+        async readSteering() { return undefined; }, async listActions() { return []; },
+        async readMapImpact() { return undefined; },
+        async readTranscript(_handle: string, runId: string) { reads.push(runId); return {
+            state: 'recorded', entries: [{ kind: 'message', runId, text: runId }],
+            nextSequence: 1, hasMore: false, incomplete: false }; },
+        async readEvents() { return { events: [], nextSequence: 0, hasMore: false }; }
+    } as unknown as AgentRuntimeService;
+    const controller = new WorkSelectionController(runtime, () => {});
+    controller.project = 'file:///project'; controller.handle = 'handle';
+    await controller.select({ kind: 'run', id: 'second-run' });
+    assert.equal(controller.session?.id, 'first-run');
+    assert.deepEqual(reads, ['first-run', 'second-run']);
+    assert.deepEqual(controller.transcript.map(entry => entry.runId), reads);
+    assert.equal(controller.transcriptState, 'recorded');
+});
+
+test('Work composer retry keeps one message ID after an uncertain response', async () => {
+    const calls: Array<{ id: string; text: string }> = [];
+    const runtime = { async submitWorkMessage(_handle: string, _sessionId: string, id: string, text: string) {
+        calls.push({ id, text });
+        if (calls.length === 1) throw new Error('Response lost');
+        return {};
+    } } as unknown as AgentRuntimeService;
+    const controller = new WorkSelectionController(runtime, () => {});
+    controller.handle = 'handle'; controller.project = 'file:///project';
+    controller.selectedRun = { id: 'run-1', status: 'running' } as any;
+    controller.session = { id: 'run-1', status: 'awaiting-input',
+        segments: [{ runId: 'run-1' }] } as any;
+    (controller as any).select = async () => undefined;
+    await controller.submitSessionMessage('Continue');
+    assert.match(controller.sessionError, /Response lost/);
+    assert.equal(controller.sessionRetryId, calls[0].id);
+    await controller.submitSessionMessage('Changed text');
+    assert.match(controller.sessionError, /unchanged/);
+    assert.equal(calls.length, 1);
+    await controller.submitSessionMessage('Continue');
+    assert.equal(controller.sessionError, '');
+    assert.equal(controller.sessionRetryId, '');
+    assert.deepEqual(calls[1], calls[0]);
+});
+
+test('switching saved runs hides another session retry and preserves its exact message ID', async () => {
+    const calls: Array<{ session: string; id: string; text: string }> = [];
+    let rejectFirst!: (error: Error) => void;
+    const runtime = { async submitWorkMessage(_handle: string, session: string, id: string, text: string) {
+        calls.push({ session, id, text });
+        if (calls.length === 1) await new Promise<never>((_resolve, reject) => { rejectFirst = reject; });
+        return {};
+    } } as unknown as AgentRuntimeService;
+    const controller = new WorkSelectionController(runtime, () => {});
+    controller.handle = 'handle'; controller.project = 'file:///project';
+    controller.selectedRun = { id: 'local-run', status: 'running' } as any;
+    controller.session = { id: 'local-session', status: 'awaiting-input', segments: [{ runId: 'local-run' }] } as any;
+    (controller as any).select = async () => undefined;
+    const first = controller.submitSessionMessage('Continue local work');
+    assert.equal(calls.length, 1);
+    controller.selectedRun = { id: 'hosted-run', status: 'running' } as any;
+    controller.session = undefined;
+    rejectFirst(new Error('Response lost'));
+    await first;
+    assert.equal(controller.sessionError, '');
+    assert.equal(controller.sessionRetryText, '');
+    controller.selectedRun = { id: 'local-run', status: 'running' } as any;
+    controller.session = { id: 'local-session', status: 'awaiting-input', segments: [{ runId: 'local-run' }] } as any;
+    assert.equal(controller.sessionRetryText, 'Continue local work');
+    assert.equal(controller.sessionRetryId, calls[0].id);
+    await controller.submitSessionMessage(controller.sessionRetryText);
+    assert.deepEqual(calls[1], calls[0]);
+});
+
+test('one-shot WorkItem Stop uses its saved run and has no session controls', async () => {
+    const stopped: string[] = [];
+    const runtime = { async stop(_handle: string, id: string) { stopped.push(id); return {}; } } as unknown as AgentRuntimeService;
+    const controller = new WorkSelectionController(runtime, () => {});
+    controller.handle = 'handle'; controller.selectedRun = { id: 'hosted-run', taskId: 'work-item', status: 'running' } as any;
+    controller.selectedTask = { id: 'work-item', origin: { kind: 'work-item' } } as any;
+    (controller as any).select = async () => undefined;
+    await controller.stopOneShot();
+    assert.deepEqual(stopped, ['hosted-run']);
+    controller.session = { id: 'local-session' } as any;
+    await controller.stopOneShot();
+    assert.deepEqual(stopped, ['hosted-run']);
+});
+
+test('active Work session Stop uses the selected run and keeps saved evidence selectable', async () => {
+    const stopped: string[] = [];
+    const runtime = { async stop(_handle: string, runId: string) { stopped.push(runId); return {}; } } as unknown as AgentRuntimeService;
+    const controller = new WorkSelectionController(runtime, () => {});
+    controller.handle = 'handle'; controller.project = 'file:///project';
+    controller.selectedRun = { id: 'live-run', status: 'running' } as any;
+    controller.session = { id: 'session', status: 'awaiting-input', segments: [{ runId: 'live-run' }] } as any;
+    let reopened = 0;
+    (controller as any).select = async () => { reopened++; return undefined; };
+    await controller.stopSession();
+    assert.deepEqual(stopped, ['live-run']);
+    assert.equal(reopened, 1);
+    assert.equal(controller.sessionBusy, false);
+    controller.selectedRun = { id: 'old-run', status: 'completed' } as any;
+    await controller.stopSession();
+    assert.deepEqual(stopped, ['live-run']);
+});
+
 test('selected saved WorkItem task starts once with its exact ID, accepted grant and hosted consent', async () => {
     const saved: any = { id: 'saved-work', createdAt: '2026-10-09T12:00:00Z', objective: 'Implement',
         projectId: 'planning-project', planningMapId: 'map', projectRoot: '.',
@@ -224,6 +336,7 @@ test('selected saved WorkItem task starts once with its exact ID, accepted grant
     let resolveStart!: (run: any) => void;
     const runtime = { async readTask(_handle: string, id: string) { return id === saved.id ? saved : undefined; },
         async listRuns() { return [...runs]; }, async listTasks() { return [saved]; },
+        async previewWorktree() { return { clean: true, paths: [] }; },
         async codingAgentReady() { return true; },
         async createTask() { creates++; },
         async start(...args: unknown[]) { starts.push(args);
@@ -252,7 +365,7 @@ test('selected saved WorkItem task starts once with its exact ID, accepted grant
     controller.authorizeHostedProjectData(true);
     assert.equal(controller.startBlockReason, '');
     const starting = controller.startSelectedWorkItemTask();
-    await Promise.resolve();
+    for (let attempt = 0; attempt < 20 && starts.length === 0; attempt++) await Promise.resolve();
     assert.equal(controller.startBusy, true);
     await controller.startSelectedWorkItemTask();
     assert.equal(starts.length, 1);
@@ -298,8 +411,11 @@ test('saved WorkItem Local start uses its persisted task ID and separate grant w
     let starts = 0, authorized: boolean | undefined, target = { connectionId: 'local', modelId: 'qwen',
         label: 'LM Studio · Qwen', locality: 'local' as const, context: 4096 };
     const runtime = { async readTask() { return saved; }, async listTasks() { return [saved]; }, async listRuns() { return []; },
+        async previewWorktree() { return { clean: true, paths: [] }; },
         async workMCPObservationOffer() { return mcpScope; },
-        async codingAgentReady() { return true; }, async start(_handle: string, _project: string, taskId: string,
+        async codingAgentReady() { return true; }, async start() {
+            throw new Error('Local WorkItem must not use one-shot Work');
+        }, async startWorkSession(_handle: string, _project: string, taskId: string,
             grant: unknown, hosted: boolean) {
             assert.equal(taskId, saved.id); starts++; authorized = hosted; acceptedGrant = grant;
             return { id: 'local-run', taskId, projectId: saved.projectId, status: 'running' };

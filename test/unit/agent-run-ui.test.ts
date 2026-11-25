@@ -25,6 +25,7 @@ function harness() {
         fallbacks: [], hard: { requiredCapabilities: [], locality: 'any', enabledOnly: true, usableOnly: true,
             hostedProjectData: 'requires-feature-authorization' }, preferences: [], allowFallback: false })) };
     let run: AgentRun | undefined; let task: unknown; let grant: unknown; let authorized: unknown; let stopped = false;
+    let oneShotStarts = 0, sessionStarts = 0;
     let gate: any; let reconciliations = 0; let mcpOffer: any;
     let pendingMCP: any[] = []; const mcpDecisions: unknown[][] = [];
     let worktree = { clean: true, fingerprint: 'clean', paths: [] as string[] };
@@ -40,10 +41,14 @@ function harness() {
         async reconcileManualGate() { reconciliations++; return gate; }, async readRun() { return run; },
         async readTask() { return task; }, async createTask(_handle: string, value: unknown) { task = value; return value; },
         async start(_handle: string, _uri: string, taskId: string, accepted: unknown, hosted: boolean, dirty?: string) {
+            oneShotStarts++;
             grant = accepted; authorized = hosted; acceptedDirty = dirty;
             run = { version: 1, id: 'run', taskId, status: 'running', grantId: 'grant', grantRevision: 1,
                 requestedPolicy: { kind: 'follow-coding-agent' }, projectRoot: '.', createdAt: now,
                 changedFiles: [], validationResults: [] }; return run;
+        }, async startWorkSession(handle: string, uri: string, taskId: string, accepted: unknown, hosted: boolean, dirty?: string) {
+            sessionStarts++;
+            return this.start(handle, uri, taskId, accepted, hosted, dirty);
         }, async stop() { stopped = true; run = { ...run!, status: 'cancelling' }; return run; },
         async readEvents() { return { events: [], nextSequence: 0, hasMore: false }; } };
     const controller = new AgentRunController(runtime as unknown as AgentRuntimeService,
@@ -51,6 +56,7 @@ function harness() {
         { list: async () => policy } as unknown as AIRolePolicyService, () => {});
     return { controller, runtime, inventory, policy, get task() { return task; }, get grant() { return grant; },
         get authorized() { return authorized; }, get stopped() { return stopped; },
+        get oneShotStarts() { return oneShotStarts - sessionStarts; }, get sessionStarts() { return sessionStarts; },
         get acceptedDirty() { return acceptedDirty; }, get commits() { return commits; },
         setWorktree(value: { clean: boolean; fingerprint: string; paths: string[] }) { worktree = value; },
         get reconciliations() { return reconciliations; }, setGate(value: unknown) { gate = value; },
@@ -74,6 +80,7 @@ test('direct task displays eligible target and requires explicit grant before st
     h.controller.acceptGrant(true); assert.equal(h.controller.canStart, false);
     h.controller.authorizeHostedProjectData(true); assert.equal(h.controller.canStart, true);
     await h.controller.start(); assert.equal((h.task as { completion: { validation: unknown[] } }).completion.validation.length, 0);
+    assert.equal(h.oneShotStarts, 1); assert.equal(h.sessionStarts, 0);
     h.finish('completed');
     await h.controller.attach('file:///project');
     h.controller.edit('Objective', 'Instructions');
@@ -246,6 +253,7 @@ test('Local exact and role targets require observed readiness and never grant ho
     assert.equal(h.controller.canStart, true);
     await h.controller.start();
     assert.equal(h.authorized, false);
+    assert.equal(h.sessionStarts, 1); assert.equal(h.oneShotStarts, 0);
     assert.deepEqual((h.task as any).modelPolicy, { kind: 'exact', connectionId: 'local', modelId: 'qwen' });
     h.controller.acceptGrant(true);
     h.controller.setPolicy({ kind: 'exact', connectionId: 'codex', modelId: 'gpt' });

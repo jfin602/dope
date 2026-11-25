@@ -238,6 +238,13 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
     readWorkSession(handle: string, sessionId: string) {
         return this.store.readWorkSession(this.active(handle), sessionId);
     }
+    async readWorkSessionForRun(handle: string, runId: string) {
+        const root = this.active(handle);
+        const direct = await this.store.readWorkSession(root, runId);
+        if (direct) return direct;
+        return (await this.store.listWorkSessions(root)).find(session =>
+            session.segments.some(segment => segment.runId === runId));
+    }
     submitWorkMessage(handle: string, sessionId: string, messageId: string, text: string) {
         if (!this.execution) throw new Error('Agent execution unavailable');
         return this.execution.submitWorkMessage(this.active(handle), sessionId, messageId, text);

@@ -55,8 +55,6 @@ import type { AICredentialClient } from '@dope/contracts/lib/ai-credential-servi
 import type { ModelConnectionsClient } from '@dope/contracts/lib/model-connections-service';
 import type { ChatClient } from '@dope/chat/lib/service';
 import { ChatPanelWidget } from './chat-panel-widget';
-import { AgentTranscriptWidget } from './agent-transcript-widget';
-import { AGENT_TRANSCRIPT_ID, openAgentTranscript, type AgentTranscriptOptions } from './work-transcript-presentation';
 import { bindSharedAgentRuntime } from './agent-runtime-connection';
 import { ChatOpenOwners } from './chat-panel-controller';
 import { ChatPlanningSelection } from './chat-planning-selection';
@@ -475,14 +473,10 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
     bindSharedAgentRuntime(bind, (container, client) => ServiceConnectionProvider.createProxy<AgentRuntimeService & RpcServer<AgentRuntimeClient>>(
         container, agentRuntimeServicePath, client), (container, change) => {
             const widgets = container.get(WidgetManager);
-            if (change.kind !== 'transcript')
-                for (const widget of [...widgets.getWidgets(CHAT_PANEL_ID),
+            for (const widget of [...widgets.getWidgets(CHAT_PANEL_ID),
                     ...(['left', 'right'] as const).flatMap(side => [widgets.tryGetWidget(chatLauncherIds[side]),
                         widgets.tryGetWidget(workLauncherIds[side])])].filter(Boolean) as ChatPanelWidget[])
-                    void widget.refreshWork();
-            for (const widget of widgets.getWidgets(AGENT_TRANSCRIPT_ID) as AgentTranscriptWidget[])
-                if ((change.kind === 'run' || change.kind === 'event' || change.kind === 'transcript') && widget.options.runId === change.id)
-                    widget.scheduleRefresh();
+                widget.scheduleWorkRefresh();
             if (change.kind === 'run' || change.kind === 'task' || change.kind === 'event')
                 void widgets.tryGetWidget<RoadmapCanvasWidget>(ROADMAP_CANVAS_ID)?.refreshWorkMonitor();
         });
@@ -701,9 +695,12 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
                 }
                 return undefined;
             }, async (project, runId) => {
-                await openAgentTranscript({ project, runId }, options =>
-                    context.container.get(WidgetManager).getOrCreateWidget<AgentTranscriptWidget>(
-                        AGENT_TRANSCRIPT_ID, options), context.container.get(ApplicationShell));
+                const widget = await openChatPanel<ChatPanelWidget>('center', options =>
+                    context.container.get(WidgetManager).getOrCreateWidget<ChatPanelWidget>(
+                        CHAT_PANEL_ID, options), context.container.get(ApplicationShell), 'work');
+                await widget.selectWorkLauncher({ kind: 'run', id: runId });
+                if (widget.panel.workspace !== project)
+                    throw new Error('Saved Work belongs to a different project');
             }, context.container.get(AgentRuntimeService)) })).inSingletonScope();
     // Saved pre-overlay workbench layouts may restore this sidebar. It shares the model but cannot edit.
     bind(WidgetFactory).toDynamicValue(context => ({ id: ROADMAP_INSPECTOR_ID, createWidget: () =>
@@ -715,11 +712,6 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
         () => context.container.get(ProjectMindService) as ProjectMindService & RpcServer<ProjectMindClient>,
         context.container.get(WorkspaceService), context.container.get(FileService), context.container.get(OpenerService)
     ) })).inSingletonScope();
-    bind(WidgetFactory).toDynamicValue(context => ({ id: AGENT_TRANSCRIPT_ID,
-        createWidget: (options: AgentTranscriptOptions) => new AgentTranscriptWidget(
-            context.container.get(AgentRuntimeService), context.container.get<MarkdownRenderer>(CoreMarkdownRenderer),
-            context.container.get(WorkspaceService), options)
-    })).inSingletonScope();
     const createChatWidget = (context: { container: import('@theia/core/shared/inversify').interfaces.Context['container'] }, options: ChatPanelOptions) =>
         new ChatPanelWidget(() => ServiceConnectionProvider.createProxy<ChatService & RpcServer<ChatClient>>(
             context.container, `${chatServicePath}/${options.instanceId}`),
@@ -729,11 +721,8 @@ export default new ContainerModule((bind, _unbind, _isBound, rebind) => {
             context.container.get(ModelConnectionsService), context.container.get(EditorManager),
             context.container.get(SoftwareMapController), context.container.get(AICenterContribution), modelInventoryChanged.event,
             context.container.get(AgentRuntimeService), context.container.get(AIRegistryService),
-            context.container.get(AIRolePolicyService), async (project: string, runId: string) => {
-                await openAgentTranscript({ project, runId }, options =>
-                    context.container.get(WidgetManager).getOrCreateWidget<AgentTranscriptWidget>(
-                        AGENT_TRANSCRIPT_ID, options), context.container.get(ApplicationShell));
-            }, context.container.get(ChatPlanningSelection), async (project, path, promptText, isCurrent) => {
+            context.container.get(AIRolePolicyService),
+            context.container.get(ChatPlanningSelection), async (project, path, promptText, isCurrent) => {
                 const bytes = new TextEncoder().encode(promptText);
                 const digest = await crypto.subtle.digest('SHA-256', bytes);
                 const fingerprint = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');

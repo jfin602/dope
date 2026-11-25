@@ -153,7 +153,7 @@ test('Prompt Stack uses shared Work discovery and detail without import UI', asy
         'chat-panel-widget.ts', '../node/agent-runtime-backend.ts',
         '../../../contracts/src/agent-runtime-service.ts'].map(name => readFile(new URL(name, base), 'utf8')));
     for (const label of ['Tasks folder', 'Prompt Stacks', 'Required validation command',
-        'Continue with dirty worktree', 'Cancel dirty acceptance', 'Verify checkpoint', 'Open Transcript'])
+        'Continue with dirty worktree', 'Cancel dirty acceptance', 'Verify checkpoint', 'View Work conversation'])
         assert.ok(widget.includes(label), label);
     assert.doesNotMatch(widget, /Import Stack|Imported stacks|Project-local stack folder/);
     assert.match(widget, /this\.selectWork\(\{ kind: 'run'/);

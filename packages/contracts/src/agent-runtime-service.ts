@@ -46,6 +46,7 @@ export interface AgentRuntimeService {
     listTasks(projectHandle: string): Promise<AgentTask[]>;
     readRun(projectHandle: string, runId: string): Promise<AgentRun | undefined>;
     readWorkSession(projectHandle: string, sessionId: string): Promise<WorkSession | undefined>;
+    readWorkSessionForRun(projectHandle: string, runId: string): Promise<WorkSession | undefined>;
     submitWorkMessage(projectHandle: string, sessionId: string, messageId: string, text: string): Promise<WorkSession>;
     finishWorkSession(projectHandle: string, sessionId: string): Promise<WorkSession>;
     previewCandidateResume(projectHandle: string, runId: string): Promise<CandidateResumePreview>;

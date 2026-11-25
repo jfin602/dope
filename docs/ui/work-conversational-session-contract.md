@@ -1,6 +1,8 @@
 # Work conversational session contract — approved 2026-11-24
 
-Status: owner-approved forward design, amended by [c14 P1-R2 scope decision](../tasks/c14-work-redesign/scope-amendment-2026-11-24.md); not product qualification.
+Status: owner-approved forward design, amended by [c14 P1-R2 scope decision](../tasks/c14-work-redesign/scope-amendment-2026-11-24.md) and the [P2-R1 local Pi boundary](../tasks/c14-work-redesign/scope-amendment-2026-11-24-p2-r1.md); not product qualification.
+
+For this correction, the persistent lifecycle applies to embedded local Pi New Work and WorkItem runs. Hosted Work retains its existing one-shot lifecycle and must be labeled so its controls and history make no persistent-session claim. Hosted conversational parity needs a separate runtime design and qualification; retain hosted selection and authorization. The interaction requirements below apply to persistent local Pi sessions unless they expressly describe legacy or hosted evidence.
 
 Work is one persistent dockable session surface. New Work starts in editable setup (prompt, model, tool ceiling, sandbox). Start seals an immutable per-session execution contract and transforms the same surface into the live structured conversation. The full transcript remains accessible after completion, failure, stop, panel close and restart. Existing Select Work entries reopen their actual run histories; missing legacy events are explicitly labeled unavailable, never fabricated.
 
