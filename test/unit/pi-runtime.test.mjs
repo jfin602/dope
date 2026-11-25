@@ -1718,6 +1718,42 @@ test('Pi Work exposes only Dope wrappers and relays a model tool call to the hos
   }
 });
 
+test('Pi Work retains one embedded session across sequential model turns', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-work-sequential-'));
+  const originalFetch = globalThis.fetch;
+  const requests = [];
+  try {
+    globalThis.fetch = async (_url, options) => {
+      const request = JSON.parse(String(options.body));
+      requests.push(request);
+      const text = `Answer ${requests.length}.`;
+      return new Response([
+        `data: ${JSON.stringify({ id: `sequential-${requests.length}`, object: 'chat.completion.chunk',
+          created: 1, model: 'offline-fixture', choices: [{ index: 0,
+            delta: { role: 'assistant', content: text }, finish_reason: null }] })}\n\n`,
+        `data: ${JSON.stringify({ id: `sequential-end-${requests.length}`, object: 'chat.completion.chunk',
+          created: 1, model: 'offline-fixture', choices: [{ index: 0,
+            delta: {}, finish_reason: 'stop' }] })}\n\n`,
+        'data: [DONE]\n\n'
+      ].join(''), { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    };
+    await dispatch({ type: 'open', mode: 'work', cwd, model, workToolNames: [] });
+    const first = await dispatch({ type: 'work', id: 70, prompt: 'First instruction.' });
+    const second = await dispatch({ type: 'work', id: 71, prompt: 'Second instruction.' });
+    assert.equal(first.text, 'Answer 1.');
+    assert.equal(second.text, 'Answer 2.');
+    assert.equal(requests.length, 2);
+    assert.match(JSON.stringify(requests[1].messages), /First instruction/);
+    assert.match(JSON.stringify(requests[1].messages), /Answer 1/);
+    assert.match(JSON.stringify(requests[1].messages), /Second instruction/);
+    assert.deepEqual(requests.map(request => request.tools ?? []), [[], []]);
+  } finally {
+    await dispatch({ type: 'close' });
+    globalThis.fetch = originalFetch;
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
 test('Pi Work without approved process commands does not offer run_command', async () => {
   const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-work-no-process-'));
   try {

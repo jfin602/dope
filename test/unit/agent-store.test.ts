@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { createHash } from 'node:crypto';
 import { cp, mkdtemp, mkdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { AgentStore, AGENT_EVENT_LIMIT, AGENT_EVENT_PAGE_LIMIT } from '../../packages/agent-core/lib/node/agent-store.js';
+import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/authority.js';
 import { AgentRuntimeBackend } from '../../packages/theia-extension/lib/node/agent-runtime-backend.js';
 
 const at = '2026-10-05T12:00:00Z';
@@ -24,6 +26,63 @@ async function folders(work: (a: string, b: string) => Promise<void>) {
     const a = join(base, 'a'), b = join(base, 'b');
     try { await mkdir(a); await mkdir(b); await work(a, b); } finally { await rm(base, { recursive: true, force: true }); }
 }
+
+test('Work session messages survive store restart and cannot be acknowledged or replayed out of order',
+    async () => folders(async a => {
+        const store = new AgentStore();
+        await store.createTask(a, task());
+        await store.createRun(a, run());
+        const running = { ...run(), status: 'running', startedAt: later,
+            basis: { head: 'a'.repeat(40), clean: true },
+            provenance: { version: 1, connectionId: 'local', modelId: 'fixture',
+                providerId: 'local', runtimeKind: 'local', adapterId: 'pi-local-work' } };
+        await store.updateRun(a, run(), running);
+        const session = { version: 1, id: 'run-1', taskId: 'task-1', runId: 'run-1', createdAt: later,
+            grantId: 'grant-1', grantRevision: 0, connectionId: 'local', modelId: 'fixture',
+            toolSelectionHash: 'a'.repeat(64), sandboxHash: 'b'.repeat(64),
+            permissionCeiling: createDefaultExecutionGrant({ id: 'grant-1', revision: 0,
+                taskId: 'task-1', acceptedAt: later }).permissions,
+            status: 'running', revision: 0, messages: [], segments: [{ runId: 'run-1', taskId: 'task-1',
+                grantId: 'grant-1', grantRevision: 0, basisHead: 'a'.repeat(40), startedAt: later }] };
+        await store.createWorkSession(a, session as any);
+        await assert.rejects(store.updateWorkSession(a, session as any, { ...session, revision: 1,
+            messages: [{ id: 'forged', text: 'Forged receipt', queuedAt: later,
+                status: 'delivered', deliveryStartedAt: later, deliveredAt: later }] } as any), /transition/);
+        const queued = { ...session, revision: 1, messages: [
+            { id: 'm1', text: 'First', queuedAt: later, status: 'queued' },
+            { id: 'm2', text: 'Second', queuedAt: later, status: 'queued' }] };
+        await store.updateWorkSession(a, session as any, queued as any);
+        assert.deepEqual((await new AgentStore().readWorkSession(a, 'run-1'))?.messages, queued.messages);
+        await assert.rejects(store.updateWorkSession(a, queued as any, { ...queued, revision: 2,
+            messages: [queued.messages[0], { ...queued.messages[1], status: 'delivered',
+                deliveryStartedAt: later, deliveredAt: later }] } as any), /order/);
+        const delivering = { ...queued, revision: 2, status: 'running', messages: [
+            { ...queued.messages[0], status: 'delivering', deliveryStartedAt: later }, queued.messages[1]] };
+        await store.updateWorkSession(a, queued as any, delivering as any);
+        const delivered = { ...delivering, revision: 3, messages: [
+            { ...delivering.messages[0], status: 'delivered', deliveredAt: later }, queued.messages[1]] };
+        await store.updateWorkSession(a, delivering as any, delivered as any);
+        await assert.rejects(store.updateWorkSession(a, delivered as any, { ...delivered, revision: 4,
+            messages: queued.messages } as any), /transition/);
+        assert.equal((await new AgentStore().readWorkSession(a, 'run-1'))?.messages[0].status, 'delivered');
+    }));
+
+test('Work candidate snapshots retain checked changed bytes across store restart',
+    async () => folders(async (a, b) => {
+        const store = new AgentStore();
+        await store.createTask(a, task());
+        await store.createRun(a, run());
+        const content = 'candidate bytes\n';
+        await writeFile(join(b, 'change.txt'), content);
+        const hash = createHash('sha256').update(content).digest('hex');
+        const delta = { version: 1, effects: [{ kind: 'create', path: 'change.txt', after: hash }] };
+        const snapshot = await store.saveWorkCandidateSnapshot(a, 'run-1', b, delta as any,
+            'c'.repeat(64), 1);
+        assert.deepEqual(await new AgentStore().readWorkCandidateSnapshot(a, 'run-1', snapshot.id), snapshot);
+        await writeFile(join(a, '.dope/agent/runs/run-1/work-snapshots', snapshot.id, 'change.txt'), 'tampered\n');
+        await assert.rejects(new AgentStore().readWorkCandidateSnapshot(a, 'run-1', snapshot.id),
+            /snapshot bytes changed/);
+    }));
 
 test('atomic task/run round trip, legal transitions, events and terminal restart truth', async () => folders(async (a) => {
     const store = new AgentStore();

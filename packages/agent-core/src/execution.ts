@@ -33,6 +33,8 @@ export interface AgentExecutionRequest {
     /** Checked owner snapshot to retain across native Pi compaction; never a grant. */
     recoveryContext?: string;
     prompt: string; reasoningEffort?: 'low' | 'medium' | 'high' | 'xhigh';
+    /** Opt-in conversational Work. The Dope runtime owns the durable queue and state. */
+    workSession?: { onTurnSettled(): Promise<void>; onMessageAccepted(id: string): Promise<void> };
     onEvent(event: AgentExecutionEvent): void;
 }
 
@@ -43,6 +45,8 @@ export interface AgentExecutionHandle {
     cancel(): Promise<void>;
     /** Emergency termination of this run's dedicated process when interruption fails. */
     terminate?(): void;
+    submitWorkMessage?(id: string, text: string): void;
+    finishWorkSession?(): void;
 }
 
 export interface AgentExecutionAdapter {

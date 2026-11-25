@@ -13,7 +13,8 @@ export interface PiRuntimeDiagnostics {
 export type PiWorkEvent = { type: 'work'; sequence: number;
     kind: 'agent_start' | 'turn_start' | 'turn_end' | 'agent_end' | 'agent_settled' |
         'tool_execution_start' | 'tool_execution_end' | 'reasoning' | 'reasoning_omitted' |
-        'compaction_succeeded' | 'compaction_failed';
+        'compaction_succeeded' | 'compaction_failed' | 'message_accepted';
+    messageId?: string;
     toolName?: string; isError?: boolean; aborted?: boolean; text?: string; truncated?: boolean;
     reason?: 'threshold' | 'overflow' | 'manual'; durationMs?: number;
     tokensBeforeEstimate?: number; tokensAfterEstimate?: number; summaryBytes?: number;
@@ -225,9 +226,10 @@ export class PiRuntimeHost {
     }
 
     runWork(prompt: string, onTool: NonNullable<Pending['onTool']>, onEvent?: (event: PiWorkEvent) => void,
-        recoveryContext?: string):
+        recoveryContext?: string, messageId?: string):
         Promise<{ text: string; textTruncated?: boolean; modelId: string; usage?: PiTokenUsage; compaction?: PiContextRecord }> {
-        return this.request({ type: 'work', prompt, ...(recoveryContext ? { recoveryContext } : {}) }, event => {
+        return this.request({ type: 'work', prompt, ...(recoveryContext ? { recoveryContext } : {}),
+            ...(messageId ? { messageId } : {}) }, event => {
             if (event.type !== 'work') throw new Error('Invalid Pi Work stream event');
             onEvent?.(event);
         }, onTool);
@@ -475,11 +477,14 @@ export class PiRuntimeHost {
                         const event = record.event;
                         if (!pending.onTool || !pending.onEvent || !Number.isSafeInteger(event.sequence) ||
                             event.sequence !== (pending.lastWorkSequence ?? 0) + 1 || event.sequence > 512 ||
-                            Object.keys(event).some(key => !['type', 'sequence', 'kind', 'toolName', 'isError', 'aborted', 'text', 'truncated',
+                            Object.keys(event).some(key => !['type', 'sequence', 'kind', 'toolName', 'isError', 'aborted', 'text', 'truncated', 'messageId',
                                 'reason', 'durationMs', 'tokensBeforeEstimate', 'tokensAfterEstimate', 'summaryBytes', 'summarizationTokensReported'].includes(key)) ||
                             !['agent_start', 'turn_start', 'turn_end', 'agent_end', 'agent_settled',
                                 'tool_execution_start', 'tool_execution_end', 'reasoning', 'reasoning_omitted',
-                                'compaction_succeeded', 'compaction_failed'].includes(event.kind) ||
+                                'compaction_succeeded', 'compaction_failed', 'message_accepted'].includes(event.kind) ||
+                            (event.kind === 'message_accepted' ?
+                                typeof event.messageId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/u.test(event.messageId) :
+                                event.messageId !== undefined) ||
                             (event.toolName !== undefined && (!['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output']
                                 .includes(event.toolName) || !event.kind.startsWith('tool_execution_'))) ||
                             (event.kind.startsWith('tool_execution_') !== (event.toolName !== undefined)) ||

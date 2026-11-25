@@ -10,6 +10,53 @@ import { dispatch } from '../../packages/pi-runtime/worker.mjs';
 
 const tick = () => new Promise(resolve => setImmediate(resolve));
 const sha256 = text => createHash('sha256').update(text).digest('hex');
+test('real embedded Work worker retains context and acknowledges exact sequential messages', async () => {
+  const seen = [];
+  const provider = createServer(async (request, response) => {
+    let body = '';
+    for await (const chunk of request) body += chunk;
+    seen.push(JSON.parse(body));
+    const content = seen.length === 1 ? 'First response.' : 'Second response.';
+    const base = { id: `work-${seen.length}`, object: 'chat.completion.chunk',
+      created: 1, model: 'offline-work' };
+    response.writeHead(200, { 'content-type': 'text/event-stream' });
+    response.write(`data: ${JSON.stringify({ ...base, choices: [{ index: 0,
+      delta: { role: 'assistant', content }, finish_reason: null }] })}\n\n`);
+    response.write(`data: ${JSON.stringify({ ...base, choices: [{ index: 0,
+      delta: {}, finish_reason: 'stop' }] })}\n\n`);
+    response.end('data: [DONE]\n\n');
+  });
+  provider.listen(0, '127.0.0.1');
+  await once(provider, 'listening');
+  const model = { id: 'offline-work', name: 'Offline Work', api: 'openai-completions',
+    provider: 'dope-local', baseUrl: `http://127.0.0.1:${provider.address().port}/v1`,
+    reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0,
+      cacheWrite: 0 }, contextWindow: 4096, maxTokens: 512 };
+  const host = new PiRuntimeHost();
+  try {
+    await host.start();
+    const opened = await host.openWorkSession(model, '/tmp', undefined, undefined, false, [], []);
+    assert.deepEqual(opened.tools, []);
+    const events = [];
+    const first = await host.runWork('First instruction.', async () => assert.fail('Unexpected tool'),
+      event => events.push(event));
+    const second = await host.runWork('Second instruction.', async () => assert.fail('Unexpected tool'),
+      event => events.push(event), undefined, 'message-2');
+    assert.equal(first.text, 'First response.');
+    assert.equal(second.text, 'Second response.');
+    assert.deepEqual(events.filter(event => event.kind === 'message_accepted')
+      .map(event => event.messageId), ['message-2']);
+    const userText = wire => wire.messages.filter(message => message.role === 'user')
+      .map(message => message.content.map(part => part.text).join(''));
+    assert.deepEqual(userText(seen[0]), ['First instruction.']);
+    assert.deepEqual(userText(seen[1]), ['First instruction.', 'Second instruction.']);
+    assert.ok(seen[1].messages.some(message => message.role === 'assistant' &&
+      message.content === 'First response.'));
+    await assert.rejects(host.runWork('Second instruction.', async () => assert.fail('Unexpected tool'),
+      undefined, undefined, 'message-2'));
+    assert.equal(seen.length, 2);
+  } finally { host.dispose(); provider.close(); }
+});
 function finishTurn(host, id, text = 'Done.') {
   host.acceptOutput(JSON.stringify({ id, event: { type: 'result_chunk', sequence: 1,
     offset: 0, text } }) + '\n');

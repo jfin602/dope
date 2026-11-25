@@ -1,5 +1,7 @@
 # Implementation plan — c14-work-redesign
 
+Forward execution uses the [2026-11-24 P1-R2 scope amendment](scope-amendment-2026-11-24.md). The original plan below records authoring history where it mentions Interrupt/Resume; the following routing overrides those portions. P1 proves whole-turn FIFO delivery, exact acknowledgment, Finish/Stop, recovery and post-review linked follow-up. P2 presents truthful Queued/Delivered, Finish and Stop controls, without Pause. P3 integrates that lifecycle. Manual P4 omits Interrupt replay. Authored P1–P4 prompt bytes remain unchanged.
+
 ## P1 (T1, GPT-6 Sol High)
 Inspect existing Work/AgentRun/Pi execution lifecycle, queue and persistence owners. Extend existing runtime without a parallel agent to model setup, running, interrupt requested, paused, resumed and terminal states; immutable config and ordered durable message queue. Acknowledge actual delivery; idempotent recovery; explicit safe boundaries. Focused unit tests for state transitions, restart and grant preservation.
 

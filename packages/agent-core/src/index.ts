@@ -10,3 +10,4 @@ export * from './phase-stack-composer';
 export * from './capacity';
 export * from './transcript';
 export * from './map-impact';
+export * from './work-session';

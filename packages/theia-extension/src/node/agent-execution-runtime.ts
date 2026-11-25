@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { AGENT_SCHEMA_VERSION, checkEffect, createBlockedProposedAction, isModelCapacityFailure, parseAgentTask, parseExecutionGrant, parseWorkMCPObservationReceipt, projectPath } from '@dope/agent-core';
 import type { AgentExecutionAdapter, AgentExecutionEvent, AgentExecutionHandle, AgentModelPolicy, AgentRun,
     AgentRunEvent, AgentTask, ExecutionGrant, ExecutionProvenance, AgentExecutionRequest, AgentTranscriptInput,
-    WorkDocumentRead } from '@dope/agent-core';
+    WorkDocumentRead, WorkSession } from '@dope/agent-core';
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import { captureGitBasis, captureGitFinal } from '@dope/agent-core/lib/node/git-evidence';
 import { ExecutionWorkspace, PromotionFailure } from '@dope/agent-core/lib/node/execution-workspace';
@@ -35,6 +35,7 @@ interface Active {
     wakeWait?: () => void;
     commands: Map<string, { command: string; started: number }>;
     transcriptCommands: Set<string>; lastMessage?: string; transcriptAt?: string; transcriptIncomplete?: boolean;
+    workSessionId?: string;
 }
 
 /** Codex reports the shell invocation, not only its argument. Keep the match exact so a
@@ -525,6 +526,24 @@ export class AgentExecutionRuntime {
         return this.startInternal(root, folderUri, taskId, offeredGrant, hostedAuthorized, false, acceptedDirty);
     }
 
+    async startWorkSession(root: string, folderUri: string, taskId: string, offeredGrant: ExecutionGrant,
+        hostedAuthorized: boolean, acceptedDirty?: AcceptedDirtyBasis): Promise<AgentRun> {
+        return this.startInternal(root, folderUri, taskId, offeredGrant, hostedAuthorized, false, acceptedDirty,
+            undefined, true);
+    }
+
+    async continueWorkSession(root: string, folderUri: string, sessionId: string, previousRunId: string,
+        newTaskId: string, offeredGrant: ExecutionGrant, hostedAuthorized: boolean,
+        expectedSourceHead: string, discardUnverifiedCandidate: boolean,
+        acceptedDirty?: AcceptedDirtyBasis): Promise<AgentRun> {
+        if (!/^[a-f0-9]{40}$/u.test(expectedSourceHead) ||
+            typeof discardUnverifiedCandidate !== 'boolean')
+            throw new Error('Verified Work continuation basis required');
+        return this.startInternal(root, folderUri, newTaskId, offeredGrant, hostedAuthorized, false,
+            acceptedDirty, undefined, true, { sessionId, previousRunId, expectedSourceHead,
+                discardUnverifiedCandidate });
+    }
+
     async previewCandidateResume(root: string, runId: string): Promise<{
         eligible: boolean; reason?: string; sourceRunId: string; task?: AgentTask;
         candidateFingerprint?: string; effects?: AgentRun['candidateDelta']; outcome?: AgentRun['outcome'];
@@ -594,7 +613,10 @@ export class AgentExecutionRuntime {
 
     private async startInternal(root: string, folderUri: string, taskId: string, offeredGrant: ExecutionGrant,
         hostedAuthorized: boolean, sequence: boolean, acceptedDirty?: AcceptedDirtyBasis,
-        resume?: { runId: string; expectedFingerprint: string; newTask: AgentTask }): Promise<AgentRun> {
+        resume?: { runId: string; expectedFingerprint: string; newTask: AgentTask },
+        persistentWork = false,
+        followUp?: { sessionId: string; previousRunId: string; expectedSourceHead: string;
+            discardUnverifiedCandidate: boolean }): Promise<AgentRun> {
         if (this.disposed) throw new Error('Agent Runtime disposed');
         if (await this.store.root(folderUri) !== root) throw new Error('Accepted project root does not match attached project');
         const prior = this.active.get(root);
@@ -613,8 +635,28 @@ export class AgentExecutionRuntime {
             if (existing.some(run => ['running', 'cancelling', 'blocked'].includes(run.status)))
                 throw new Error('A mutation run requires restart reconciliation before another start');
             let sourceRun: AgentRun | undefined;
+            let priorWorkSession: WorkSession | undefined;
             let resumeEvidence: Awaited<ReturnType<AgentExecutionRuntime['previewCandidateResume']>> | undefined;
             let task = await this.store.readTask(root, taskId);
+            if (followUp) {
+                priorWorkSession = await this.store.readWorkSession(root, followUp.sessionId);
+                sourceRun = await this.store.readRun(root, followUp.previousRunId);
+                const originalTask = priorWorkSession ? await this.store.readTask(root, priorWorkSession.taskId) : undefined;
+                if (!priorWorkSession || !sourceRun || !originalTask || !task ||
+                    priorWorkSession.segments.at(-1)?.runId !== sourceRun.id ||
+                    !['completed', 'recovery-required'].includes(priorWorkSession.status) ||
+                    !sourceRun.endedAt || task.id === originalTask.id ||
+                    task.createdAt < sourceRun.endedAt ||
+                    task.projectId !== originalTask.projectId ||
+                    JSON.stringify(task.origin) !== JSON.stringify(originalTask.origin) ||
+                    JSON.stringify(task.modelPolicy) !== JSON.stringify(originalTask.modelPolicy) ||
+                    JSON.stringify(task.authority) !== JSON.stringify(originalTask.authority) ||
+                    JSON.stringify(task.completion) !== JSON.stringify(originalTask.completion) ||
+                    JSON.stringify(task.reviewPolicy) !== JSON.stringify(originalTask.reviewPolicy) ||
+                    (priorWorkSession.status === 'completed' ? !sourceRun.reviewDecision :
+                        sourceRun.status !== 'interrupted' || !followUp.discardUnverifiedCandidate))
+                    throw new Error('Work continuation requires reviewed predecessor or explicit recovery decision');
+            }
             if (resume) {
                 const preview = await this.previewCandidateResume(root, resume.runId);
                 if (!preview.eligible || preview.candidateFingerprint !== resume.expectedFingerprint || !preview.task)
@@ -651,7 +693,23 @@ export class AgentExecutionRuntime {
                 grant.acceptedAt < task.createdAt || resume && sourceRun &&
                     (grant.id === sourceRun.grantId || grant.acceptedAt < sourceRun.endedAt!))
                 throw new Error('Accepted ExecutionGrant does not match the task/project');
+            if (followUp && priorWorkSession) {
+                const originalRun = await this.store.readRun(root, priorWorkSession.runId);
+                const allowedTools = new Set(originalRun?.toolSelection?.tools.map(tool => tool.id) ?? []);
+                if (!grant.toolSelection || !originalRun?.toolSelection ||
+                    grant.toolSelection.tools.some(tool => !allowedTools.has(tool.id)) ||
+                    Object.entries(grant.permissions).some(([kind, allowed]) => allowed &&
+                        !priorWorkSession.permissionCeiling[kind as keyof typeof grant.permissions]) ||
+                    grant.mcpObservation || grant.acceptedAt < sourceRun!.endedAt!)
+                    throw new Error('Work continuation exceeds original grant or lacks fresh acceptance');
+            }
             const selected = await this.select(task.modelPolicy, hostedAuthorized);
+            if (persistentWork && (selected.adapter.id !== 'pi-local-work' || sequence || resume))
+                throw new Error('Persistent Work requires an embedded local Pi session');
+            if (followUp && priorWorkSession &&
+                (selected.provenance.connectionId !== priorWorkSession.connectionId ||
+                    selected.provenance.modelId !== priorWorkSession.modelId))
+                throw new Error('Work continuation changed sealed model');
             if (selected.adapter.id === 'pi-local-work' && !grant.toolSelection)
                 throw new Error('Local Pi Work requires a reviewed tool selection');
             if (grant.toolSelection && (selected.provenance.runtimeKind !== 'local' ||
@@ -668,6 +726,8 @@ export class AgentExecutionRuntime {
             if (this.disposed || active.stopping) throw new Error('Agent Runtime stopped before execution');
             const basis = await captureGitBasis(root);
             if (!basis.head) throw new Error('Phase 8B requires a committed Git HEAD');
+            if (followUp && basis.head !== followUp.expectedSourceHead)
+                throw new Error('Work continuation source HEAD changed');
             if (acceptedDirty) {
                 if (acceptedDirty.head !== basis.head) throw new Error('Dirty basis requires matching HEAD');
                 await assertDirtyBasis(root, acceptedDirty);
@@ -714,6 +774,31 @@ export class AgentExecutionRuntime {
             active.run = await this.store.createRun(root, pending);
             await this.update(active, run => ({ ...run, status: 'running', startedAt: now,
                 provenance: selected.provenance }));
+            if (persistentWork) {
+                const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+                const segment = { runId: active.run.id, taskId: task.id, grantId: grant.id,
+                    grantRevision: grant.revision, basisHead: basis.head, startedAt: now };
+                if (followUp && priorWorkSession) {
+                    const abandonedAt = new Date().toISOString();
+                    await this.store.updateWorkSession(root, priorWorkSession, { ...priorWorkSession,
+                        status: 'running', revision: priorWorkSession.revision + 1,
+                        segments: [...priorWorkSession.segments, segment],
+                        messages: priorWorkSession.messages.map(message =>
+                            ['queued', 'delivering'].includes(message.status) ?
+                                { ...message, status: 'abandoned' as const, abandonedAt } : message) });
+                    active.workSessionId = priorWorkSession.id;
+                } else {
+                    const workSession: WorkSession = { version: 1, id: active.run.id, taskId: task.id,
+                        runId: active.run.id, createdAt: now, grantId: grant.id, grantRevision: grant.revision,
+                        connectionId: selected.provenance.connectionId, modelId: selected.provenance.modelId,
+                        toolSelectionHash: digest(grant.toolSelection ?? null),
+                        sandboxHash: digest({ adapter: selected.adapter.id, sandbox: 'local-tool-sandbox' }),
+                        permissionCeiling: grant.permissions,
+                        status: 'running', revision: 0, messages: [], segments: [segment] };
+                    await this.store.createWorkSession(root, workSession);
+                    active.workSessionId = workSession.id;
+                }
+            }
             await this.event(active, 'status', resume ? 'Resumed from verified saved candidate' : 'Agent run started', { status: 'running' });
             await this.transcript(active, { kind: 'marker', at: '', code: 'run-started' });
             if (this.disposed || active.stopping) throw new Error('Agent Runtime stopped before execution');
@@ -725,7 +810,12 @@ export class AgentExecutionRuntime {
                     current.adapter !== selected.adapter)
                     throw new Error('Selected Local Coding Agent target, role or capacity changed before start');
             }
-            const continuation = resume && sourceRun && active.run ?
+            const continuation = followUp && sourceRun && active.run ?
+                `\n\nThis is a new immutable AgentRun segment ${active.run.id} in Work session ${followUp.sessionId}. ` +
+                `Prior run ${sourceRun.id} ended ${sourceRun.status}. Its tool calls and messages were not replayed. ` +
+                `The current source HEAD ${basis.head} and fresh isolated candidate are authoritative. ` +
+                `Inspect the source before editing; do not assume any unverified prior candidate effects survived.` :
+                resume && sourceRun && active.run ?
                 `\n\nEarlier Work run ${sourceRun.id} stopped (${sourceRun.status}). ` +
                 `This new run is ${active.run.id}; its isolated workspace contains verified saved candidate ` +
                 `${sourceRun.candidateFingerprint}. Changed files: ` +
@@ -750,6 +840,10 @@ export class AgentExecutionRuntime {
                     selectedLoadedContextTokens: selected.loadedContext,
                     selectedRegistryRevision: selected.registryRevision }),
                 prompt: `${task.objective}\n\n${task.instructions}\n\n${checkedRecovery.text}${continuation}`,
+                ...(persistentWork ? { workSession: {
+                    onTurnSettled: () => this.workTurnSettled(active),
+                    onMessageAccepted: (id: string) => this.workMessageAccepted(active, id)
+                } } : {}),
                 ...(task.controls.reasoningEffort ? { reasoningEffort: task.controls.reasoningEffort } : {}),
                 onEvent: observation => this.observed(active, observation) };
             const handle = await selected.adapter.start(request);
@@ -784,6 +878,111 @@ export class AgentExecutionRuntime {
                 await active.workspace?.dispose(); active.releaseFinished(); }
             throw error;
         }
+    }
+
+    private async workTurnSettled(active: Active): Promise<void> {
+        if (!active.workSessionId || active.stopping || active.denied) return;
+        await this.serial(active, async () => {
+            const current = await this.store.readWorkSession(active.root, active.workSessionId!);
+            if (!current || !active.run || !active.workspace)
+                throw new Error('Work session missing after Pi turn');
+            await active.workspace.assertActiveBasis(active.root, active.workspace.root);
+            const delta = await active.workspace.delta();
+            const fingerprint = await active.workspace.fingerprint();
+            const sequence = current.candidateSnapshot?.runId === active.run.id ?
+                current.candidateSnapshot.sequence + 1 : 1;
+            const candidateSnapshot = await this.store.saveWorkCandidateSnapshot(active.root,
+                active.run.id, active.workspace.root, delta, fingerprint, sequence);
+            const status = current.status === 'finishing' ? 'finishing' : 'awaiting-input';
+            await this.store.updateWorkSession(active.root, current,
+                { ...current, status, candidateSnapshot, revision: current.revision + 1 });
+        });
+        await this.scheduleWorkMessage(active);
+    }
+
+    private async workMessageAccepted(active: Active, messageId: string): Promise<void> {
+        if (!active.workSessionId) throw new Error('Work session unavailable');
+        await this.serial(active, async () => {
+            const current = await this.store.readWorkSession(active.root, active.workSessionId!);
+            const index = current?.messages.findIndex(message => message.id === messageId) ?? -1;
+            if (!current || index < 0 || current.messages[index].status !== 'delivering')
+                throw new Error('Unmatched Pi Work delivery acknowledgment');
+            const deliveredAt = new Date().toISOString();
+            await this.store.updateWorkSession(active.root, current, { ...current,
+                revision: current.revision + 1,
+                messages: current.messages.map((message, position) => position === index ?
+                    { ...message, status: 'delivered' as const, deliveredAt } : message) });
+        });
+    }
+
+    private async scheduleWorkMessage(active: Active): Promise<void> {
+        if (!active.workSessionId || !active.handle?.submitWorkMessage || active.stopping || active.denied) return;
+        await this.serial(active, async () => {
+            const current = await this.store.readWorkSession(active.root, active.workSessionId!);
+            if (!current || current.status !== 'awaiting-input' ||
+                current.messages.some(message => message.status === 'delivering')) return;
+            const index = current.messages.findIndex(message => message.status === 'queued');
+            if (index < 0) return;
+            const message = current.messages[index];
+            const deliveryStartedAt = new Date().toISOString();
+            await this.store.updateWorkSession(active.root, current, { ...current,
+                status: 'running', revision: current.revision + 1,
+                messages: current.messages.map((item, position) => position === index ?
+                    { ...item, status: 'delivering' as const, deliveryStartedAt } : item) });
+            try { active.handle!.submitWorkMessage!(message.id, message.text); }
+            catch {
+                const uncertain = await this.store.readWorkSession(active.root, active.workSessionId!);
+                if (uncertain) await this.store.updateWorkSession(active.root, uncertain,
+                    { ...uncertain, status: 'recovery-required', revision: uncertain.revision + 1 });
+                active.handle?.terminate?.();
+            }
+        });
+    }
+
+    private async settleWorkSession(active: Active, status: 'completed' | 'stopped' | 'recovery-required'): Promise<void> {
+        if (!active.workSessionId) return;
+        const current = await this.store.readWorkSession(active.root, active.workSessionId);
+        if (!current || ['completed', 'stopped', 'recovery-required'].includes(current.status)) return;
+        const target = status === 'completed' && current.status !== 'finishing' ? 'recovery-required' : status;
+        await this.store.updateWorkSession(active.root, current,
+            { ...current, status: target, revision: current.revision + 1 });
+    }
+
+    async submitWorkMessage(root: string, sessionId: string, messageId: string, text: string): Promise<WorkSession> {
+        const active = this.active.get(root);
+        if (!active?.workSessionId || active.workSessionId !== sessionId || !active.handle?.submitWorkMessage)
+            throw new Error('Work session cannot accept messages');
+        const updated = await this.serial(active, async () => {
+            const current = await this.store.readWorkSession(root, sessionId);
+            if (!current) throw new Error('Work session missing');
+            const existing = current.messages.find(message => message.id === messageId);
+            if (existing) {
+                if (existing.text !== text) throw new Error('Work message ID already used');
+                return current;
+            }
+            if (!['running', 'awaiting-input'].includes(current.status))
+                throw new Error('Work session cannot accept messages');
+            const queuedAt = new Date().toISOString();
+            return this.store.updateWorkSession(root, current, { ...current,
+                revision: current.revision + 1,
+                messages: [...current.messages, { id: messageId, text, queuedAt, status: 'queued' }] });
+        });
+        await this.scheduleWorkMessage(active);
+        return await this.store.readWorkSession(root, sessionId) ?? updated;
+    }
+
+    async finishWorkSession(root: string, sessionId: string): Promise<WorkSession> {
+        const active = this.active.get(root);
+        if (!active?.workSessionId || active.workSessionId !== sessionId || !active.handle?.finishWorkSession)
+            throw new Error('Work session is not live');
+        const current = await this.store.readWorkSession(root, sessionId);
+        if (!current || !['running', 'awaiting-input'].includes(current.status) ||
+            current.messages.some(message => message.status === 'queued' || message.status === 'delivering'))
+            throw new Error('Work session has pending messages or cannot finish');
+        const finishing = await this.store.updateWorkSession(root, current,
+            { ...current, status: 'finishing', revision: current.revision + 1 });
+        active.handle.finishWorkSession();
+        return finishing;
     }
 
     private async settle(active: Active, result: Promise<void>, retryAdapter?: AgentExecutionAdapter,
@@ -917,6 +1116,7 @@ export class AgentExecutionRuntime {
                                     validation: run.validationResults.filter(result => result.owner === 'dope') } }));
                             await this.event(active, 'status', 'Candidate ready for developer review', { status: 'blocked' });
                             await this.transcript(active, { kind: 'marker', at: '', code: 'run-ended' });
+                            await this.settleWorkSession(active, 'completed');
                         });
                         if (this.active.get(active.root) === active) this.active.delete(active.root);
                         await active.workspace.dispose();
@@ -1004,6 +1204,8 @@ export class AgentExecutionRuntime {
                     ...(evidence ? { finalGit: evidence.final, changedFiles: evidence.changedFiles,
                         changeSummary: evidence.changeSummary } : {}),
                     ...(finalCode ? { outcome: { code: finalCode, summary: finalSummary } } : {}) }));
+                await this.settleWorkSession(active, finalStatus === 'completed' ? 'completed' :
+                    finalStatus === 'cancelled' ? 'stopped' : 'recovery-required');
                 await this.recordMapImpact(active.root, active.run!);
                 if (this.active.get(active.root) === active) this.active.delete(active.root);
                 await this.event(active, 'status', finalSummary, { status: finalStatus });
@@ -1045,6 +1247,11 @@ export class AgentExecutionRuntime {
     /** Fresh backend attachment records abandoned executions; it never starts an adapter. */
     async reconcile(root: string): Promise<void> {
         if (this.active.has(root)) return;
+        for (const session of await this.store.listWorkSessions(root)) {
+            if (!['completed', 'stopped', 'recovery-required'].includes(session.status))
+                await this.store.updateWorkSession(root, session,
+                    { ...session, status: 'recovery-required', revision: session.revision + 1 });
+        }
         for (const run of await this.store.listRuns(root)) {
             if (run.status === 'pending') {
                 const endedAt = new Date().toISOString();

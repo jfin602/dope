@@ -3,12 +3,13 @@ import { constants } from 'node:fs';
 import { lstat, mkdir, open, readdir, realpath, rename, rm, stat } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { AgentRun, AgentRunEvent, AgentTask, CandidateDelta, id, integer, parseAgentRun, parseAgentRunEvent, parseAgentTask, projectPath } from '../contracts';
+import { AgentRun, AgentRunEvent, AgentTask, CandidateDelta, id, integer, parseAgentRun, parseAgentRunEvent, parseAgentTask, parseCandidateDelta, projectPath } from '../contracts';
 import { canTransitionAgentRun } from '../state';
 import { AgentTaskSequence, assertUnstartedStackSupersession, canTransitionSequence, parseAgentTaskSequence } from '../sequence';
 import { ProposedAction, parseProposedAction } from '../proposed-action';
 import { AgentSteeringRequest, AgentSteeringState, parseAgentSteeringRequest, parseAgentSteeringState } from '../steering';
 import { AgentMapImpact, parseAgentMapImpact } from '../map-impact';
+import { WorkCandidateSnapshot, WorkSession, canTransitionWorkSession, parseWorkSession } from '../work-session';
 import { AGENT_TRANSCRIPT_BYTES_LIMIT, AGENT_TRANSCRIPT_ENTRY_LIMIT, AGENT_TRANSCRIPT_PAGE_LIMIT,
     AGENT_TRANSCRIPT_RECORD_BYTES_LIMIT, AgentTranscriptEntry, AgentTranscriptInput, AgentTranscriptRecord, AgentTranscriptStorage,
     parseAgentTranscriptRecord, prepareAgentTranscriptRecord } from '../transcript';
@@ -40,14 +41,14 @@ function checked<T>(value: unknown, parse: (value: unknown) => T): T {
 export class AgentStore implements AgentTranscriptStorage {
     private readonly transcriptCache = new Map<string, { identity: string; records: AgentTranscriptRecord[];
         entries: AgentTranscriptEntry[]; text: string; recorded: boolean }>();
-    private readonly listeners = new Set<(root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering' | 'map-impact'; id: string }) => void>();
+    private readonly listeners = new Set<(root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering' | 'map-impact' | 'work-session'; id: string }) => void>();
 
-    onChange(listener: (root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering' | 'map-impact'; id: string }) => void): () => void {
+    onChange(listener: (root: string, change: { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering' | 'map-impact' | 'work-session'; id: string }) => void): () => void {
         this.listeners.add(listener);
         return () => this.listeners.delete(listener);
     }
 
-    private notify(root: string, kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering' | 'map-impact', id: string): void {
+    private notify(root: string, kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering' | 'map-impact' | 'work-session', id: string): void {
         for (const listener of this.listeners) try { listener(root, { kind, id }); } catch { /* Committed writes stay committed. */ }
     }
 
@@ -104,7 +105,7 @@ export class AgentStore implements AgentTranscriptStorage {
         return path;
     }
 
-    private async collection(root: string, name: 'tasks' | 'runs' | 'sequences' | 'actions', create: boolean): Promise<string | undefined> {
+    private async collection(root: string, name: 'tasks' | 'runs' | 'sequences' | 'actions' | 'work-sessions', create: boolean): Promise<string | undefined> {
         const base = await this.base(root, create);
         if (!base) return undefined;
         const path = join(base, name);
@@ -118,6 +119,124 @@ export class AgentStore implements AgentTranscriptStorage {
         return await this.directory(path, create) ? path : undefined;
     }
 
+    private async workSessionDir(root: string, sessionId: string, create: boolean): Promise<string | undefined> {
+        const collection = await this.collection(root, 'work-sessions', create);
+        if (!collection) return undefined;
+        const path = join(collection, id(sessionId));
+        return await this.directory(path, create) ? path : undefined;
+    }
+
+    async createWorkSession(root: string, value: WorkSession): Promise<WorkSession> {
+        const session = checked(value, parseWorkSession);
+        const run = await this.readRun(root, session.runId);
+        if (!run || run.taskId !== session.taskId || run.grantId !== session.grantId ||
+            run.grantRevision !== session.grantRevision || run.provenance?.connectionId !== session.connectionId ||
+            run.provenance.modelId !== session.modelId || session.revision !== 0 ||
+            session.status !== 'running' || session.messages.length ||
+            session.segments.length !== 1 || session.segments[0].basisHead !== run.basis?.head)
+            throw new Error('Work session does not match active run');
+        const parent = await this.collection(root, 'work-sessions', true);
+        await this.locked(parent!, async () => {
+            const dir = join(parent!, session.id);
+            if (await this.directory(dir, false)) throw new Error('Work session already exists');
+            await this.directory(dir, true);
+            await this.atomic(join(dir, 'session.json'), session);
+        });
+        this.notify(root, 'work-session', session.id);
+        return session;
+    }
+
+    async readWorkSession(root: string, sessionId: string): Promise<WorkSession | undefined> {
+        const dir = await this.workSessionDir(root, sessionId, false);
+        return dir ? this.json(join(dir, 'session.json'), parseWorkSession) : undefined;
+    }
+
+    async listWorkSessions(root: string): Promise<WorkSession[]> {
+        const dir = await this.collection(root, 'work-sessions', false);
+        if (!dir) return [];
+        const names = (await readdir(dir)).filter(name => !name.startsWith('.')).sort();
+        if (names.length > 1000) throw new Error('Too many Work sessions');
+        return Promise.all(names.map(async name => {
+            const session = await this.readWorkSession(root, id(name));
+            if (!session) throw new Error('Corrupt Work session directory');
+            return session;
+        }));
+    }
+
+    async updateWorkSession(root: string, expected: WorkSession, value: WorkSession): Promise<WorkSession> {
+        const old = checked(expected, parseWorkSession);
+        const next = checked(value, parseWorkSession);
+        const dir = await this.workSessionDir(root, old.id, false);
+        if (!dir || old.id !== next.id) throw new Error('Work session missing or identity changed');
+        await this.locked(dir, async () => {
+            const current = await this.readWorkSession(root, old.id);
+            if (!current || !same(current, old) || next.revision !== current.revision + 1)
+                throw new Error('Stale Work session revision');
+            for (const key of ['version', 'id', 'taskId', 'runId', 'createdAt', 'grantId',
+                'grantRevision', 'connectionId', 'modelId', 'toolSelectionHash', 'sandboxHash',
+                'permissionCeiling'] as const)
+                if (!same(current[key], next[key])) throw new Error('Sealed Work configuration changed');
+            if (next.segments.length < current.segments.length ||
+                current.segments.some((segment, index) => !same(segment, next.segments[index])) ||
+                next.segments.length > current.segments.length + 1)
+                throw new Error('Invalid Work segment transition');
+            if (next.candidateSnapshot && !same(current.candidateSnapshot, next.candidateSnapshot)) {
+                if (next.candidateSnapshot.runId !== next.segments.at(-1)?.runId ||
+                    next.candidateSnapshot.sequence !== (current.candidateSnapshot?.runId ===
+                        next.candidateSnapshot.runId ? current.candidateSnapshot.sequence + 1 : 1))
+                    throw new Error('Invalid Work candidate snapshot order');
+                const snapshot = await this.readWorkCandidateSnapshot(root, next.candidateSnapshot.runId,
+                    next.candidateSnapshot.id);
+                if (!snapshot || !same(snapshot, next.candidateSnapshot))
+                    throw new Error('Work candidate snapshot evidence missing');
+            }
+            if (current.candidateSnapshot && !next.candidateSnapshot)
+                throw new Error('Work candidate snapshot cannot be removed');
+            if (next.segments.length > current.segments.length) {
+                if (!['completed', 'recovery-required'].includes(current.status) || next.status !== 'running')
+                    throw new Error('Work segment requires a closed or reconciled predecessor');
+                const prior = current.segments.at(-1)!;
+                const source = await this.readRun(root, prior.runId);
+                const newSegment = next.segments.at(-1)!;
+                const run = await this.readRun(root, newSegment.runId);
+                const original = await this.readRun(root, current.runId);
+                const allowedTools = new Set(original?.toolSelection?.tools.map(tool => tool.id) ?? []);
+                if (!source?.endedAt || !run || !['pending', 'running'].includes(run.status) ||
+                    run.taskId !== newSegment.taskId || run.grantId !== newSegment.grantId ||
+                    run.grantRevision !== newSegment.grantRevision || run.basis?.head !== newSegment.basisHead ||
+                    run.createdAt !== newSegment.startedAt ||
+                    run.provenance?.connectionId !== current.connectionId ||
+                    run.provenance?.modelId !== current.modelId ||
+                    !original?.toolSelection || !run.toolSelection ||
+                    run.toolSelection.tools.some(tool => !allowedTools.has(tool.id)) ||
+                    (current.status === 'completed' ? !source.reviewDecision : source.status !== 'interrupted') ||
+                    newSegment.startedAt < source.endedAt)
+                    throw new Error('Work segment run evidence mismatch');
+            }
+            if (!canTransitionWorkSession(current.status, next.status) ||
+                next.messages.length < current.messages.length ||
+                next.messages.slice(current.messages.length).some(message =>
+                    message.status !== 'queued' || message.deliveryStartedAt || message.deliveredAt) ||
+                current.messages.some((message, index) => {
+                    const updated = next.messages[index];
+                    return !updated || message.id !== updated.id || message.text !== updated.text ||
+                        message.queuedAt !== updated.queuedAt ||
+                        !(['queued>queued', 'queued>delivering', 'queued>abandoned',
+                            'delivering>delivering', 'delivering>delivered', 'delivering>abandoned',
+                            'delivered>delivered', 'abandoned>abandoned'].includes(`${message.status}>${updated.status}`)) ||
+                        message.deliveryStartedAt && message.deliveryStartedAt !== updated.deliveryStartedAt ||
+                        message.deliveredAt && message.deliveredAt !== updated.deliveredAt ||
+                        message.abandonedAt && message.abandonedAt !== updated.abandonedAt ||
+                        message.status !== 'abandoned' && updated.status === 'abandoned' &&
+                            (current.status !== 'recovery-required' ||
+                            next.segments.length === current.segments.length);
+                })) throw new Error('Invalid Work session transition');
+            await this.atomic(join(dir, 'session.json'), next);
+        });
+        this.notify(root, 'work-session', next.id);
+        return next;
+    }
+
     /** Keep the frozen changed bytes beneath the run; a later review decision can verify them. */
     async saveReviewCandidate(root: string, runId: string, candidateRoot: string, delta: CandidateDelta): Promise<void> {
         return this.saveCandidateBytes(root, runId, candidateRoot, delta, 'review-candidate');
@@ -128,8 +247,54 @@ export class AgentStore implements AgentTranscriptStorage {
         return this.saveCandidateBytes(root, runId, candidateRoot, delta, 'partial-candidate');
     }
 
+    async saveWorkCandidateSnapshot(root: string, runId: string, candidateRoot: string,
+        value: CandidateDelta, fingerprint: string, sequence: number): Promise<WorkCandidateSnapshot> {
+        const delta = checked(value, parseCandidateDelta);
+        if (!Number.isSafeInteger(sequence) || sequence < 1 || sequence > 128 ||
+            !/^[a-f0-9]{64}$/u.test(fingerprint)) throw new Error('Invalid Work candidate snapshot');
+        const dir = await this.runDir(root, runId, false);
+        if (!dir) throw new Error('Work run missing');
+        const parent = join(dir, 'work-snapshots');
+        await this.directory(parent, true);
+        const snapshot: WorkCandidateSnapshot = { id: randomUUID(), runId, sequence,
+            at: new Date().toISOString(), fingerprint,
+            deltaHash: createHash('sha256').update(JSON.stringify(delta)).digest('hex') };
+        await this.saveCandidateBytes(root, runId, candidateRoot, delta, `work-snapshots/${snapshot.id}`);
+        await this.atomic(join(parent, snapshot.id, 'snapshot.json'), { ...snapshot, delta });
+        return snapshot;
+    }
+
+    async readWorkCandidateSnapshot(root: string, runId: string, snapshotId: string): Promise<WorkCandidateSnapshot | undefined> {
+        const dir = await this.runDir(root, runId, false);
+        if (!dir) return undefined;
+        const parent = join(dir, 'work-snapshots');
+        if (!await this.directory(parent, false)) return undefined;
+        const path = join(parent, id(snapshotId));
+        if (!await this.directory(path, false)) return undefined;
+        const raw = await this.json(join(path, 'snapshot.json'), (value: unknown) => value as Record<string, unknown>);
+        if (!raw || raw.id !== snapshotId || raw.runId !== runId || !Number.isSafeInteger(raw.sequence) ||
+            typeof raw.at !== 'string' || typeof raw.fingerprint !== 'string' ||
+            !/^[a-f0-9]{64}$/u.test(raw.fingerprint) || typeof raw.deltaHash !== 'string' ||
+            !/^[a-f0-9]{64}$/u.test(raw.deltaHash)) return undefined;
+        const delta = checked(raw.delta, parseCandidateDelta);
+        if (createHash('sha256').update(JSON.stringify(delta)).digest('hex') !== raw.deltaHash)
+            throw new Error('Work candidate snapshot delta changed');
+        for (const effect of delta.effects) {
+            if (!['create', 'modify'].includes(effect.kind)) continue;
+            const file = await open(join(path, effect.path), constants.O_RDONLY | constants.O_NOFOLLOW);
+            try {
+                const info = await file.stat();
+                if (!info.isFile() || info.size > 32 * 1024 * 1024 ||
+                    createHash('sha256').update(await file.readFile()).digest('hex') !== effect.after)
+                    throw new Error('Work candidate snapshot bytes changed');
+            } finally { await file.close(); }
+        }
+        return { id: snapshotId, runId, sequence: raw.sequence as number, at: raw.at,
+            fingerprint: raw.fingerprint, deltaHash: raw.deltaHash };
+    }
+
     private async saveCandidateBytes(root: string, runId: string, candidateRoot: string,
-        delta: CandidateDelta, name: 'review-candidate' | 'partial-candidate'): Promise<void> {
+        delta: CandidateDelta, name: string): Promise<void> {
         const dir = await this.runDir(root, runId, false);
         if (!dir) throw new Error('Agent run missing');
         const target = join(dir, name);

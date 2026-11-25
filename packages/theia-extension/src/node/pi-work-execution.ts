@@ -112,6 +112,7 @@ export function piWorkObservation(event: PiWorkEvent):
             return { kind: 'provider-event', summary: `Context compacted (${details.join('; ')})` };
         }
         case 'compaction_failed': return { kind: 'warning', summary: `Context compaction failed (${event.reason})` };
+        case 'message_accepted': return { kind: 'status', summary: 'Pi Work message accepted' };
     }
 }
 
@@ -211,6 +212,10 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
         let lastPiSequence = 0;
         let pendingReasoning = '';
         let reasoningGap = false;
+        let finishRequested = false;
+        const pendingMessages: { id: string; text: string }[] = [];
+        let wakeSession: (() => void) | undefined;
+        const wake = () => { wakeSession?.(); wakeSession = undefined; };
         const emitReasoning = (value: string) => {
             const cleaned = omitOutputHandles(safe(value, value.length));
             for (let index = 0; index < cleaned.length; index += 1800) {
@@ -258,7 +263,11 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     request.onEvent({ kind: 'warning', summary });
                     throw new Error(summary);
                 }
-                const answer = await host.runWork(scopedPrompt, async raw => {
+                let turnMessage: { id?: string; text: string } = { text: scopedPrompt };
+                for (;;) {
+                lastPiSequence = 0;
+                let accepted: Promise<void> | undefined;
+                const answer = await host.runWork(turnMessage.text, async raw => {
                   let stage = 'request-check';
                   const toolId = Number.isSafeInteger(raw.id) && raw.id > 0 ? `pi-${raw.id}` : 'pi-invalid';
                   const isMCP = !!mcpObservation?.descriptors.some(tool => tool.name === raw.name);
@@ -565,7 +574,12 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     if (event.sequence !== lastPiSequence + 1 || event.sequence > 512)
                         throw new Error('Pi Work event order changed');
                     lastPiSequence = event.sequence;
-                    if (event.kind === 'reasoning') {
+                    if (event.kind === 'message_accepted') {
+                        if (!turnMessage.id || event.messageId !== turnMessage.id || !request.workSession || accepted)
+                            throw new Error('Unexpected Pi Work delivery receipt');
+                        accepted = request.workSession.onMessageAccepted(turnMessage.id);
+                        void accepted.catch(() => { denied = true; host.dispose(); });
+                    } else if (event.kind === 'reasoning') {
                         pendingReasoning += event.text ?? '';
                         const boundary = Math.max(pendingReasoning.lastIndexOf(' '), pendingReasoning.lastIndexOf('\n'));
                         if (boundary >= 0) {
@@ -585,7 +599,11 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                             request.onEvent(piWorkObservation(event));
                         }
                     }
-                }, request.recoveryContext);
+                }, request.recoveryContext, turnMessage.id);
+                if (turnMessage.id) {
+                    if (!accepted) throw new Error('Pi Work message lacked delivery receipt');
+                    await accepted;
+                }
                 flushReasoning();
                 if (cancelled || denied || answer.modelId !== request.modelId) throw new Error('Pi Work denied or model changed');
                 await this.bridge.assertWorkSelection({ connectionId: request.connectionId,
@@ -613,14 +631,30 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                 if (text.trim()) request.onEvent({ kind: 'agent-message', summary: 'Pi Work response', text,
                     truncated: answer.textTruncated === true || answer.text.length > 12_000,
                     redacted: text !== answer.text });
+                if (!request.workSession) break;
+                await request.workSession.onTurnSettled();
+                while (!finishRequested && !cancelled && !pendingMessages.length)
+                    await new Promise<void>(resolve => { wakeSession = resolve; });
+                if (finishRequested || cancelled) break;
+                const next = pendingMessages.shift()!;
+                turnMessage = { id: next.id, text: `${next.text}\n\nDope Work session continuation. The original model, tool ceiling, sandbox, ExecutionGrant, source basis and candidate review remain authoritative.` };
+                }
             } finally { outputs.clear(); issuedOutputHandles.clear(); abort.abort();
                 await mcpObservation?.close().catch(() => undefined);
                 unregisterMCP?.();
                 this.factory.release(host); this.active.delete(host); }
         })();
         result.catch(() => {});
-        return { result, terminate: () => { cancelled = true; abort.abort(); host.dispose(); },
-            cancel: async () => { cancelled = true; abort.abort(); host.dispose(); await result.catch(() => {}); } };
+        return { result, terminate: () => { cancelled = true; wake(); abort.abort(); host.dispose(); },
+            cancel: async () => { cancelled = true; wake(); abort.abort(); host.dispose(); await result.catch(() => {}); },
+            ...(request.workSession ? {
+                submitWorkMessage: (id: string, text: string) => {
+                    if (finishRequested || cancelled || pendingMessages.some(item => item.id === id))
+                        throw new Error('Work session cannot accept message');
+                    pendingMessages.push({ id, text }); wake();
+                },
+                finishWorkSession: () => { finishRequested = true; wake(); }
+            } : {}) };
     }
 
     dispose(): void {

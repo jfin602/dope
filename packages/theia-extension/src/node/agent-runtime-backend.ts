@@ -235,6 +235,17 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
     readTask(handle: string, taskId: string): Promise<AgentTask | undefined> { return this.store.readTask(this.active(handle), taskId); }
     listTasks(handle: string): Promise<AgentTask[]> { return this.store.listTasks(this.active(handle)); }
     readRun(handle: string, runId: string): Promise<AgentRun | undefined> { return this.store.readRun(this.active(handle), runId); }
+    readWorkSession(handle: string, sessionId: string) {
+        return this.store.readWorkSession(this.active(handle), sessionId);
+    }
+    submitWorkMessage(handle: string, sessionId: string, messageId: string, text: string) {
+        if (!this.execution) throw new Error('Agent execution unavailable');
+        return this.execution.submitWorkMessage(this.active(handle), sessionId, messageId, text);
+    }
+    finishWorkSession(handle: string, sessionId: string) {
+        if (!this.execution) throw new Error('Agent execution unavailable');
+        return this.execution.finishWorkSession(this.active(handle), sessionId);
+    }
     private async workItemResumeAllowed(root: string, task: AgentTask): Promise<boolean> {
         if (task.origin.kind !== 'work-item') return true;
         if (!this.planning) return false;
@@ -697,6 +708,35 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
             throw new Error('Project changed since Work review');
         return this.execution.start(root, folderUri, taskId, grant, hostedProjectDataAuthorized,
             dirty.paths.length ? dirty : undefined);
+    }
+    async startWorkSession(handle: string, folderUri: string, taskId: string, grant: ExecutionGrant,
+        hostedProjectDataAuthorized: boolean, acceptedDirtyFingerprint?: string): Promise<AgentRun> {
+        if (!this.execution) throw new Error('Agent execution unavailable');
+        const root = this.active(handle);
+        if (checkpointProjects.has(root)) throw new Error('Project checkpoint in progress');
+        const dirty = await captureDirtyBasis(root);
+        if (dirty.paths.length && dirtyFingerprint(dirty) !== acceptedDirtyFingerprint)
+            throw new Error('Review changed project files before starting Work');
+        if (!dirty.paths.length && acceptedDirtyFingerprint)
+            throw new Error('Project changed since Work review');
+        return this.execution.startWorkSession(root, folderUri, taskId, grant, hostedProjectDataAuthorized,
+            dirty.paths.length ? dirty : undefined);
+    }
+    async continueWorkSession(handle: string, folderUri: string, sessionId: string, previousRunId: string,
+        newTaskId: string, grant: ExecutionGrant, hostedProjectDataAuthorized: boolean,
+        expectedSourceHead: string, discardUnverifiedCandidate: boolean,
+        acceptedDirtyFingerprint?: string): Promise<AgentRun> {
+        if (!this.execution) throw new Error('Agent execution unavailable');
+        const root = this.active(handle);
+        if (checkpointProjects.has(root)) throw new Error('Project checkpoint in progress');
+        const dirty = await captureDirtyBasis(root);
+        if (dirty.paths.length && dirtyFingerprint(dirty) !== acceptedDirtyFingerprint)
+            throw new Error('Review changed project files before continuing Work');
+        if (!dirty.paths.length && acceptedDirtyFingerprint)
+            throw new Error('Project changed since Work review');
+        return this.execution.continueWorkSession(root, folderUri, sessionId, previousRunId,
+            newTaskId, grant, hostedProjectDataAuthorized, expectedSourceHead,
+            discardUnverifiedCandidate, dirty.paths.length ? dirty : undefined);
     }
     stop(handle: string, runId: string): Promise<AgentRun> {
         if (!this.execution) throw new Error('Agent execution unavailable');

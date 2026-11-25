@@ -31,6 +31,8 @@ let proposalToolCalls = 0;
 let roadmapGenerationId;
 let roadmapStartedAt = 0;
 let workRequestId;
+let workTurnCount = 0;
+const workAcceptedIds = new Set();
 let nextToolId = 0;
 let activeRequest = false;
 let sessionConsumed = false;
@@ -628,6 +630,8 @@ function assertLocalModel(model) {
 
 async function dispose() {
   workMode = false;
+  workTurnCount = 0;
+  workAcceptedIds.clear();
   workProcessAvailable = true;
   chatToolsMode = false;
   roadmapToolsMode = false;
@@ -1108,15 +1112,22 @@ export async function dispatch(message) {
       compactionRecord = undefined;
       compactionRejected = false;
       compactionPending = undefined;
-      if (!session || !workMode || sessionConsumed || typeof message.prompt !== 'string' || !message.prompt.trim() ||
+      if (!session || !workMode || workTurnCount >= 128 || typeof message.prompt !== 'string' || !message.prompt.trim() ||
           Buffer.byteLength(message.prompt, 'utf8') > 32_000) throw new Error('Invalid Pi Work turn');
       if (message.recoveryContext !== undefined &&
           (typeof message.recoveryContext !== 'string' ||
             !message.recoveryContext.startsWith('DOPE CHECKED TASK RECOVERY') ||
             Buffer.byteLength(message.recoveryContext, 'utf8') > 12_000))
         throw new Error('Invalid checked Work recovery context');
-      workRecoveryAnchor = message.recoveryContext;
-      sessionConsumed = true;
+      if (message.messageId !== undefined &&
+          (typeof message.messageId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/.test(message.messageId) ||
+            workAcceptedIds.has(message.messageId)))
+        throw new Error('Invalid or duplicate Pi Work message');
+      if (workTurnCount && message.recoveryContext !== undefined &&
+          message.recoveryContext !== workRecoveryAnchor)
+        throw new Error('Pi Work recovery context changed across turns');
+      if (!workTurnCount) workRecoveryAnchor = message.recoveryContext;
+      workTurnCount++;
       workRequestId = message.id;
       let sequence = 0;
       let pendingReasoning = '';
@@ -1177,7 +1188,12 @@ export async function dispatch(message) {
             ...(event.type === 'tool_execution_end' ? { isError: event.isError === true } : {}) });
         }
       });
-      try { await session.prompt(message.prompt, { expandPromptTemplates: false }); }
+      try { await session.prompt(message.prompt, { expandPromptTemplates: false,
+        ...(message.messageId ? { preflightResult: disposition => {
+          if (disposition !== 'started') throw new Error('Pi Work message was not started');
+          workAcceptedIds.add(message.messageId);
+          emitWork('message_accepted', { messageId: message.messageId });
+        } } : {}) }); }
       finally { flushReasoning(); unsubscribe(); workRequestId = undefined; }
       if (compactionRejected) throw new Error('Pi Work context cannot be compacted safely; retry with a shorter task');
       const assistant = [...session.messages].reverse().find(item => item.role === 'assistant');

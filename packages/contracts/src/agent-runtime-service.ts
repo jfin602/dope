@@ -1,4 +1,4 @@
-import type { AgentModelPolicy, AgentMapImpact, AgentRun, AgentRunEvent, AgentTask, AgentTaskSequence, AgentTranscriptEntry, ProposedAction,
+import type { AgentModelPolicy, AgentMapImpact, AgentRun, AgentRunEvent, AgentTask, AgentTaskSequence, AgentTranscriptEntry, ProposedAction, WorkSession,
     AgentSteeringRequest, AgentSteeringState,
     CompletionPolicy, ExecutionControls, ExecutionGrant, StackMode, SequenceStatus } from '@dope/agent-core';
 import type { WorkMCPObservationScope } from '@dope/agent-core/lib/authority';
@@ -6,7 +6,7 @@ import type { WorkMCPObservationScope } from '@dope/agent-core/lib/authority';
 export const agentRuntimeServicePath = '/services/dope/agent-runtime';
 export const AgentRuntimeService = Symbol('AgentRuntimeService');
 
-export interface AgentStoreChange { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering' | 'map-impact' | 'mcp-approval'; id: string }
+export interface AgentStoreChange { kind: 'task' | 'run' | 'event' | 'sequence' | 'transcript' | 'action' | 'steering' | 'map-impact' | 'work-session' | 'mcp-approval'; id: string }
 export interface PendingWorkMCPObservation {
     id: string; runId: string; taskId: string; projectKey: string;
     serverId: string; toolName: string; expiresAt: string;
@@ -45,6 +45,9 @@ export interface AgentRuntimeService {
     readTask(projectHandle: string, taskId: string): Promise<AgentTask | undefined>;
     listTasks(projectHandle: string): Promise<AgentTask[]>;
     readRun(projectHandle: string, runId: string): Promise<AgentRun | undefined>;
+    readWorkSession(projectHandle: string, sessionId: string): Promise<WorkSession | undefined>;
+    submitWorkMessage(projectHandle: string, sessionId: string, messageId: string, text: string): Promise<WorkSession>;
+    finishWorkSession(projectHandle: string, sessionId: string): Promise<WorkSession>;
     previewCandidateResume(projectHandle: string, runId: string): Promise<CandidateResumePreview>;
     resumeCandidate(projectHandle: string, folderUri: string, runId: string,
         expectedFingerprint: string, newTask: AgentTask, grant: ExecutionGrant,
@@ -84,5 +87,11 @@ export interface AgentRuntimeService {
     }>;
     start(projectHandle: string, folderUri: string, taskId: string, grant: ExecutionGrant,
         hostedProjectDataAuthorized: boolean, acceptedDirtyFingerprint?: string): Promise<AgentRun>;
+    startWorkSession(projectHandle: string, folderUri: string, taskId: string, grant: ExecutionGrant,
+        hostedProjectDataAuthorized: boolean, acceptedDirtyFingerprint?: string): Promise<AgentRun>;
+    continueWorkSession(projectHandle: string, folderUri: string, sessionId: string,
+        previousRunId: string, newTaskId: string, grant: ExecutionGrant,
+        hostedProjectDataAuthorized: boolean, expectedSourceHead: string,
+        discardUnverifiedCandidate: boolean, acceptedDirtyFingerprint?: string): Promise<AgentRun>;
     stop(projectHandle: string, runId: string): Promise<AgentRun>;
 }
