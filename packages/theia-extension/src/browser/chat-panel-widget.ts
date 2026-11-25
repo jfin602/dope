@@ -1897,11 +1897,29 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             return list;
         };
         nav.append(renderTree(tree));
-        if (!rows.length) {
+        const removedRows = rows.filter(row => this.workList.isRemoved(workRowKey(row)));
+        if (removedRows.length) {
+            const removed = document.createElement('details');
+            removed.className = 'dope-work-removed-section';
+            const summary = document.createElement('summary');
+            summary.textContent = `Recently deleted (${removedRows.length})`;
+            const list = document.createElement('ul'); list.className = 'dope-chat-tree';
+            for (const row of removedRows) {
+                const item = document.createElement('li');
+                const title = this.workList.title(workRowKey(row)) ?? row.title;
+                const restore = this.button(`Restore ${title}`, () => {
+                    this.workList.restoreItem(workRowKey(row)); this.render();
+                });
+                restore.className = 'dope-work-restore';
+                item.append(restore); list.append(item);
+            }
+            removed.append(summary, list); nav.append(removed);
+        }
+        if (removedRows.length === rows.length) {
             const empty = document.createElement('p');
             empty.className = 'dope-work-list-empty';
             empty.setAttribute('role', 'status');
-            empty.textContent = 'No Work yet.';
+            empty.textContent = rows.length ? 'No Work in the list.' : 'No Work yet.';
             nav.append(empty);
         }
         const rootDrop = document.createElement('div'); rootDrop.className = 'dope-chat-root-drop';
@@ -2122,6 +2140,18 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 more.dataset.dopeTooltip = 'Work actions';
                 menu.append(menuEntry('Copy title', () => copyWork(row.fullTitle ?? row.title, 'Title')),
                     menuEntry('Copy ID', () => copyWork(row.selection.id, 'ID')));
+                const remove = menuEntry('Delete Work', () => {
+                    if (row.running || !window.confirm(`Move “${displayTitle}” to Recently deleted? Saved Work evidence will remain available, and you can restore this item.`)) return;
+                    this.workList.removeItem(rowKey);
+                    this.render();
+                });
+                remove.className = 'dope-chat-folder-delete';
+                remove.disabled = row.running;
+                if (row.running) remove.title = 'Stop this Work before deleting it from the list';
+                const trash = document.createElement('span'); trash.className = codicon('trash');
+                trash.setAttribute('aria-hidden', 'true'); remove.prepend(trash);
+                const removeDivider = document.createElement('div'); removeDivider.className = 'dope-chat-menu-divider';
+                menu.append(removeDivider, remove);
                 container.append(button, state, time, more, menu);
                 return container;
             };

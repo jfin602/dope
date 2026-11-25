@@ -42,3 +42,25 @@ test('Work folders and sorting stay project scoped, survive reload, and never re
     assert.equal(restored.title('run:a'), undefined);
     assert.equal(restored.tree([row('a')]).rows.length, 1);
 });
+
+test('deleted Work rows stay recoverable after reload without changing saved execution records', () => {
+    const values = new Map<string, string>();
+    const storage = { getItem: (key: string) => values.get(key) ?? null,
+        setItem: (key: string, value: string) => { values.set(key, value); } };
+    const list = new WorkListOrganization(storage);
+    const records = [row('a'), row('b')];
+    list.attach('/project-a');
+    list.tree(records);
+    list.removeItem('run:a');
+    assert.deepEqual(list.tree(records).rows.map(item => item.selection.id), ['b']);
+    assert.deepEqual(records.map(item => item.selection.id), ['a', 'b']);
+    const reloaded = new WorkListOrganization(storage);
+    reloaded.attach('/project-a');
+    assert.equal(reloaded.isRemoved('run:a'), true);
+    assert.deepEqual(reloaded.tree(records).rows.map(item => item.selection.id), ['b']);
+    reloaded.restoreItem('run:a');
+    assert.deepEqual(reloaded.tree(records).rows.map(item => item.selection.id), ['a', 'b']);
+    reloaded.attach('/project-b');
+    assert.equal(reloaded.isRemoved('run:a'), false);
+    assert.deepEqual(reloaded.tree(records).rows.map(item => item.selection.id), ['a', 'b']);
+});

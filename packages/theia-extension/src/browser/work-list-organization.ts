@@ -8,6 +8,7 @@ interface SavedWorkList {
     folders: WorkFolder[];
     items: Record<string, WorkPlacement>;
     order: Record<string, string[]>;
+    removed?: string[];
 }
 export interface WorkTree { path: string; folders: Array<WorkTree & { color: string }>; rows: WorkRow[] }
 
@@ -18,13 +19,13 @@ const validColor = (color: unknown): color is string => typeof color === 'string
 
 /** Presentation-only Work organization. Execution records are never written here. */
 export class WorkListOrganization {
-    private state: SavedWorkList = { version: 1, folders: [], items: {}, order: {} };
+    private state: SavedWorkList = { version: 1, folders: [], items: {}, order: {}, removed: [] };
     private project = '';
     constructor(private readonly storage: Pick<Storage, 'getItem' | 'setItem'>) {}
     attach(project: string): void {
         if (project === this.project) return;
         this.project = project;
-        this.state = { version: 1, folders: [], items: {}, order: {} };
+        this.state = { version: 1, folders: [], items: {}, order: {}, removed: [] };
         if (!project) return;
         try {
             const parsed = JSON.parse(this.storage.getItem(this.storageKey()) ?? 'null') as Partial<SavedWorkList> | null;
@@ -43,6 +44,9 @@ export class WorkListOrganization {
             }
             for (const [path, order] of Object.entries(parsed.order))
                 if (Array.isArray(order)) this.state.order[path] = order.filter((token): token is string => typeof token === 'string');
+            if (Array.isArray(parsed.removed))
+                this.state.removed = [...new Set(parsed.removed.filter((key): key is string =>
+                    typeof key === 'string' && /^(task|run|sequence):[a-zA-Z0-9-]+$/.test(key)))];
         } catch { /* An unavailable or old browser store starts with an empty layout. */ }
     }
     private storageKey(): string { return `dope.work.list.v1:${this.project}`; }
@@ -53,6 +57,17 @@ export class WorkListOrganization {
     folders(): readonly WorkFolder[] { return this.state.folders; }
     placement(key: string): WorkPlacement { return this.state.items[key] ?? { folderPath: '' }; }
     title(key: string): string | undefined { return this.placement(key).title; }
+    isRemoved(key: string): boolean { return this.state.removed?.includes(key) ?? false; }
+    removeItem(key: string): void {
+        if (this.isRemoved(key)) return;
+        this.state.removed ??= [];
+        this.state.removed.push(key);
+        this.save();
+    }
+    restoreItem(key: string): void {
+        this.state.removed = this.state.removed?.filter(value => value !== key) ?? [];
+        this.save();
+    }
     setItemTitle(key: string, title: string): boolean {
         const trimmed = title.trim();
         if (!trimmed || trimmed.length > 200) return false;
@@ -117,7 +132,8 @@ export class WorkListOrganization {
     tree(rows: WorkRow[]): WorkTree {
         const build = (path: string): WorkTree => {
             const folders = this.state.folders.filter(folder => (folder.path.includes('/') ? folder.path.slice(0, folder.path.lastIndexOf('/')) : '') === path);
-            const work = rows.filter(row => this.placement(workRowKey(row)).folderPath === path);
+            const work = rows.filter(row => !this.isRemoved(workRowKey(row)) &&
+                this.placement(workRowKey(row)).folderPath === path);
             const order = this.state.order[path] ??= [];
             for (const folder of folders) if (!order.includes(folderToken(folder.path))) order.push(folderToken(folder.path));
             for (const row of work) if (!order.includes(itemToken(workRowKey(row)))) order.push(itemToken(workRowKey(row)));
