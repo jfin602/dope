@@ -7,11 +7,12 @@ import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import { captureGitBasis, captureGitFinal } from '@dope/agent-core/lib/node/git-evidence';
 import { ExecutionWorkspace, PromotionFailure } from '@dope/agent-core/lib/node/execution-workspace';
 import { DirectWorkJournal } from '@dope/agent-core/lib/node/direct-work-journal';
+import type { DirectChange } from '@dope/agent-core/lib/node/direct-work-journal';
 import { preflightLocalToolSandbox } from '@dope/agent-core/lib/node/local-tool-sandbox';
 import type { LocalSandboxPreflight } from '@dope/agent-core/lib/node/local-tool-sandbox';
 import type { LocalProcessCommand } from '@dope/agent-core/lib/node/local-tool-broker';
 import { CandidateValidationRunner } from '@dope/agent-core/lib/node/candidate-validation';
-import { AcceptedDirtyBasis, assertDirtyBasis } from '@dope/agent-core/lib/node/dirty-basis';
+import { AcceptedDirtyBasis, assertDirtyBasis, captureDirtyBasis } from '@dope/agent-core/lib/node/dirty-basis';
 import type { AIInventoryController } from './ai-registry-backend';
 import type { AIRoleRoutingService } from './ai-role-routing';
 import { futureFeatureRoleRequest } from '@dope/ai';
@@ -22,6 +23,7 @@ import { projectWorkTaskContract } from './work-task-contract';
 import { verifyRecoveryReads, workRecoveryContext } from './work-recovery';
 import type { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import type { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
+import type { DirectWorkReview } from '@dope/contracts/lib/agent-runtime-service';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
 
@@ -93,11 +95,24 @@ function phaseStackReviewScope(instructions: string): { delegablePaths: string[]
         throw new Error('Duplicate phase-stack delegation scope');
     return { delegablePaths, humanReservedPaths };
 }
+function directApplied(changes: readonly DirectChange[]): NonNullable<AgentRun['directApplied']> {
+    const first = new Map<string, DirectChange>();
+    const latest = new Map<string, DirectChange>();
+    for (const change of changes) {
+        if (change.result === 'not-applied') continue;
+        if (!first.has(change.path)) first.set(change.path, change);
+        latest.set(change.path, change);
+    }
+    return [...latest].map(([path, change]) => ({ path, operation: first.get(path)!.operation,
+        before: first.get(path)!.before, after: change.after,
+        result: change.result === 'completed' ? 'applied' as const : 'uncertain' as const }));
+}
 
 /** Owns mutation lifecycle and restart reconciliation across RPC connections. */
 export class AgentExecutionRuntime {
     private readonly active = new Map<string, Active>();
     private readonly reviewDecisions = new Set<string>();
+    private readonly directReverts = new Set<string>();
     private readonly editorGuards = new Map<string, Set<(path: string) => Promise<boolean>>>();
     private disposed = false;
 
@@ -132,6 +147,80 @@ export class AgentExecutionRuntime {
                 const states = await Promise.all([...guards].map(guard => guard(path)));
                 return states.some(Boolean);
             } };
+    }
+    private async unsavedDirect(root: string, path: string): Promise<boolean> {
+        const guards = this.editorGuards.get(root);
+        if (!guards?.size) throw new Error('Direct Work editor guard disconnected');
+        return (await Promise.all([...guards].map(guard => guard(path)))).some(Boolean);
+    }
+    async reviewDirectWork(root: string, runId: string): Promise<DirectWorkReview> {
+        const run = await this.store.readRun(root, runId);
+        if (!run || run.executionMode !== 'direct' || !run.directJournal ||
+            !['completed', 'cancelled', 'failed', 'interrupted'].includes(run.status))
+            throw new Error('Direct Work review is available after this run stops');
+        const review = await DirectWorkJournal.review(root, join(root, run.directJournal.path));
+        const completed = review.changes.filter(change => change.result === 'completed');
+        const paths = [...new Set(completed.map(change => change.path))];
+        const render = (bytes: string | null): string => {
+            if (bytes === null) return '';
+            const buffer = Buffer.from(bytes, 'base64');
+            if (buffer.length > 8000 || buffer.includes(0)) return '[Binary or large file: inspect in editor]';
+            try { return new TextDecoder('utf-8', { fatal: true }).decode(buffer); }
+            catch { return '[Non-text file: inspect in editor]'; }
+        };
+        const files = paths.map(path => {
+            const edits = completed.filter(change => change.path === path);
+            const first = edits[0], last = edits.at(-1)!;
+            const before = render(first.beforeBytes), after = render(last.afterBytes);
+            const diff = `--- a/${path}\n+++ b/${path}\n` +
+                `${before.split('\n').filter(Boolean).map(line => `-${line}`).join('\n')}\n` +
+                `${after.split('\n').filter(Boolean).map(line => `+${line}`).join('\n')}`;
+            return { path, operation: first.operation, before: first.before, after: last.after,
+                diff: diff.slice(0, 20_000), conflict: review.conflicts.includes(path),
+                reverted: review.reverts.some(item => item.path === path && item.result === 'reverted') };
+        });
+        const uncertain = review.changes.some(change => change.result === 'uncertain' || change.result === 'prepared') ||
+            review.reverts.some(item => item.result === 'uncertain' || item.result === 'prepared');
+        const basis = await captureGitBasis(root).catch(() => undefined);
+        const dirty = await captureDirtyBasis(root).catch(() => undefined);
+        const applied = new Map<string, string>(review.inherited.map(item => [item.path, item.after]));
+        for (const change of completed) applied.set(change.path, change.after);
+        const exactSource = !!dirty && dirty.paths.length === applied.size && dirty.paths.every(item =>
+            applied.get(item.path) === item.hash);
+        const validationCurrent = !uncertain && !review.conflicts.length &&
+            !review.reverts.some(item => item.result === 'reverted') && basis?.head === run.basis?.head &&
+            exactSource &&
+            !!run.validationResults.length && run.validationResults.every(result => result.owner === 'dope' &&
+                result.status === 'passed' && result.candidateFingerprint === run.candidateFingerprint);
+        return { files, uncertain, validationCurrent };
+    }
+    async revertDirectWork(root: string, runId: string, paths: string[]): Promise<DirectWorkReview> {
+        if (this.directReverts.has(runId)) throw new Error('Direct Work revert already in progress');
+        this.directReverts.add(runId);
+        try {
+        const run = await this.store.readRun(root, runId);
+        if (!run || run.executionMode !== 'direct' || !run.directJournal ||
+            !['completed', 'cancelled', 'failed', 'interrupted'].includes(run.status) || this.active.has(root))
+            throw new Error('Stop active Work before reverting recorded Direct changes');
+        const results = await DirectWorkJournal.revert(root, join(root, run.directJournal.path), paths,
+            path => this.unsavedDirect(root, path));
+        const latest = await this.store.readRun(root, runId);
+        if (!latest) throw new Error('Direct Work run disappeared after revert');
+        await this.store.updateRun(root, latest, { ...latest,
+            directReverts: [...(latest.directReverts ?? []), ...results.map(result => ({ ...result,
+                at: new Date().toISOString() }))] });
+        return this.reviewDirectWork(root, runId);
+        } finally { this.directReverts.delete(runId); }
+    }
+    private async assertDirectSnapshot(active: Active, delta: NonNullable<AgentRun['candidateDelta']>): Promise<void> {
+        const journal = active.directJournal!;
+        await journal.assertActive();
+        const latest = new Map(journal.changes.filter(change => change.result === 'completed')
+            .map(change => [change.path, change]));
+        if (delta.effects.some(effect => !['create', 'modify'].includes(effect.kind) ||
+            latest.get(effect.path)?.after !== effect.after) ||
+            [...latest.keys()].some(path => !delta.effects.some(effect => effect.path === path)))
+            throw new Error('Direct Work canonical and frozen validation snapshot differ');
     }
 
     localWorkspace(request: AgentExecutionRequest): ExecutionWorkspace {
@@ -710,6 +799,8 @@ export class AgentExecutionRuntime {
             let sourceRun: AgentRun | undefined;
             let priorWorkSession: WorkSession | undefined;
             let followUpSourceTask: AgentTask | undefined;
+            let inheritedDirect: { path: string; after: string;
+                afterIdentity: { device: number; inode: number; mtimeNs: string; ctimeNs: string } }[] = [];
             let resumeEvidence: Awaited<ReturnType<AgentExecutionRuntime['previewCandidateResume']>> | undefined;
             let task = await this.store.readTask(root, taskId);
             if (followUp) {
@@ -730,15 +821,37 @@ export class AgentExecutionRuntime {
                     JSON.stringify(task.authority) !== JSON.stringify(originalTask.authority) ||
                     JSON.stringify(task.completion) !== JSON.stringify(originalTask.completion) ||
                     JSON.stringify(task.reviewPolicy) !== JSON.stringify(originalTask.reviewPolicy) ||
-                    (task.executionMode ?? 'isolated') !== (originalTask.executionMode ?? 'isolated') ||
                     (sourceRun.candidateReview && !sourceRun.reviewDecision) ||
-                    (sourceRun.status !== 'completed' && !!sourceRun.appliedFiles?.length) ||
-                    (sourceRun.status === 'interrupted' && !followUp.discardUnverifiedCandidate) ||
-                    (sourceRun.status === 'failed' && !followUp.discardUnverifiedCandidate &&
+                    (sourceRun.executionMode !== 'direct' && sourceRun.status === 'interrupted' && !followUp.discardUnverifiedCandidate) ||
+                    (sourceRun.executionMode !== 'direct' && sourceRun.status === 'failed' && !followUp.discardUnverifiedCandidate &&
                         !verifiedNoEffectWorkSegment(sourceRun, priorWorkSession)) ||
-                    (sourceRun.status === 'cancelled' && !followUp.discardUnverifiedCandidate &&
+                    (sourceRun.executionMode !== 'direct' && sourceRun.status === 'cancelled' && !followUp.discardUnverifiedCandidate &&
                         !!sourceRun.candidateDelta?.effects.length))
                     throw new Error('Work continuation requires reviewed predecessor or explicit recovery decision');
+                const inherited = new Map<string, typeof inheritedDirect[number]>();
+                for (const segment of priorWorkSession.segments) {
+                    const priorRun = await this.store.readRun(root, segment.runId);
+                    if (!priorRun) throw new Error('Prior Work segment missing');
+                    if (priorRun.executionMode !== 'direct') continue;
+                    if (!priorRun.directJournal) throw new Error('Direct Work journal missing');
+                    const review = await DirectWorkJournal.review(root, join(root, priorRun.directJournal.path));
+                    if (review.changes.some(change => ['prepared', 'uncertain'].includes(change.result)))
+                        throw new Error('Uncertain Direct Work effects require source reconciliation');
+                    for (const change of review.changes.filter(item => item.result === 'completed')) {
+                        if (review.reverts.some(item => item.path === change.path && item.result === 'reverted')) continue;
+                        if (!change.afterIdentity) throw new Error('Prior Direct Work file identity unavailable');
+                        inherited.set(change.path, { path: change.path, after: change.after,
+                            afterIdentity: change.afterIdentity });
+                    }
+                }
+                inheritedDirect = [...inherited.values()];
+                const dirty = await captureDirtyBasis(root);
+                if (dirty.paths.some(item => !inherited.has(item.path)))
+                    throw new Error('Owner source changes require reconciliation before another Work segment');
+                for (const item of dirty.paths) {
+                    const expected = inherited.get(item.path)!;
+                    if (item.hash !== expected.after) throw new Error('Prior Direct Work source changed');
+                }
             }
             if (resume) {
                 const preview = await this.previewCandidateResume(root, resume.runId);
@@ -757,6 +870,13 @@ export class AgentExecutionRuntime {
             if (!task) throw new Error('Persisted AgentTask required');
             active.task = task;
             const executionMode = task.executionMode ?? 'isolated';
+            if (executionMode === 'direct') for (const previous of existing) {
+                if (previous.executionMode !== 'direct' || !previous.directJournal) continue;
+                const review = await DirectWorkJournal.review(root, join(root, previous.directJournal.path));
+                if (review.changes.some(change => ['prepared', 'uncertain'].includes(change.result)) ||
+                    review.reverts.some(item => ['prepared', 'uncertain'].includes(item.result)))
+                    throw new Error('Prior Direct Work effects require journal reconciliation before a new Direct run');
+            }
             if (executionMode === 'direct' && (sequence || resume || !this.editorGuards.get(root)?.size))
                 throw new Error('Direct Work requires an editor conflict guard and a fresh local run');
             if (!resume && task.origin.kind === 'work-item' && existing.some(run => run.taskId === task.id))
@@ -837,10 +957,11 @@ export class AgentExecutionRuntime {
             } else active.workspace = await ExecutionWorkspace.create(root, acceptedDirty);
             const runId = randomUUID();
             if (executionMode === 'direct') {
-                if (acceptedDirty) throw new Error('Direct Work requires a clean source basis');
+                if (acceptedDirty && !followUp) throw new Error('Direct Work requires a clean source basis');
                 active.directJournal = await DirectWorkJournal.create(root, basis.head, task.id, runId, grant,
                     task.origin.kind === 'work-item' ? { authorizedPaths: task.origin.scope.delegablePaths,
-                        reservedPaths: task.origin.scope.humanReservedPaths } : undefined);
+                        reservedPaths: task.origin.scope.humanReservedPaths } : undefined,
+                    inheritedDirect);
                 active.workspace.bindDirectBasis(active.directJournal);
             }
             const checkedRecovery = workRecoveryContext(taskContract, resume ? sourceRun : undefined);
@@ -855,7 +976,7 @@ export class AgentExecutionRuntime {
                 status: 'pending', grantId: grant.id, grantRevision: grant.revision,
                 executionMode,
                 ...(active.directJournal ? { directJournal: { id: active.directJournal.id,
-                    path: `.dope/agent/direct-journals/${active.directJournal.id}.json` } } : {}),
+                    path: `.dope/agent/direct-journals/${active.directJournal.id}.json` }, directApplied: [] } : {}),
                 ...(grant.toolSelection ? { toolSelection: grant.toolSelection } : {}),
                 ...(acceptedDirty ? { acceptedDirty } : {}),
                 requestedPolicy: task.modelPolicy, projectRoot: '.', ...(task.projectId ? { projectId: task.projectId } : {}),
@@ -915,8 +1036,8 @@ export class AgentExecutionRuntime {
             const continuation = followUp && sourceRun && active.run ?
                 `\n\nThis is a new immutable AgentRun segment ${active.run.id} in Work session ${followUp.sessionId}. ` +
                 `Prior run ${sourceRun.id} ended ${sourceRun.status}. Its tool calls and messages were not replayed. ` +
-                `The current source HEAD ${basis.head} and fresh isolated candidate are authoritative. ` +
-                `Inspect the source before editing; do not assume any unverified prior candidate effects survived.` +
+                `The current source HEAD ${basis.head} and this segment's ${executionMode} mode are authoritative. ` +
+                `Inspect the source before editing; previously applied Direct changes remain in the project only when verified.` +
                 savedConversation :
                 resume && sourceRun && active.run ?
                 `\n\nEarlier Work run ${sourceRun.id} stopped (${sourceRun.status}). ` +
@@ -1157,8 +1278,11 @@ export class AgentExecutionRuntime {
         if (active.workspace && active.run) {
             try {
                 const { delta, fingerprint } = await active.workspace.freezeCandidate();
+                if (active.directJournal) await this.assertDirectSnapshot(active, delta);
                 await this.serial(active, () => this.update(active, run => ({ ...run,
-                    validationBasis: 'execution-workspace', candidateDelta: delta, candidateFingerprint: fingerprint })));
+                    validationBasis: active.directJournal ? 'direct-applied-snapshot' : 'execution-workspace',
+                    candidateDelta: delta, candidateFingerprint: fingerprint,
+                    ...(active.directJournal ? { directApplied: directApplied(active.directJournal.changes) } : {}) })));
                 if (active.directJournal) {
                     const applied = [...new Set(active.directJournal.changes
                         .filter(change => change.result === 'completed').map(change => change.path))].sort();
@@ -1238,13 +1362,7 @@ export class AgentExecutionRuntime {
                         return;
                     }
                     if (active.directJournal) {
-                        await active.directJournal.assertActive();
-                        const completed = active.directJournal.changes.filter(change => change.result === 'completed');
-                        const latest = new Map(completed.map(change => [change.path, change]));
-                        if (delta.effects.some(effect => !['create', 'modify'].includes(effect.kind) ||
-                            latest.get(effect.path)?.after !== effect.after) ||
-                            [...latest.keys()].some(path => !delta.effects.some(effect => effect.path === path)))
-                            throw new Error('Direct Work canonical and isolated view differ');
+                        await this.assertDirectSnapshot(active, delta);
                         await this.serial(active, () => this.update(active, run => ({ ...run,
                             authorityDecision: { allowed: true, blocked: [] },
                             appliedFiles: delta.effects.map(effect => effect.path) })));
@@ -1328,7 +1446,9 @@ export class AgentExecutionRuntime {
                 }
                 active.transcriptCommands.clear();
                 await this.transcript(active, { kind: 'marker', at: '', code: 'run-ended' });
+                const applied = active.directJournal ? directApplied(active.directJournal.changes) : undefined;
                 await this.update(active, run => ({ ...run, status: finalStatus, endedAt: new Date().toISOString(),
+                    ...(applied ? { directApplied: applied } : {}),
                     ...(evidence ? { finalGit: evidence.final, changedFiles: evidence.changedFiles,
                         changeSummary: evidence.changeSummary } : {}),
                     ...(finalCode ? { outcome: { code: finalCode, summary: finalSummary } } : {}) }));
@@ -1385,15 +1505,18 @@ export class AgentExecutionRuntime {
         }
         for (const run of await this.store.listRuns(root)) {
             let directUncertain = false;
+            let recoveredDirect: AgentRun['directApplied'];
             if (run.executionMode === 'direct' && run.directJournal) {
                 try {
                     const changes = await DirectWorkJournal.reconcile(root, join(root, run.directJournal.path));
                     directUncertain = changes.some(change => change.result === 'uncertain');
+                    recoveredDirect = directApplied(changes);
                 } catch { directUncertain = true; }
             }
             if (run.status === 'pending') {
                 const endedAt = new Date().toISOString();
                 await this.store.updateRun(root, run, { ...run, status: 'interrupted', endedAt,
+                    ...(recoveredDirect ? { directApplied: recoveredDirect } : {}),
                     outcome: { code: 'interrupted', summary: 'Agent start abandoned before execution' } });
                 await this.store.appendEvent(root, { version: AGENT_SCHEMA_VERSION, runId: run.id,
                     sequence: 1, at: endedAt, kind: 'status', status: 'interrupted',
@@ -1406,6 +1529,7 @@ export class AgentExecutionRuntime {
             const evidence = run.basis ? await captureGitFinal(root, run.basis).catch(() => undefined) : undefined;
             const reconciledAt = new Date().toISOString();
             const next = await this.store.updateRun(root, run, { ...run, status: 'interrupted',
+                ...(recoveredDirect ? { directApplied: recoveredDirect } : {}),
                 endedAt: reconciledAt < run.startedAt! ? run.startedAt : reconciledAt,
                 ...(evidence ? { finalGit: evidence.final, changedFiles: evidence.changedFiles,
                     changeSummary: evidence.changeSummary } : {}),

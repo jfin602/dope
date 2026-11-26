@@ -1642,7 +1642,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             task.id !== run.taskId || !this.panel.workspace || draft.project !== this.panel.workspace) return;
         draft.edit(task.objective, task.origin.kind === 'direct' ? task.instructions : '');
         draft.setValidation(task.completion.validation[0]?.command ?? '');
-        draft.setExecutionMode(task.executionMode ?? 'isolated');
+        draft.setExecutionMode('direct');
         draft.forkedFromRunId = run.id;
         draft.acceptGrant(false); draft.authorizeHostedProjectData(false);
         if (run.provenance) draft.setPolicy({ kind: 'exact', connectionId: run.provenance.connectionId,
@@ -1694,16 +1694,28 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 { kind: 'follow-coding-agent' }); };
         const validation = document.createElement('input'); validation.type = 'text'; validation.maxLength = 160;
         const mode = document.createElement('select'); mode.setAttribute('aria-label', 'Work execution mode');
-        mode.append(new Option('Isolated — review changes before applying', 'isolated'),
-            new Option('Direct — edit project files during the run', 'direct'));
+        mode.append(new Option('Direct Work — Default', 'direct'),
+            new Option('Isolated Work', 'isolated'));
         mode.value = controller.executionMode;
+        const modeLabel = document.createElement('label'); modeLabel.className = 'dope-work-validation-label';
+        modeLabel.append('Execution mode', mode);
+        const modeDetail = document.createElement('p'); modeDetail.className = 'dope-work-detail';
+        modeDetail.textContent = controller.executionMode === 'direct' ?
+            'The agent edits your open project as it works. Changes appear in the editor immediately. You can review changes and safely revert agent-owned edits.' :
+            'The agent edits a separate copy. Your project stays unchanged until you review and accept the candidate.';
+        const directUnavailable = document.createElement('p'); directUnavailable.className = 'dope-work-prepare-warning';
+        directUnavailable.textContent = controller.resolved?.locality === 'hosted' && controller.executionMode === 'direct' ?
+            'Direct Work is unavailable for this hosted model. Select Isolated Work to continue.' : '';
         mode.onchange = () => { controller.setExecutionMode(mode.value as 'isolated' | 'direct');
+            modeDetail.textContent = controller.executionMode === 'direct' ?
+                'The agent edits your open project as it works. Changes appear in the editor immediately. You can review changes and safely revert agent-owned edits.' :
+                'The agent edits a separate copy. Your project stays unchanged until you review and accept the candidate.';
+            directUnavailable.textContent = controller.resolved?.locality === 'hosted' && controller.executionMode === 'direct' ?
+                'Direct Work is unavailable for this hosted model. Select Isolated Work to continue.' : '';
             validationLabel.firstChild!.textContent = controller.executionMode === 'direct' ?
                 'Validation command (required)' : 'Validation command (optional)';
             validation.setAttribute('aria-label', validationLabel.firstChild!.textContent ?? 'Validation command');
             syncStart(); };
-        const modeLabel = document.createElement('label'); modeLabel.className = 'dope-work-validation-label';
-        modeLabel.append('Execution mode', mode);
         validation.value = controller.validationCommand;
         validation.setAttribute('aria-label', controller.executionMode === 'direct' ?
             'Validation command (required)' : 'Validation command (optional)');
@@ -1787,7 +1799,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             dirtyPanel.append(title, detail, paths, commit, actions);
         }
         form.onsubmit = event => { event.preventDefault(); void submit(); };
-        settings.append(...(unavailable ? [readiness] : []), modeLabel, toolSection, validationLabel,
+        settings.append(...(unavailable ? [readiness] : []), modeLabel, modeDetail, directUnavailable, toolSection, validationLabel,
             ...(controller.mcpOffer ? [mcpLabel] : []),
             ...(controller.resolved?.locality === 'hosted' ? [hostedMode, hostedLabel] : []),
             ...(dirty && !dirty.clean ? [dirtyPanel] : []), ...(unavailable ? [] : [status]));
@@ -2574,6 +2586,18 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         validation.setAttribute('aria-label', 'Required validation command');
                         validation.oninput = () => { phase.validationCommand = validation.value; syncStart(); };
                         decision.append(validation);
+                        const modeLabel = document.createElement('label'); modeLabel.className = 'dope-work-validation-label';
+                        const mode = document.createElement('select'); mode.setAttribute('aria-label', 'Prompt Stack execution mode');
+                        mode.append(new Option('Choose Execution Mode', ''),
+                            new Option('Direct Work — Unavailable for checkpointed Prompt Stacks', 'direct'),
+                            new Option('Isolated Work', 'isolated'));
+                        mode.options[1].disabled = true;
+                        mode.value = phase.isolatedModeConfirmed ? 'isolated' : '';
+                        mode.onchange = () => { phase.isolatedModeConfirmed = mode.value === 'isolated'; syncStart(); };
+                        modeLabel.append('Execution Mode', mode);
+                        const modeReason = document.createElement('p'); modeReason.className = 'dope-work-detail';
+                        modeReason.textContent = 'Direct Work is unavailable here because this Prompt Stack requires held candidate review and a separate Git checkpoint. Select Isolated Work explicitly.';
+                        decision.append(modeLabel, modeReason);
                         decision.append(this.renderWorkTools(phase.project ?? '', `sequence:${sequence.id}`,
                             phase.resolvedTarget?.locality, hasApprovedWorkCommand(phase.validationCommand)));
                         if (phase.resolvedTarget?.locality === 'hosted') {
@@ -2729,8 +2753,18 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                             const title = document.createElement('h3');
                             title.textContent = 'Review new Work segment';
                             const facts = document.createElement('p'); facts.className = 'dope-work-detail';
-                            facts.textContent = `Conversation ${session.id} · fresh isolated Pi session and grant. ` +
+                            facts.textContent = `Conversation ${session.id} · fresh Pi session and grant. ` +
                                 'The prior result and candidate decision remain separate. Current source is checked at Send.';
+                            const modeLabel = document.createElement('label'); modeLabel.className = 'dope-work-validation-label';
+                            const mode = document.createElement('select'); mode.setAttribute('aria-label', 'New segment execution mode');
+                            mode.append(new Option('Direct Work — Default', 'direct'), new Option('Isolated Work', 'isolated'));
+                            mode.value = controller.followUpMode;
+                            mode.onchange = () => { controller.followUpMode = mode.value as 'direct' | 'isolated'; this.render(); };
+                            modeLabel.append('Execution Mode', mode);
+                            const modeDescription = document.createElement('p'); modeDescription.className = 'dope-work-detail';
+                            modeDescription.textContent = controller.followUpMode === 'direct' ?
+                                'The agent edits your open project as it works. Changes appear in the editor immediately. You can review changes and safely revert agent-owned edits.' :
+                                'The agent edits a separate copy. Your project stays unchanged until you review and accept the candidate.';
                             const model = document.createElement('select'); model.setAttribute('aria-label', 'New segment model');
                             model.append(new Option('Select an eligible local model', '', true,
                                 !controller.followUpTarget));
@@ -2764,10 +2798,12 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                             }
                             const toolHeading = document.createElement('h4');
                             toolHeading.textContent = 'Tools for this Work';
-                            follow.append(title, facts, model, refreshModels, modelStatus, toolHeading, tools);
+                            follow.append(title, facts, model, refreshModels, modelStatus, modeLabel,
+                                modeDescription, toolHeading, tools);
                             const verifiedNoEffect = verifiedNoEffectWorkSegment(run, session);
-                            const uncertain = run.status === 'interrupted' || run.status === 'failed' && !verifiedNoEffect ||
-                                run.status === 'cancelled' && !!run.candidateDelta?.effects.length;
+                            const uncertain = run.executionMode !== 'direct' && (run.status === 'interrupted' ||
+                                run.status === 'failed' && !verifiedNoEffect ||
+                                run.status === 'cancelled' && !!run.candidateDelta?.effects.length);
                             if (run.candidateReview && !run.reviewDecision) {
                                 const pending = document.createElement('p'); pending.className = 'dope-work-warning';
                                 pending.textContent = 'Decide the pending candidate above before starting another segment.';
@@ -2980,7 +3016,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 if (run.changedFiles.length) { const status = document.createElement('small'); status.className = 'dope-work-system';
                     status.textContent = `${run.changedFiles.length} changed file${run.changedFiles.length === 1 ? '' : 's'}`; runDetailsBody.append(status); }
                 for (const result of run.validationResults) {
-                    const item = document.createElement('p'); item.textContent = `Candidate validation · ${result.label} · ${result.status}` +
+                    const item = document.createElement('p'); item.textContent = `${run.executionMode === 'direct' ? 'Applied source' : 'Candidate'} validation · ${result.label} · ${result.status}` +
                         `${result.reason ? ` · ${result.reason}` : ''}`;
                     diagnostics.append(item);
                     if (result.status === 'failed') { const status = document.createElement('small');
@@ -2989,8 +3025,40 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 }
                 if (run.validationResults.length && !run.validationResults.some(result => result.status === 'failed')) {
                     const status = document.createElement('small'); status.className = 'dope-work-system';
-                    status.textContent = `${run.validationResults.length} candidate validation result${run.validationResults.length === 1 ? '' : 's'}`;
+                    status.textContent = `${run.validationResults.length} ${run.executionMode === 'direct' ? 'applied-source' : 'candidate'} validation result${run.validationResults.length === 1 ? '' : 's'}`;
                     runDetailsBody.append(status);
+                }
+                if (run.executionMode === 'direct') {
+                    const section = document.createElement('section'); section.className = 'dope-work-review';
+                    const title = document.createElement('h3'); title.textContent = 'Review Changes'; section.append(title);
+                    const state = document.createElement('p'); state.setAttribute('role', 'status');
+                    state.textContent = run.status === 'running' ? 'Direct changes appear in the open project as the agent works.' :
+                        controller.directReview?.uncertain ? 'Some writes have uncertain attribution. Inspect the source before another action.' :
+                        controller.directReview?.validationCurrent ? 'Required validation applies to the current source.' :
+                        'Validation is missing, failed or no longer applies to the current source.';
+                    section.append(state);
+                    if (controller.directReviewError) { const error = document.createElement('p');
+                        error.className = 'dope-work-warning'; error.textContent = controller.directReviewError;
+                        section.append(error); }
+                    if (controller.directReview) {
+                        for (const file of controller.directReview.files) {
+                            const details = document.createElement('details'); details.className = 'dope-work-diagnostics';
+                            const caption = document.createElement('summary');
+                            caption.textContent = `${file.path} · ${file.reverted ? 'reverted' : file.conflict ? 'conflict' : 'applied'}`;
+                            const hashes = document.createElement('p'); hashes.className = 'dope-work-detail';
+                            hashes.textContent = `Before ${file.before ?? 'absent'} · After ${file.after}`;
+                            const diff = document.createElement('pre'); diff.textContent = file.diff;
+                            details.append(caption, hashes, diff);
+                            if (!file.reverted) details.append(this.button('Revert this file', () =>
+                                void controller.revertDirect([file.path]), controller.directReviewBusy || file.conflict));
+                            section.append(details);
+                        }
+                        const eligible = controller.directReview.files.filter(file => !file.reverted && !file.conflict);
+                        if (eligible.length) section.append(this.button('Revert Agent Changes', () =>
+                            void controller.revertDirect(eligible.map(file => file.path)), controller.directReviewBusy));
+                    } else if (['completed', 'cancelled', 'failed', 'interrupted'].includes(run.status))
+                        section.append(this.button('Review Changes', () => void controller.reviewDirect(), controller.directReviewBusy));
+                    scroll.append(section);
                 }
                 if (run.candidateReview && controller.selectedTask?.reviewPolicy?.kind === 'required') {
                     const review = run.candidateReview;
@@ -3128,7 +3196,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     info(`Coding Agent: ${controller.startTarget ? `${controller.startTarget.label} (${controller.startTarget.locality}${
                         controller.startTarget.context ? `, observed context ${controller.startTarget.context} tokens` : ''})` :
                         controller.startTargetReason}`);
-                    info('Candidate changes remain held for Dope validation and developer review.');
+                    info(task.executionMode === 'direct' ?
+                        'Direct Work edits this project as it runs. Dope validates the applied source; Review Changes and source-checked revert are available after Stop or Finish.' :
+                        'Candidate changes remain held for Dope validation and developer review.');
                     section.append(this.renderWorkTools(controller.project ?? '', `task:${task.id}`,
                         controller.startTarget?.locality,
                         task.completion.validation.some(item => hasApprovedWorkCommand(item.command)),
@@ -3171,7 +3241,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         commit.setAttribute('aria-label', 'Commit message'); commit.value = controller.startCommitMessage;
                         commit.oninput = () => { controller.startCommitMessage = commit.value; };
                         const actions = document.createElement('div'); actions.className = 'dope-work-dirty-actions';
-                        actions.append(this.button('Continue without commit', () => void controller.startSelectedWorkItemTask(true).then(finishStart)),
+                        actions.append(this.button('Continue without commit', () => void controller.startSelectedWorkItemTask(true).then(finishStart),
+                            task.executionMode === 'direct'),
                             this.button('Commit listed changes and start', () => void controller.commitStartWorktree().then(finishStart)),
                             this.button('Cancel', () => controller.cancelStartWorktreeReview()));
                         panel.append(title, text, paths, commit, actions); section.append(panel);

@@ -24,7 +24,7 @@ async function fixture(work: (f: { root: string; store: AgentStore; backend: Age
         const pending = await store.createRun(root, run as never);
         await store.updateRun(root, pending, { ...pending, status: 'running', startedAt: at });
         const backend = new AgentRuntimeBackend(store, { notifyAgentStateChanged() {} },
-            { activeRunId: () => 'run-1', reconcile: async () => {} } as never);
+            { activeRunId: () => 'run-1', reconcile: async () => {}, registerEditorGuard: () => () => {} } as never);
         const { projectHandle } = await backend.attach(new URL(`file://${root}`).href);
         await work({ root, store, backend, handle: projectHandle });
     } finally { await rm(root, { recursive: true, force: true }); }

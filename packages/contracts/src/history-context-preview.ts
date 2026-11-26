@@ -23,7 +23,9 @@ const PRIVACY = 'Local preview only. No model call or egress. Only these selecte
 function summary(entry: HistoryEntry): string {
     if (entry.availability !== 'available') return `Owner metadata ${entry.availability}`;
     if (entry.status.kind === 'work-item') return `WorkItem state: ${entry.status.state}`;
-    if (entry.status.kind === 'agent-run') return `Run ${entry.status.state}; validation ${entry.status.validation}; review ${entry.status.review ?? 'unknown'}; promotion ${entry.status.promotion}`;
+    if (entry.status.kind === 'agent-run') return entry.status.executionMode === 'direct' ?
+        `Direct Work ${entry.status.state}; validation ${entry.status.validation}; applied ${entry.status.appliedFiles ?? 0}; reverted ${entry.status.revertedFiles ?? 0}; revert conflicts ${entry.status.revertConflicts ?? 0}` :
+        `Run ${entry.status.state}; validation ${entry.status.validation}; review ${entry.status.review ?? 'unknown'}; promotion ${entry.status.promotion}`;
     if (entry.owner.kind === 'git-dirty') return 'Current working tree has changes; change time and author are unknown';
     if (entry.owner.kind === 'git-commit') return 'Git commit metadata observed';
     return `${entry.owner.kind} metadata observed`;

@@ -197,7 +197,11 @@ export class HistoryWidget extends BaseWidget {
                 const meta = document.createElement('small');
                 const status = entry.status.kind === 'owner' ? entry.status.label :
                     entry.status.kind === 'work-item' ? `WorkItem: ${entry.status.state}` :
-                        `Run: ${entry.status.state} · validation ${entry.status.validation} · promotion ${entry.status.promotion}`;
+                        entry.status.executionMode === 'direct' ?
+                            `Direct Work: ${entry.status.state} · ${entry.status.appliedFiles ?? 0} applied · ` +
+                            `${entry.status.revertedFiles ?? 0} reverted · ${entry.status.revertConflicts ?? 0} revert conflicts · ` +
+                            `validation ${entry.status.validation}` :
+                            `Run: ${entry.status.state} · validation ${entry.status.validation} · promotion ${entry.status.promotion}`;
                 meta.textContent = `${historyTimeLabel(entry)} · ${sourceNames[entry.source]} · ${status} · ${entry.availability}`;
                 const pick = document.createElement('input'); pick.type = 'checkbox';
                 pick.setAttribute('aria-label', `Select ${entry.source} ${entry.sourceId} for evidence preview`);

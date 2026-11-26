@@ -25,7 +25,8 @@ const task = (kind: 'direct' | 'work-item', id: string, scope?: {
         basis: { architectureRevision: 1, architectureFingerprint: 'architecture',
             physicalInputFingerprint: 'physical', physicalGeneration: 1 },
         scope: scope ?? { assignment: 'AI', workingSet: ['review.txt'], delegablePaths: ['review.txt'], humanReservedPaths: [] } },
-    ...(kind === 'work-item' ? { planningMapId: 'map', reviewPolicy: { kind: 'required' } } : {}) });
+    reviewPolicy: { kind: 'required' },
+    ...(kind === 'work-item' ? { planningMapId: 'map' } : {}) });
 
 async function fixture(kind: 'direct' | 'work-item', validationStatus: 'passed' | 'failed',
     runTest: (f: { root: string; store: AgentStore; runtime: AgentExecutionRuntime;
@@ -35,6 +36,7 @@ async function fixture(kind: 'direct' | 'work-item', validationStatus: 'passed' 
     throughPlanning = false) {
     const root = await mkdtemp(join(tmpdir(), 'dope-delegation-review-'));
     await git('git', ['clone', '--quiet', '--shared', resolve(import.meta.dirname, '../..'), root]);
+    await writeFile(join(root, '.git/info/exclude'), '.dope/\n');
     const store = new AgentStore();
     const planning = new PlanningStore();
     let complete!: () => void;
@@ -186,16 +188,21 @@ test('failed WorkItem validation cannot create a review hold', async () =>
         await assert.rejects(readFile(join(f.root, 'review.txt')), { code: 'ENOENT' });
     }));
 
-test('direct task still promotes automatically after validation', async () =>
+test('legacy isolated direct-origin task holds a validated candidate until review', async () =>
     fixture('direct', 'passed', async f => {
         const grant = createDefaultExecutionGrant({ id: 'grant-review', revision: 0,
             taskId: 'task-review', acceptedAt: now });
         const started = await f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-review', grant, true);
         await writeFile(join(f.adapter.request!.executionRoot, 'review.txt'), 'candidate\n');
         f.adapter.complete();
-        const done = await f.runtime.waitForRun(f.root, started.id);
+        const held = await f.runtime.waitForRun(f.root, started.id);
+        assert.equal(held.executionMode, 'isolated');
+        assert.equal(held.status, 'blocked');
+        assert.equal(held.candidateReview?.state, 'ready');
+        await assert.rejects(readFile(join(f.root, 'review.txt')), { code: 'ENOENT' });
+        const done = await f.backend.decideCandidate(f.handle, held.id, 0,
+            held.candidateReview!.candidateFingerprint, 'accept', grant);
         assert.equal(done.status, 'completed');
-        assert.equal(done.candidateReview, undefined);
         assert.equal(await readFile(join(f.root, 'review.txt'), 'utf8'), 'candidate\n');
     }));
 

@@ -19,6 +19,7 @@ export class PhaseStackController {
     tasksRoot = 'docs/tasks/';
     validationCommand = '';
     acceptedGrant = false;
+    isolatedModeConfirmed = false;
     hostedProjectDataAuthorized = false;
     modelPolicy: AgentModelPolicy = { kind: 'follow-coding-agent' };
     exactTargets: AgentTarget[] = [];
@@ -70,7 +71,7 @@ export class PhaseStackController {
     cancelSelection(): void {
         ++this.serial;
         this.busy = false; this.refreshing = false;
-        this.selected = undefined; this.run = undefined; this.message = '';
+        this.selected = undefined; this.run = undefined; this.message = ''; this.isolatedModeConfirmed = false;
         this.changed();
     }
     async attach(project?: string): Promise<void> {
@@ -78,6 +79,7 @@ export class PhaseStackController {
         this.busy = false; this.refreshing = false;
         this.project = project; this.handle = undefined; this.sequences = []; this.stacks = []; this.selected = undefined;
         this.evidence = undefined; this.codingAgentReady = false; this.run = undefined; this.acceptedGrant = false;
+        this.isolatedModeConfirmed = false;
         this.hostedProjectDataAuthorized = false; this.modelPolicy = { kind: 'follow-coding-agent' };
         this.exactTargets = []; this.resolvedTarget = undefined; this.targetReason = 'Coding Agent target is loading.';
         this.dirtyPromptDismissed = false;
@@ -175,6 +177,7 @@ export class PhaseStackController {
             if (serial !== this.serial || this.handle !== handle || this.tasksRoot !== tasksRoot) return;
             if (result.kind === 'opened') {
                 this.selected = result.sequence;
+                this.isolatedModeConfirmed = false;
                 this.acceptedGrant = false; this.dirtyPromptDismissed = false;
                 this.validationCommand = ''; this.validationTaskId = undefined; this.run = undefined;
                 await this.refresh();
@@ -196,6 +199,7 @@ export class PhaseStackController {
         if (serial !== this.serial || handle !== this.handle) return;
         if (!sequence) return;
         this.selected = sequence;
+        this.isolatedModeConfirmed = false;
         this.acceptedGrant = false; this.dirtyPromptDismissed = false;
         this.validationCommand = ''; this.validationTaskId = undefined; this.run = undefined;
         if (refresh) await this.refresh();
@@ -232,6 +236,7 @@ export class PhaseStackController {
     }
     get readinessMessage(): string {
         if (!this.selected || this.current?.execution !== 'agent-task' || this.selected.status === 'running') return '';
+        if (!this.isolatedModeConfirmed) return 'Direct Work is unavailable for Prompt Stack runs with candidate checkpoints. Select Isolated Work to continue.';
         if (this.selected.status === 'blocked' && !this.needsDirtyAcceptance &&
             !retryable.includes(this.selected.blockedReason ?? ''))
             return this.selected.blockedReason === 'source-drift' ?
@@ -260,7 +265,7 @@ export class PhaseStackController {
         const s = this.selected;
         const acceptedBasisRetry = Boolean(s?.acceptedDirty && s.status === 'blocked' &&
             retryable.includes(s.blockedReason ?? ''));
-        return Boolean(this.handle && this.project && this.evidence && s &&
+        return Boolean(this.isolatedModeConfirmed && this.handle && this.project && this.evidence && s &&
             this.evidence.head === (s.checkpoints.at(-1)?.sha ?? s.basis.head) &&
             (this.evidence.clean || Boolean(s.acceptedDirty) && !this.needsDirtyAcceptance || acceptedBasisRetry) &&
             this.current?.execution === 'agent-task' &&

@@ -11,9 +11,12 @@ export interface DirectChange {
     id: string; taskId: string; runId: string; operation: 'create' | 'modify'; path: string;
     before: string | null; after: string; beforeBytes: string | null; afterBytes: string; at: string;
     result: Result; finishedAt?: string; uncertainTemp?: string;
+    afterIdentity?: { device: number; inode: number; mtimeNs: string; ctimeNs: string };
 }
 interface Ledger { version: 1; id: string; root: string; head: string; taskId: string; runId: string;
-    grantId: string; grantRevision: number; changes: DirectChange[] }
+    grantId: string; grantRevision: number; changes: DirectChange[];
+    inherited?: { path: string; after: string; afterIdentity: { device: number; inode: number; mtimeNs: string; ctimeNs: string } }[];
+    reverts?: { path: string; at: string; result: 'prepared' | 'reverted' | 'conflict' | 'uncertain'; reason?: string }[] }
 const hash = (bytes: Buffer): string => createHash('sha256').update(bytes).digest('hex');
 const protectedPart = (part: string): boolean => {
     const value = part.toLowerCase();
@@ -83,27 +86,112 @@ try:
     os.fsync(fd)
     stop()
   os.fsync(fd)
-  print(json.dumps({'status':'completed'}))
  finally:
   if not keep_temp:
    try: os.unlink(temp,dir_fd=fd)
    except FileNotFoundError: pass
+ applied=os.stat(name,dir_fd=fd,follow_symlinks=False)
+ print(json.dumps({'status':'completed','device':applied.st_dev,'inode':applied.st_ino,'mtimeNs':str(applied.st_mtime_ns),'ctimeNs':str(applied.st_ctime_ns)}))
 except (OSError,ValueError): stop()
 finally:
  for fd in reversed(fds): os.close(fd)
 `;
-async function python(args: string[]): Promise<{ status: 'completed' | 'denied' | 'uncertain'; temp?: string }> {
+const RESTORE = `import os,sys,stat,hashlib,base64,json,uuid,ctypes
+root,path,expected,device,inode,mtime,ctime,encoded=sys.argv[1:]
+def answer(status): print(json.dumps({'status':status})); sys.exit(0)
+parts=path.split('/')
+if not parts or any(not x or x in ('.','..') for x in parts): answer('conflict')
+data=None if encoded=='-' else base64.b64decode(encoded,validate=True)
+fds=[]
+try:
+ fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW); fds.append(fd)
+ for part in parts[:-1]:
+  fd=os.open(part,os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=fd); fds.append(fd)
+ name=parts[-1]
+ old=os.open(name,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)
+ try:
+  info=os.fstat(old)
+  if not stat.S_ISREG(info.st_mode) or info.st_nlink!=1 or info.st_size>65536 or (info.st_dev,info.st_ino,info.st_mtime_ns,info.st_ctime_ns)!=(int(device),int(inode),int(mtime),int(ctime)): answer('conflict')
+  current=os.read(old,65537)
+  if len(current)!=info.st_size or hashlib.sha256(current).hexdigest()!=expected: answer('conflict')
+ finally: os.close(old)
+ temp='.dope-direct-'+uuid.uuid4().hex
+ libc=ctypes.CDLL(None,use_errno=True); exchange=getattr(libc,'renameat2',None)
+ if exchange is None: answer('conflict')
+ exchange.argtypes=[ctypes.c_int,ctypes.c_char_p,ctypes.c_int,ctypes.c_char_p,ctypes.c_uint]
+ if data is None:
+  if exchange(fd,name.encode(),fd,temp.encode(),1)!=0: answer('conflict')
+  try:
+   moved=os.stat(temp,dir_fd=fd,follow_symlinks=False)
+   movedfd=os.open(temp,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)
+   try: movedbytes=os.read(movedfd,65537)
+   finally: os.close(movedfd)
+   matched=stat.S_ISREG(moved.st_mode) and (moved.st_dev,moved.st_ino,moved.st_mtime_ns)==(int(device),int(inode),int(mtime)) and hashlib.sha256(movedbytes).hexdigest()==expected
+  except OSError: matched=False
+  if not matched:
+   if exchange(fd,temp.encode(),fd,name.encode(),1)!=0: answer('uncertain')
+   os.fsync(fd); answer('conflict')
+  os.fsync(fd)
+  os.unlink(temp,dir_fd=fd)
+  os.fsync(fd)
+  answer('reverted')
+ out=os.open(temp,os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,stat.S_IMODE(info.st_mode),dir_fd=fd)
+ try:
+  view=memoryview(data)
+  while view: view=view[os.write(out,view):]
+  os.fsync(out)
+ finally: os.close(out)
+ if exchange(fd,temp.encode(),fd,name.encode(),2)!=0: os.unlink(temp,dir_fd=fd); answer('conflict')
+ try:
+  displaced=os.stat(temp,dir_fd=fd,follow_symlinks=False)
+  movedfd=os.open(temp,os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=fd)
+  try: movedbytes=os.read(movedfd,65537)
+  finally: os.close(movedfd)
+  matched=stat.S_ISREG(displaced.st_mode) and (displaced.st_dev,displaced.st_ino,displaced.st_mtime_ns)==(int(device),int(inode),int(mtime)) and hashlib.sha256(movedbytes).hexdigest()==expected
+ except OSError: matched=False
+ if not matched:
+  if exchange(fd,temp.encode(),fd,name.encode(),2)!=0: answer('uncertain')
+  os.unlink(temp,dir_fd=fd); os.fsync(fd); answer('conflict')
+ os.fsync(fd); os.unlink(temp,dir_fd=fd); os.fsync(fd); answer('reverted')
+except (OSError,ValueError): answer('conflict')
+finally:
+ for fd in reversed(fds): os.close(fd)
+`;
+async function restore(root: string, path: string, after: string,
+    identity: { device: number; inode: number; mtimeNs: string; ctimeNs: string },
+    beforeBytes: string | null): Promise<'reverted' | 'conflict' | 'uncertain'> {
+    return new Promise((resolveResult, reject) => {
+        const child = spawn('/usr/bin/python3', ['-c', RESTORE, root, path, after,
+            String(identity.device), String(identity.inode), identity.mtimeNs, identity.ctimeNs, beforeBytes ?? '-'],
+        { env: { PATH: '/usr/bin:/bin' }, stdio: ['ignore', 'pipe', 'pipe'] });
+        let output = '';
+        child.stdout.on('data', chunk => { output += String(chunk).slice(0, 300); });
+        child.on('error', reject);
+        child.on('close', code => {
+            if (code !== 0) return reject(new Error('Direct restore failed'));
+            try { const result = JSON.parse(output);
+                resolveResult(['reverted', 'conflict', 'uncertain'].includes(result.status) ? result.status : 'uncertain');
+            } catch { reject(new Error('Direct restore result invalid')); }
+        });
+    });
+}
+async function python(args: string[]): Promise<{ status: 'completed' | 'denied' | 'uncertain'; temp?: string;
+    device?: number; inode?: number; mtimeNs?: string; ctimeNs?: string }> {
     return new Promise((resolveResult, reject) => {
         const child = spawn('/usr/bin/python3', ['-c', WRITE, ...args], { env: { PATH: '/usr/bin:/bin' },
             stdio: ['ignore', 'pipe', 'pipe'] });
         let output = '';
-        child.stdout.on('data', chunk => { output += String(chunk).slice(0, 100); });
+        child.stdout.on('data', chunk => { output += String(chunk).slice(0, 300); });
         child.on('error', reject);
         child.on('close', code => {
             if (code !== 0) return reject(new Error('Direct writer failed'));
             try {
                 const result = JSON.parse(output);
-                resolveResult(result.status === 'completed' ? { status: 'completed' } :
+                resolveResult(result.status === 'completed' && Number.isSafeInteger(result.device) &&
+                    Number.isSafeInteger(result.inode) && /^\d{1,24}$/u.test(result.mtimeNs) &&
+                    /^\d{1,24}$/u.test(result.ctimeNs) ?
+                    { status: 'completed', device: result.device, inode: result.inode,
+                        mtimeNs: result.mtimeNs, ctimeNs: result.ctimeNs } :
                     result.status === 'uncertain' && /^\.dope-direct-[a-f0-9]{32}$/u.test(result.temp) ?
                         { status: 'uncertain', temp: result.temp } : { status: 'denied' });
             }
@@ -173,22 +261,37 @@ async function git(root: string, args: string[]): Promise<string> {
         child.on('close', code => code === 0 ? resolveResult(output) : reject(new Error('Direct Git basis unavailable')));
     });
 }
+async function gitIgnored(root: string, path: string): Promise<boolean> {
+    return new Promise((resolveResult, reject) => {
+        const child = spawn('git', ['--no-optional-locks', '-c', 'core.fsmonitor=false',
+            'check-ignore', '-q', '--', path], { cwd: root, env: { PATH: '/usr/bin:/bin',
+            GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: '/dev/null', GIT_OPTIONAL_LOCKS: '0' },
+        stdio: 'ignore' });
+        child.on('error', reject);
+        child.on('close', code => code === 0 ? resolveResult(true) : code === 1 ? resolveResult(false) :
+            reject(new Error('Direct Git ignore check unavailable')));
+    });
+}
 
 /** Dope-owned canonical writer. The model and its commands retain only the isolated /work mount. */
 export class DirectWorkJournal {
+    private static readonly reverting = new Set<string>();
     private constructor(readonly root: string, readonly path: string, private ledger: Ledger,
         private readonly grant: ExecutionGrant,
         private readonly scope?: { authorizedPaths: readonly string[]; reservedPaths: readonly string[] }) {}
     static async create(root: string, head: string, taskId: string, runId: string,
         offeredGrant: ExecutionGrant,
-        scope?: { authorizedPaths: readonly string[]; reservedPaths: readonly string[] }): Promise<DirectWorkJournal> {
+        scope?: { authorizedPaths: readonly string[]; reservedPaths: readonly string[] },
+        inherited?: readonly { path: string; after: string; afterIdentity: {
+            device: number; inode: number; mtimeNs: string; ctimeNs: string } }[]): Promise<DirectWorkJournal> {
         const grant = parseExecutionGrant(offeredGrant);
         if (!isAbsolute(root) || await realpath(root) !== root || grant.taskId !== taskId ||
             !/^[a-f0-9]{40}$/u.test(head) || !runId || (await git(root, ['rev-parse', 'HEAD'])).trim() !== head)
             throw new Error('Direct Work identity mismatch');
         const directory = await journalDirectory(root);
         const ledger: Ledger = { version: 1, id: randomUUID(), root, head, taskId, runId,
-            grantId: grant.id, grantRevision: grant.revision, changes: [] };
+            grantId: grant.id, grantRevision: grant.revision, changes: [],
+            ...(inherited?.length ? { inherited: [...inherited] } : {}) };
         const path = join(directory, `${ledger.id}.json`);
         await syncJson(path, ledger);
         return new DirectWorkJournal(root, path, ledger, grant, scope);
@@ -204,7 +307,8 @@ export class DirectWorkJournal {
             throw new Error('Direct Work source identity changed');
         if (this.ledger.changes.some(change => change.result === 'prepared' || change.result === 'uncertain'))
             throw new Error('Direct Work journal requires reconciliation');
-        const own = new Set(this.ledger.changes.filter(change => change.result === 'completed').map(change => change.path));
+        const own = new Set([...(this.ledger.inherited?.map(item => item.path) ?? []),
+            ...this.ledger.changes.filter(change => change.result === 'completed').map(change => change.path)]);
         const status = await git(this.root, ['status', '--porcelain=v1', '-z', '--untracked-files=all']);
         for (const entry of status.split('\0')) if (entry && !entry.slice(3).startsWith('.dope/') &&
             !own.has(entry.slice(3)))
@@ -213,7 +317,22 @@ export class DirectWorkJournal {
             const latest = [...this.ledger.changes].reverse().find(item => item.path === change.path && item.result === 'completed');
             if (latest !== change) continue;
             const current = await bytesAt(await safePath(this.root, change.path));
-            if (!current || hash(current) !== change.after) throw new Error('Concurrent owner edit conflicts with Direct Work');
+            const info = await lstat(join(this.root, change.path), { bigint: true });
+            if (!current || hash(current) !== change.after || !change.afterIdentity ||
+                info.dev !== BigInt(change.afterIdentity.device) || info.ino !== BigInt(change.afterIdentity.inode) ||
+                info.mtimeNs.toString() !== change.afterIdentity.mtimeNs ||
+                info.ctimeNs.toString() !== change.afterIdentity.ctimeNs)
+                throw new Error('Concurrent owner edit conflicts with Direct Work');
+        }
+        for (const inherited of this.ledger.inherited ?? []) {
+            if (this.ledger.changes.some(item => item.path === inherited.path && item.result === 'completed')) continue;
+            const current = await bytesAt(await safePath(this.root, inherited.path));
+            const info = await lstat(join(this.root, inherited.path), { bigint: true });
+            if (!current || hash(current) !== inherited.after || info.dev !== BigInt(inherited.afterIdentity.device) ||
+                info.ino !== BigInt(inherited.afterIdentity.inode) ||
+                info.mtimeNs.toString() !== inherited.afterIdentity.mtimeNs ||
+                info.ctimeNs.toString() !== inherited.afterIdentity.ctimeNs)
+                throw new Error('Inherited Direct Work source changed');
         }
     }
     async edit(operation: 'create' | 'modify', path: string, content: string,
@@ -230,12 +349,14 @@ export class DirectWorkJournal {
             !checkEffect(this.grant, { kind: 'workspace-write', scope: 'workspace', path }).allowed)
             throw new Error('Direct Work effect denied');
         const target = await safePath(this.root, path);
+        if (await gitIgnored(this.root, path)) throw new Error('Ignored project path cannot be edited by Direct Work');
         if (await unsaved(path)) throw new Error('Unsaved editor conflicts with Direct Work');
         const before = await bytesAt(target);
         if (operation === 'create' ? before !== null : before === null)
             throw new Error('Direct Work create/modify conflict');
         const prior = [...this.ledger.changes].reverse().find(change => change.path === path && change.result === 'completed');
-        if (prior ? hash(before!) !== prior.after : (await git(this.root,
+        const inherited = this.ledger.inherited?.find(item => item.path === path);
+        if (prior ? hash(before!) !== prior.after : inherited ? hash(before!) !== inherited.after : (await git(this.root,
             ['status', '--porcelain=v1', '-z', '--untracked-files=all', '--', path])).length > 0)
             throw new Error('Direct Work source changed or was dirty');
         const afterBytes = Buffer.from(content, 'utf8');
@@ -253,6 +374,10 @@ export class DirectWorkJournal {
                 writer.status === 'denied' && (current === null && before === null ||
                     current && before && hash(current) === change.before) ? 'not-applied' : 'uncertain';
         if (writer.temp) change.uncertainTemp = writer.temp;
+        if (writer.status === 'completed' && writer.device !== undefined && writer.inode !== undefined &&
+            writer.mtimeNs !== undefined && writer.ctimeNs !== undefined)
+            change.afterIdentity = { device: writer.device, inode: writer.inode,
+                mtimeNs: writer.mtimeNs, ctimeNs: writer.ctimeNs };
         change.finishedAt = new Date().toISOString();
         await syncJson(this.path, this.ledger);
         if (change.result !== 'completed') throw new Error('Direct Work write denied or uncertain');
@@ -270,6 +395,24 @@ export class DirectWorkJournal {
             basename(path) !== `${ledger.id}.json` || !/^[a-f0-9-]{36}$/u.test(ledger.id) ||
             !Array.isArray(ledger.changes) || ledger.changes.length > 500)
             throw new Error('Invalid Direct Work journal');
+        for (const inherited of ledger.inherited ?? []) {
+            if (typeof inherited.path !== 'string' || typeof inherited.after !== 'string' ||
+                !/^[a-f0-9]{64}$/u.test(inherited.after) ||
+                !Number.isSafeInteger(inherited.afterIdentity?.device) ||
+                !Number.isSafeInteger(inherited.afterIdentity?.inode) ||
+                !/^\d{1,24}$/u.test(inherited.afterIdentity?.mtimeNs ?? '') ||
+                !/^\d{1,24}$/u.test(inherited.afterIdentity?.ctimeNs ?? ''))
+                throw new Error('Invalid inherited Direct Work source');
+            await safePath(root, inherited.path);
+        }
+        for (const revert of ledger.reverts ?? []) {
+            if (typeof revert.path !== 'string' || typeof revert.at !== 'string' ||
+                !['prepared', 'reverted', 'conflict', 'uncertain'].includes(revert.result))
+                throw new Error('Invalid Direct Work revert receipt');
+            await safePath(root, revert.path);
+            if (revert.result === 'prepared') { revert.result = 'uncertain';
+                revert.reason = 'Revert interrupted before its outcome was recorded'; }
+        }
         for (const change of ledger.changes) {
             if (change.taskId !== ledger.taskId || change.runId !== ledger.runId ||
                 !['create', 'modify'].includes(change.operation) || !['prepared', 'completed', 'not-applied', 'uncertain'].includes(change.result) ||
@@ -288,5 +431,92 @@ export class DirectWorkJournal {
         }
         await syncJson(path, ledger);
         return ledger.changes;
+    }
+    static async review(root: string, path: string): Promise<{ changes: readonly DirectChange[];
+        inherited: readonly NonNullable<Ledger['inherited']>[number][];
+        reverts: readonly { path: string; at: string; result: 'prepared' | 'reverted' | 'conflict' | 'uncertain'; reason?: string }[];
+        conflicts: string[] }> {
+        const changes = await this.reconcile(root, path);
+        const ledger = JSON.parse(await readFile(path, 'utf8')) as Ledger;
+        const conflicts: string[] = [];
+        for (const [file, latest] of new Map(changes.filter(change => change.result === 'completed')
+            .map(change => [change.path, change])).entries()) {
+            if (ledger.reverts?.some(item => item.path === file && item.result === 'reverted')) continue;
+            if (ledger.reverts?.some(item => item.path === file && item.result === 'uncertain')) {
+                conflicts.push(file); continue;
+            }
+            const current = await bytesAt(await safePath(root, file)).catch(() => null);
+            const info = await lstat(join(root, file), { bigint: true }).catch(() => undefined);
+            if (!latest.afterIdentity || !current || hash(current) !== latest.after ||
+                info?.dev !== BigInt(latest.afterIdentity.device) || info?.ino !== BigInt(latest.afterIdentity.inode) ||
+                info?.mtimeNs.toString() !== latest.afterIdentity.mtimeNs ||
+                info?.ctimeNs.toString() !== latest.afterIdentity.ctimeNs)
+                conflicts.push(file);
+        }
+        for (const inherited of ledger.inherited ?? []) {
+            if (changes.some(change => change.path === inherited.path && change.result === 'completed')) continue;
+            const current = await bytesAt(await safePath(root, inherited.path)).catch(() => null);
+            const info = await lstat(join(root, inherited.path), { bigint: true }).catch(() => undefined);
+            if (!current || hash(current) !== inherited.after ||
+                info?.dev !== BigInt(inherited.afterIdentity.device) ||
+                info?.ino !== BigInt(inherited.afterIdentity.inode) ||
+                info?.mtimeNs.toString() !== inherited.afterIdentity.mtimeNs ||
+                info?.ctimeNs.toString() !== inherited.afterIdentity.ctimeNs)
+                conflicts.push(inherited.path);
+        }
+        return { changes, inherited: ledger.inherited ?? [], reverts: ledger.reverts ?? [], conflicts };
+    }
+    static async revert(root: string, path: string, files: readonly string[],
+        unsaved: (path: string) => Promise<boolean>): Promise<{ path: string; result: 'reverted' | 'conflict'; reason?: string }[]> {
+        if (this.reverting.has(path)) throw new Error('Direct Work revert already in progress');
+        this.reverting.add(path);
+        try {
+        const review = await this.review(root, path);
+        const ledger = JSON.parse(await readFile(path, 'utf8')) as Ledger;
+        if ((await git(root, ['rev-parse', 'HEAD'])).trim() !== ledger.head)
+            throw new Error('Direct Work source HEAD changed; review source before reverting');
+        const results: { path: string; result: 'reverted' | 'conflict'; reason?: string }[] = [];
+        for (const file of [...new Set(files)]) {
+            if (review.changes.some(change => change.path === file &&
+                (change.result === 'prepared' || change.result === 'uncertain')))
+                throw new Error(`Direct Work effect is uncertain for ${file}; inspect source before reverting`);
+            const edits = review.changes.filter(change => change.path === file && change.result === 'completed');
+            if (!edits.length) throw new Error('Requested path is not an applied Direct Work effect');
+            if (ledger.reverts?.some(item => item.path === file && item.result === 'uncertain'))
+                throw new Error(`Earlier Direct revert is uncertain for ${file}; inspect source before another action`);
+            if (ledger.reverts?.some(item => item.path === file && item.result === 'reverted')) {
+                results.push({ path: file, result: 'conflict', reason: 'Already reverted' }); continue;
+            }
+            const last = edits.at(-1)!;
+            let result: 'reverted' | 'conflict' = 'conflict';
+            let reason: string | undefined;
+            if (review.conflicts.includes(file)) reason = 'Current file identity or hash differs from the agent after-state';
+            else if (await unsaved(file)) reason = 'Unsaved editor changes';
+            else if (!last.afterIdentity) reason = 'Historical write has no verified after-state identity';
+            else {
+                const pending = { path: file, at: new Date().toISOString(), result: 'prepared' as const };
+                ledger.reverts ??= [];
+                ledger.reverts.push(pending);
+                await syncJson(path, ledger);
+                const restored = await restore(root, file, last.after, last.afterIdentity, edits[0].beforeBytes)
+                    .catch(() => 'uncertain' as const);
+                if (restored === 'uncertain') {
+                    ledger.reverts[ledger.reverts.length - 1] = { ...pending, result: 'uncertain',
+                        reason: 'Revert outcome uncertain; inspect source' };
+                    await syncJson(path, ledger);
+                    throw new Error(`Direct restore uncertain for ${file}; inspect source before another action`);
+                }
+                ledger.reverts.pop();
+                result = restored;
+                if (restored === 'conflict') reason = 'Current file changed during revert';
+            }
+            const entry = { path: file, at: new Date().toISOString(), result, ...(reason ? { reason } : {}) };
+            ledger.reverts ??= [];
+            ledger.reverts.push(entry);
+            await syncJson(path, ledger);
+            results.push({ path: file, result, ...(reason ? { reason } : {}) });
+        }
+        return results;
+        } finally { this.reverting.delete(path); }
     }
 }

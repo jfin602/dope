@@ -871,7 +871,12 @@ export class AgentStore implements AgentTranscriptStorage {
         await this.locked(dir, async () => {
             const current = await this.readRun(root, old.id);
             if (!current || !same(current, old)) throw new Error('Stale agent run; re-read before updating');
-            if (!canTransitionAgentRun(current.status, next.status) && (current.status !== next.status ||
+            const terminalReview = current.executionMode === 'direct' && current.status === next.status &&
+                ['completed', 'cancelled', 'failed', 'interrupted'].includes(current.status) &&
+                (next.directReverts?.length ?? 0) > (current.directReverts?.length ?? 0) &&
+                same({ ...current, directReverts: undefined }, { ...next, directReverts: undefined }) &&
+                current.directReverts?.every((item, index) => same(item, next.directReverts?.[index])) !== false;
+            if (!terminalReview && !canTransitionAgentRun(current.status, next.status) && (current.status !== next.status ||
                 ['completed', 'cancelled', 'failed', 'interrupted'].includes(current.status))) throw new Error('Illegal AgentRun transition');
             if (current.status === 'blocked' && ['completed', 'cancelled'].includes(next.status) &&
                 (!current.candidateReview || next.reviewDecision?.kind !==

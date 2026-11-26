@@ -37,6 +37,12 @@ export interface CandidateResumePreview {
     outcome?: AgentRun['outcome']; uncertainCommands?: string[]; transcriptIncomplete?: boolean;
 }
 export interface WorktreeReview { clean: boolean; fingerprint: string; paths: string[]; head?: string }
+export interface DirectWorkReview {
+    files: { path: string; operation: 'create' | 'modify'; before: string | null; after: string;
+        diff: string; conflict: boolean; reverted: boolean }[];
+    uncertain: boolean;
+    validationCurrent: boolean;
+}
 export interface AgentRuntimeService {
     attach(folderUri: string): Promise<{ projectHandle: string }>;
     workMCPObservationOffer(projectHandle: string, connectionId: string, modelId: string): Promise<WorkMCPObservationScope | undefined>;
@@ -64,6 +70,8 @@ export interface AgentRuntimeService {
         request: AgentSteeringRequest): Promise<AgentSteeringState>;
     decideCandidate(projectHandle: string, runId: string, expectedRevision: number,
         candidateFingerprint: string, decision: 'accept' | 'reject', grant?: ExecutionGrant): Promise<AgentRun>;
+    reviewDirectWork(projectHandle: string, runId: string): Promise<DirectWorkReview>;
+    revertDirectWork(projectHandle: string, runId: string, paths: string[]): Promise<DirectWorkReview>;
     listRuns(projectHandle: string): Promise<AgentRun[]>;
     listActions(projectHandle: string, taskId?: string): Promise<ProposedAction[]>;
     readAction(projectHandle: string, actionId: string): Promise<ProposedAction | undefined>;

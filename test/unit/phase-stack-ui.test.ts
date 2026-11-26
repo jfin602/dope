@@ -66,6 +66,8 @@ test('Prompt Stack selects exact local model without changing Coding Agent role 
         targets: [target], reason: policy.kind === 'exact' ? '' : 'Role unavailable' }));
     h.setAgentReady(false);
     await h.controller.attach('file:///project'); await h.controller.select('c4-dope-phase-stack-smoke');
+    assert.match(h.controller.readinessMessage, /Select Isolated Work/);
+    h.controller.isolatedModeConfirmed = true;
     h.controller.validationCommand = './validate.sh'; h.controller.acceptedGrant = true;
     assert.equal(h.controller.canStart, false);
     h.controller.setModelPolicy({ kind: 'exact', connectionId: 'local-1', modelId: 'qwen' });
@@ -82,6 +84,7 @@ test('Prompt Stack selects exact local model without changing Coding Agent role 
 test('Start stays disabled without an eligible Coding Agent and recovers when one is ready', async () => {
     const h = harness(); h.setAgentReady(false);
     await h.controller.attach('file:///project'); await h.controller.select('c4-dope-phase-stack-smoke');
+    h.controller.isolatedModeConfirmed = true;
     h.controller.acceptedGrant = true; h.controller.validationCommand = './validate.sh';
     assert.equal(h.controller.canStart, false);
     assert.match(h.controller.readinessMessage, /eligible Coding Agent/);
@@ -93,6 +96,7 @@ test('Start stays disabled without an eligible Coding Agent and recovers when on
 test('running Stop and blocked Reconcile use the saved sequence callbacks without starting another run', async () => {
     const h = harness(); await h.controller.attach('file:///project');
     await h.controller.select('c4-dope-phase-stack-smoke');
+    h.controller.isolatedModeConfirmed = true;
     h.controller.acceptedGrant = true; h.controller.validationCommand = './validate.sh';
     await h.controller.start(); assert.equal(h.starts, 1);
     await h.controller.stop(); assert.equal(h.stops, 1);
@@ -109,6 +113,7 @@ test('default tasks folder scans on attach; selecting an existing stack opens de
     await h.controller.select('c4-dope-phase-stack-smoke');
     assert.equal(h.controller.selected?.stack.entries[0].promptText, 'Exact snapshotted prompt');
     await h.controller.select('c4-dope-phase-stack-smoke'); assert.equal(h.opens, 2);
+    h.controller.isolatedModeConfirmed = true;
     h.controller.acceptedGrant = true; h.controller.validationCommand = './validate.sh';
     assert.equal(h.controller.canStart, true); await h.controller.start(); assert.equal(h.starts, 1);
 });
@@ -120,6 +125,7 @@ test('one dirty Continue captures basis; Cancel starts nothing; grant and valida
     h.controller.cancelDirty(); assert.equal(h.controller.dirtyPromptDismissed, true);
     assert.equal(h.starts, 0); assert.equal(h.accepts, 0);
     await h.controller.select('c4-dope-phase-stack-smoke'); await h.controller.continueDirty();
+    h.controller.isolatedModeConfirmed = true;
     assert.equal(h.accepts, 1); assert.equal(h.controller.needsDirtyAcceptance, false);
     assert.equal(h.controller.canStart, false);
     h.controller.acceptedGrant = true; h.controller.validationCommand = './validate.sh';

@@ -68,10 +68,21 @@ function harness(tools?: WorkToolPreferences) {
             changeSummary: { version: 1, filesChanged: 1, insertions: 2, deletions: 1, summary: 'Updated source', truncated: false } }; } };
 }
 
-test('direct task requires explicit Start and hosted consent, then creates a bounded internal grant', async () => {
+test('Prepare Work shows the Direct default and both mode consequences immediately before tools', async () => {
+    const source = await readFile(new URL('../../packages/theia-extension/src/browser/chat-panel-widget.ts', import.meta.url), 'utf8');
+    assert.match(source, /new Option\('Direct Work — Default', 'direct'\)/);
+    assert.match(source, /The agent edits your open project as it works\. Changes appear in the editor immediately\. You can review changes and safely revert agent-owned edits\./);
+    assert.match(source, /The agent edits a separate copy\. Your project stays unchanged until you review and accept the candidate\./);
+    assert.match(source, /modeLabel, modeDetail, directUnavailable, toolSection/);
+});
+
+test('hosted Work requires explicit Isolated selection and consent, then creates a bounded internal grant', async () => {
     const h = harness();
     h.inventory.registry.models[0].limits.contextWindowTokens = { source: 'unknown' } as typeof h.inventory.registry.models[0]['limits']['contextWindowTokens'];
     await h.controller.attach('file:///project');
+    assert.equal(h.controller.executionMode, 'direct');
+    assert.equal(h.controller.canStart, false);
+    h.controller.setExecutionMode('isolated');
     assert.match(h.controller.targetMessage, /Coding · GPT/);
     assert.equal(h.controller.exactTargets.length, 1);
     h.controller.setPolicy({ kind: 'exact', connectionId: 'codex', modelId: 'gpt' });
@@ -86,6 +97,7 @@ test('direct task requires explicit Start and hosted consent, then creates a bou
     assert.equal(h.oneShotStarts, 1); assert.equal(h.sessionStarts, 0);
     h.finish('completed');
     await h.controller.attach('file:///project');
+    h.controller.setExecutionMode('isolated');
     h.controller.edit('Objective', 'Instructions');
     h.controller.authorizeHostedProjectData(true);
     h.controller.setValidation('npm test'); h.controller.acceptGrant(true);
@@ -99,8 +111,9 @@ test('direct task requires explicit Start and hosted consent, then creates a bou
     await h.controller.stop(); assert.equal(h.stopped, true); assert.equal(h.controller.selected?.status, 'cancelling');
 });
 
-test('direct task keeps validation bounded and requires a fresh grant after edits', async () => {
+test('Isolated hosted task keeps validation bounded and requires a fresh grant after edits', async () => {
     const h = harness(); await h.controller.attach('file:///project');
+    h.controller.setExecutionMode('isolated');
     h.controller.edit('One task', 'Implement and verify');
     h.controller.acceptGrant(true);
     h.controller.setValidation('npm test');
@@ -111,8 +124,9 @@ test('direct task keeps validation bounded and requires a fresh grant after edit
     assert.deepEqual((h.task as { reviewPolicy: unknown }).reviewPolicy, { kind: 'required' });
 });
 
-test('dirty Direct Work waits for an explicit continue or commit choice', async () => {
+test('dirty Isolated Work waits for an explicit continue or commit choice', async () => {
     const h = harness(); await h.controller.attach('file:///project');
+    h.controller.setExecutionMode('isolated');
     h.controller.edit('Inspect', 'Inspect this project');
     h.controller.acceptGrant(true);
     h.controller.authorizeHostedProjectData(true);
@@ -124,6 +138,7 @@ test('dirty Direct Work waits for an explicit continue or commit choice', async 
     assert.equal(h.acceptedDirty, 'snapshot-1');
 
     const committed = harness(); await committed.controller.attach('file:///project');
+    committed.controller.setExecutionMode('isolated');
     committed.controller.edit('Inspect', 'Inspect this project');
     committed.controller.acceptGrant(true);
     committed.controller.authorizeHostedProjectData(true);

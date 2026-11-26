@@ -245,7 +245,7 @@ test('Planning Work launch uses revisioned service and blocks human, stale and r
   assert.equal((await h.controller.launchWork(' npm test ', true))?.id, 'agent-task');
   assert.deepEqual(launches[0], { requestKey: (launches[0] as { requestKey: string }).requestKey,
     expectedProjectRevision: 4, expectedMapRevision: 2, planningMapId: 'plan', workItemId: 'work',
-    delegablePaths: ['src'], modelPolicy: { kind: 'follow-coding-agent' }, controls: {},
+    delegablePaths: ['src'], modelPolicy: { kind: 'follow-coding-agent' }, controls: {}, executionMode: 'direct',
     completion: { validation: [{ kind: 'test', label: 'Required WorkItem validation', command: 'npm test' }],
       requireValidationPass: true }, validationApproved: true });
   assert.equal(launches.length, 1);

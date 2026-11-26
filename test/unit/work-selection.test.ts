@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { WorkSelectionController, selectWorkView, workRows, workTitle } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
+import { WorkSelectionController, selectWorkView, workRows, workRunOverview, workTitle } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
 import type { AgentRuntimeService } from '../../packages/contracts/src/agent-runtime-service.ts';
 import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/authority.js';
 import { WorkToolPreferences } from '../../packages/theia-extension/lib/browser/work-tool-preferences.js';
@@ -94,6 +94,18 @@ test('Work view requires Dope validation proof and keeps drift, dirty consent an
     assert.equal(manual.status, 'Manual review needed');
     assert.deepEqual(manual.actions, ['verify-manual-gate']);
     assert.equal(manual.qualification, 'unknown');
+});
+
+test('Direct Work keeps Finish separate from failed validation and counts only unreverted files', () => {
+    const direct: any = { id: 'direct', objective: 'Edit', origin: { kind: 'direct' },
+        completion: { requireValidationPass: true, validation: [{ kind: 'test', label: 'required' }] } };
+    const failed: any = { id: 'direct-run', taskId: direct.id, executionMode: 'direct', status: 'completed',
+        directApplied: [{ path: 'src/a.ts', result: 'applied' }],
+        validationResults: [{ owner: 'dope', kind: 'test', label: 'required', status: 'failed' }] };
+    assert.equal(selectWorkView({ selection: { kind: 'run', id: failed.id }, task: direct, run: failed }).status, 'Finished');
+    assert.match(workRunOverview(failed, direct).state, /1 agent file applied/);
+    const reverted = { ...failed, directReverts: [{ path: 'src/a.ts', result: 'reverted' }] };
+    assert.match(workRunOverview(reverted, direct).state, /0 agent files applied/);
 });
 
 test('held candidate and stale or foreign identities never earn acceptance or completion', () => {
@@ -545,6 +557,7 @@ test('selected saved WorkItem task starts once with its exact ID, accepted grant
 test('saved WorkItem Local start uses its persisted task ID and separate grant without hosted consent', async () => {
     const saved: any = { id: 'local-work', objective: 'Local edit', projectId: 'project', planningMapId: 'map',
         projectRoot: '.', authority: { profile: 'phase-8b-project' }, reviewPolicy: { kind: 'required' },
+        executionMode: 'direct',
         origin: { kind: 'work-item', projectId: 'project', planningMapId: 'map' },
         modelPolicy: { kind: 'exact', connectionId: 'local', modelId: 'qwen' },
         completion: { validation: [{ kind: 'test', label: 'Required', command: 'npm test' }], requireValidationPass: true } };
@@ -583,6 +596,7 @@ test('saved WorkItem Local start uses its persisted task ID and separate grant w
     assert.equal(controller.startBlockReason, '');
     await controller.startSelectedWorkItemTask();
     assert.equal(starts, 1); assert.equal(authorized, false);
+    assert.equal(controller.selectedTask?.executionMode, 'direct');
     assert.deepEqual(acceptedGrant.mcpObservation, mcpScope);
     await controller.select({ kind: 'task', id: saved.id });
     controller.acceptStartMCPObservation(true);

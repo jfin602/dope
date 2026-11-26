@@ -344,6 +344,14 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         }
         return run;
     }
+    reviewDirectWork(handle: string, runId: string) {
+        if (!this.execution) throw new Error('Direct Work execution unavailable');
+        return this.execution.reviewDirectWork(this.active(handle), runId);
+    }
+    revertDirectWork(handle: string, runId: string, paths: string[]) {
+        if (!this.execution) throw new Error('Direct Work execution unavailable');
+        return this.execution.revertDirectWork(this.active(handle), runId, paths);
+    }
     listRuns(handle: string): Promise<AgentRun[]> { return this.store.listRuns(this.active(handle)); }
     listActions(handle: string, taskId?: string): Promise<ProposedAction[]> {
         return this.store.listActions(this.active(handle), taskId);

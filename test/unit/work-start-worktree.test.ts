@@ -16,6 +16,7 @@ test('Work previews dirty files, rejects stale approval, and commits only the re
     const root = join(parent, 'project');
     let accepted: unknown;
     const execution = { async reconcile() {}, activeRunId() { return undefined; },
+        registerEditorGuard() { return () => {}; },
         async start(_root: string, _uri: string, _task: string, _grant: unknown, _hosted: boolean, dirty: unknown) {
             accepted = dirty; return { id: 'run' }; } };
     const backend = new AgentRuntimeBackend(new AgentStore(), { notifyAgentStateChanged() {} }, execution as any);

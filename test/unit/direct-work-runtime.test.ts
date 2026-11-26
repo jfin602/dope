@@ -79,19 +79,37 @@ test('runtime Direct mode performs brokered canonical edits and keeps selected-t
                 projectUri: uri, taskId, grantRevision: 0, connectionId: 'local', modelId: 'model' },
             ['edit_file']) });
         const started = await backend.start(handle, uri, taskId, grant, false);
-        const run = await runtime.waitForRun(root, started.id);
+        const run = await runtime.waitForRun(root, started.id).catch(async error => {
+            throw new Error(`${error instanceof Error ? error.message : String(error)}: ` +
+                JSON.stringify({ saved: await store.readRun(root, started.id), resultStatus }));
+        });
         assert.equal(resultStatus, 'completed');
         assert.equal(run.executionMode, 'direct');
         assert.equal(run.status, 'completed', JSON.stringify({ outcome: run.outcome,
             delta: run.candidateDelta, applied: run.appliedFiles }));
+        assert.equal(run.validationBasis, 'direct-applied-snapshot');
+        assert.deepEqual(run.directApplied?.map(item => [item.path, item.result]), [['src/old.txt', 'applied']]);
+        const review = await backend.reviewDirectWork(handle, run.id);
+        assert.equal(review.validationCurrent, true);
+        assert.deepEqual(review.files.map(item => item.path), ['src/old.txt']);
+        assert.match(review.files[0].diff, /-before\n\+direct/);
         assert.equal(await readFile(join(root, 'src', 'old.txt'), 'utf8'), 'direct\n');
+        await writeFile(join(root, 'src', 'owner.txt'), 'owner\n');
+        assert.equal((await backend.reviewDirectWork(handle, run.id)).validationCurrent, false);
+        await rm(join(root, 'src', 'owner.txt'));
         const journalPath = join(root, run.directJournal!.path);
         const journal = JSON.parse(await readFile(journalPath, 'utf8'));
         assert.equal(journal.changes[0].result, 'completed');
         assert.equal(Buffer.from(journal.changes[0].beforeBytes, 'base64').toString(), 'before\n');
-        journal.changes[0].result = 'prepared';
-        await writeFile(journalPath, JSON.stringify(journal));
+        const reverted = await backend.revertDirectWork(handle, run.id, ['src/old.txt']);
+        assert.equal(reverted.files[0].reverted, true);
+        assert.equal(reverted.validationCurrent, false);
+        assert.equal(await readFile(join(root, 'src', 'old.txt'), 'utf8'), 'before\n');
+        assert.equal((await backend.readRun(handle, run.id))?.directReverts?.[0].result, 'reverted');
+        const interrupted = JSON.parse(await readFile(journalPath, 'utf8'));
+        interrupted.changes[0].result = 'prepared';
+        await writeFile(journalPath, JSON.stringify(interrupted));
         await runtime.reconcile(root);
-        assert.equal(JSON.parse(await readFile(journalPath, 'utf8')).changes[0].result, 'uncertain');
+        assert.equal(JSON.parse(await readFile(journalPath, 'utf8')).changes[0].result, 'not-applied');
     } finally { backend.dispose(); await runtime.dispose(); await rm(root, { recursive: true, force: true }); }
 });

@@ -31,7 +31,7 @@ export class AgentRunController {
     instructions = '';
     forkedFromRunId?: string;
     validationCommand = '';
-    executionMode: 'isolated' | 'direct' = 'isolated';
+    executionMode: 'isolated' | 'direct' = 'direct';
     worktreeReview?: WorktreeReview;
     commitMessage = 'Checkpoint before Work';
     policy: AgentModelPolicy = { kind: 'follow-coding-agent' };
@@ -48,7 +48,7 @@ export class AgentRunController {
         this.project = project; this.handle = undefined; this.runs = []; this.sequences = []; this.selected = undefined;
         this.task = undefined; this.events = []; this.sequence = 0; this.accepted = false; this.hostedProjectDataAuthorized = false;
         this.mcpOffer = undefined; this.mcpAccepted = false; this.pendingMCP = [];
-        this.objective = ''; this.instructions = ''; this.validationCommand = ''; this.executionMode = 'isolated';
+        this.objective = ''; this.instructions = ''; this.validationCommand = ''; this.executionMode = 'direct';
         this.worktreeReview = undefined;
         this.forkedFromRunId = undefined;
         this.changed();

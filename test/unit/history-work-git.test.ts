@@ -24,6 +24,21 @@ const run = (id = 'run-1', taskId = 'task-1') => ({ version: 1, id, taskId, proj
     createdAt: at, changedFiles: [], validationResults: [] });
 async function git(root: string, args: string[]) { return runGit('git', args, { cwd: root, timeout: 3000 }); }
 
+test('Direct History reports applied and reverted effects without a candidate promotion decision', () => {
+    const status = historyAgentRunStatus({ ...run(), executionMode: 'direct', status: 'failed',
+        directApplied: [{ path: 'src/a.ts', operation: 'modify', before: 'a'.repeat(64),
+            after: 'b'.repeat(64), result: 'applied' }],
+        directReverts: [{ path: 'src/a.ts', at, result: 'conflict' }],
+        validationResults: [{ version: 1, kind: 'test', label: 'unit', status: 'failed', owner: 'dope' }] } as any);
+    assert.equal(status.kind, 'agent-run');
+    if (status.kind !== 'agent-run') return;
+    assert.equal(status.executionMode, 'direct');
+    assert.equal(status.appliedFiles, 1);
+    assert.equal(status.revertConflicts, 1);
+    assert.equal(status.review, 'none');
+    assert.equal(status.validation, 'failed');
+});
+
 test('Agent, validation, review, promotion, sequence and Git remain separate owner facts', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-history-work-git-'));
     try {

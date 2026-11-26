@@ -28,6 +28,8 @@ export type HistoryStatus =
         'cancelled' | 'completed' | 'failed' | 'interrupted';
         validation: 'unknown' | 'not-started' | 'pending' | 'passed' | 'failed' | 'skipped' | 'cancelled';
         review?: 'none' | 'pending' | 'accept' | 'reject';
+        executionMode?: 'direct' | 'isolated'; appliedFiles?: number; revertedFiles?: number;
+        revertConflicts?: number; sourceHead?: string; validationFingerprint?: string;
         provenance?: { connectionId: string; modelId: string; adapterId: string; runtimeKind: 'local' | 'hosted' };
         promotion: 'not-applied' | 'applied' | 'unknown' };
 

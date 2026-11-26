@@ -56,11 +56,20 @@ function dopeValidation(results: readonly ValidationResult[]): Extract<HistoryEn
 
 export function historyAgentRunStatus(run: AgentRun): HistoryEntry['status'] {
     return { kind: 'agent-run', state: run.status, validation: dopeValidation(run.validationResults),
+        ...(run.executionMode === 'direct' ? { executionMode: 'direct' as const,
+            appliedFiles: run.directApplied?.filter(item => item.result === 'applied').length ??
+                run.appliedFiles?.length ?? 0,
+            revertedFiles: run.directReverts?.filter(item => item.result === 'reverted').length ?? 0,
+            revertConflicts: run.directReverts?.filter(item => item.result === 'conflict').length ?? 0,
+            ...(run.basis?.head ? { sourceHead: run.basis.head } : {}),
+            ...(run.candidateFingerprint ? { validationFingerprint: run.candidateFingerprint } : {}) } : {}),
         review: run.reviewDecision?.kind ?? (run.candidateReview?.state === 'ready' ? 'pending' : 'none'),
         ...(run.provenance ? { provenance: { connectionId: run.provenance.connectionId,
             modelId: run.provenance.modelId, adapterId: run.provenance.adapterId,
             runtimeKind: run.provenance.runtimeKind } } : {}),
-        promotion: run.reviewDecision?.kind === 'accept' && run.authorityDecision?.allowed === true &&
+        promotion: run.executionMode === 'direct' ?
+            run.directApplied?.some(item => item.result === 'applied') || run.appliedFiles?.length ? 'applied' : 'not-applied' :
+            run.reviewDecision?.kind === 'accept' && run.authorityDecision?.allowed === true &&
             run.appliedFiles !== undefined && run.status === 'completed' ? 'applied' : 'not-applied' };
 }
 

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -77,6 +77,9 @@ test('Direct Work denies owner edits, dirty/untracked targets, unsaved editors, 
     await writeFile(join(root, 'src', 'untracked.txt'), 'owner untracked');
     await assert.rejects(journal.edit('create', 'src/untracked.txt', 'bad', async () => false), /owner source|dirty/i);
     await rm(join(root, 'src', 'untracked.txt'));
+    await writeFile(join(root, '.git', 'info', 'exclude'), 'src/ignored.txt\n');
+    await assert.rejects(journal.edit('create', 'src/ignored.txt', 'bad', async () => false), /Ignored project path/);
+    await assert.rejects(readFile(join(root, 'src', 'ignored.txt')), /ENOENT/);
     for (const path of ['../escape', 'src/../../escape', '.git/config', '.dope/x', 'src/.env'])
         await assert.rejects(journal.edit('create', path, 'bad', async () => false));
     await symlink(root, join(root, 'src', 'escape'));
@@ -95,6 +98,53 @@ test('Direct Work records a completed first file when a second file fails, and d
     await writeFile(join(root, 'src', 'old.txt'), 'owner after agent\n');
     await assert.rejects(journal.edit('modify', 'src/old.txt', 'agent second\n', async () => false), /conflict/i);
     assert.equal(await readFile(join(root, 'src', 'old.txt'), 'utf8'), 'owner after agent\n');
+}));
+
+test('Direct review reverts only matching after-state files and keeps owner edits', async () => fixture(async (root, head) => {
+    const journal = await create(root, head);
+    await journal.edit('modify', 'src/old.txt', 'agent first\n', async () => false);
+    await journal.edit('modify', 'src/old.txt', 'agent second\n', async () => false);
+    await journal.edit('create', 'src/new.txt', 'agent new\n', async () => false);
+    assert.deepEqual((await DirectWorkJournal.review(root, journal.path)).conflicts, []);
+    await writeFile(join(root, 'src/new.txt'), 'owner new\n');
+    assert.deepEqual((await DirectWorkJournal.review(root, journal.path)).conflicts, ['src/new.txt']);
+    assert.deepEqual(await DirectWorkJournal.revert(root, journal.path,
+        ['src/old.txt', 'src/new.txt'], async () => false), [
+        { path: 'src/old.txt', result: 'reverted' },
+        { path: 'src/new.txt', result: 'conflict', reason: 'Current file identity or hash differs from the agent after-state' }
+    ]);
+    assert.equal(await readFile(join(root, 'src/old.txt'), 'utf8'), 'original\n');
+    assert.equal(await readFile(join(root, 'src/new.txt'), 'utf8'), 'owner new\n');
+}));
+
+test('Direct review removes a matching agent-created file and blocks unsaved editor changes', async () => fixture(async (root, head) => {
+    const journal = await create(root, head);
+    await journal.edit('create', 'src/new.txt', 'new\n', async () => false);
+    assert.equal((await DirectWorkJournal.revert(root, journal.path, ['src/new.txt'], async () => true))[0].result, 'conflict');
+    assert.equal(await readFile(join(root, 'src/new.txt'), 'utf8'), 'new\n');
+    assert.equal((await DirectWorkJournal.revert(root, journal.path, ['src/new.txt'], async () => false))[0].result, 'reverted');
+    await assert.rejects(readFile(join(root, 'src/new.txt')), /ENOENT/);
+}));
+
+test('Direct review refuses a same-byte replacement with a different file identity', async () => fixture(async (root, head) => {
+    const journal = await create(root, head);
+    await journal.edit('modify', 'src/old.txt', 'agent\n', async () => false);
+    await writeFile(join(root, 'src/replacement.txt'), 'agent\n');
+    await rename(join(root, 'src/replacement.txt'), join(root, 'src/old.txt'));
+    assert.deepEqual((await DirectWorkJournal.review(root, journal.path)).conflicts, ['src/old.txt']);
+    assert.equal((await DirectWorkJournal.revert(root, journal.path, ['src/old.txt'], async () => false))[0].result, 'conflict');
+    assert.equal(await readFile(join(root, 'src/old.txt'), 'utf8'), 'agent\n');
+}));
+
+test('new Direct segment binds prior applied source and reverts only its own edits', async () => fixture(async (root, head) => {
+    const first = await create(root, head, 'segment-1');
+    const prior = await first.edit('modify', 'src/old.txt', 'segment one\n', async () => false);
+    const second = await DirectWorkJournal.create(root, head, 'task-direct', 'segment-2', grant(root),
+        undefined, [{ path: prior.path, after: prior.after, afterIdentity: prior.afterIdentity! }]);
+    await second.assertActive();
+    await second.edit('modify', 'src/old.txt', 'segment two\n', async () => false);
+    assert.equal((await DirectWorkJournal.revert(root, second.path, ['src/old.txt'], async () => false))[0].result, 'reverted');
+    assert.equal(await readFile(join(root, 'src/old.txt'), 'utf8'), 'segment one\n');
 }));
 
 test('restart reconciliation distinguishes completed, absent and uncertain prepared writes', async () => fixture(async (root, head) => {

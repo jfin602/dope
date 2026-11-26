@@ -68,6 +68,8 @@ test('Work navigation restores independent Chat and completed stack without muta
             readTranscript: (_handle: string, id: string, cursor: number, limit: number) => {
                 cursors.push(cursor); return reopened.readTranscript(root, id, cursor, limit);
             },
+            readEvents: (_handle: string, id: string, cursor: number, limit: number) =>
+                reopened.readEvents(root, id, cursor, limit),
             async sequenceEvidence() { return { head, packageVersion: '0.8.20', clean: true,
                 worktreeFingerprint: 'e'.repeat(64) }; },
             async codingAgentReady() { return false; },

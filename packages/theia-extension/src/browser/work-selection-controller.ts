@@ -1,6 +1,6 @@
 import type { AgentMapImpact, AgentRun, AgentSteeringRequest, AgentSteeringState, AgentTask, WorkSession,
     AgentRunEvent, AgentTranscriptEntry, AgentTaskSequence, ProposedAction } from '@dope/agent-core';
-import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
+import type { AgentRuntimeService, DirectWorkReview } from '@dope/contracts/lib/agent-runtime-service';
 import type { WorkMCPObservationScope } from '@dope/agent-core/lib/authority';
 import type { CandidateResumePreview, WorktreeReview } from '@dope/contracts/lib/agent-runtime-service';
 import { createDefaultExecutionGrant, createMCPObservationExecutionGrant, makeWorkToolSelection,
@@ -30,6 +30,9 @@ export function workTitle(selection: WorkSelection, run?: AgentRun, task?: Agent
 
 /** Only saved owner state supplies these claims; agent prose is never validation evidence. */
 export function workRunOverview(run: AgentRun, task?: AgentTask): { state: string; validation: string; next: string } {
+    const reverted = new Set(run.directReverts?.filter(item => item.result === 'reverted').map(item => item.path));
+    const directCount = run.directApplied?.filter(item => item.result === 'applied' && !reverted.has(item.path)).length ??
+        run.appliedFiles?.filter(path => !reverted.has(path)).length ?? 0;
     const review = workReviewState(run, task);
     const required = task?.completion.validation ?? [];
     const results = run.candidateReview && !run.reviewDecision ? run.candidateReview.validation : run.validationResults;
@@ -44,9 +47,17 @@ export function workRunOverview(run: AgentRun, task?: AgentTask): { state: strin
         review === 'accepted' ? `Candidate accepted; ${run.appliedFiles?.length ?? 0} ` +
             `file${run.appliedFiles?.length === 1 ? '' : 's'} applied` :
         review === 'rejected' ? 'Candidate rejected; no changes applied' :
+        run.executionMode === 'direct' && run.status === 'running' ? 'Running; edits appear in the project as they occur' :
+        run.executionMode === 'direct' && run.status === 'completed' ?
+            `Finished; ${directCount} agent file${directCount === 1 ? '' : 's'} applied` :
+        run.executionMode === 'direct' && run.status === 'cancelled' ?
+            `Stopped; ${directCount} agent file${directCount === 1 ? '' : 's'} remain applied` :
+        run.executionMode === 'direct' && ['failed', 'interrupted'].includes(run.status) && directCount > 0 ?
+            `Partial; ${directCount} agent file${directCount === 1 ? '' : 's'} remain applied after ${run.status}` :
         run.status === 'completed' ? 'Agent run completed; review and qualification remain separate' :
         `Agent run ${run.status}`;
-    const next = review === 'pending' ? workReviewCanAccept(run, task) ?
+    const next = run.executionMode === 'direct' ? 'Review Changes, validation and source conflicts before continuing or reverting.' :
+        review === 'pending' ? workReviewCanAccept(run, task) ?
         'Review the candidate diff, then accept or reject it.' :
         'Inspect required validation before deciding; acceptance is unavailable.' :
         review === 'stale' ? 'Refresh Work and inspect the changed source before another decision.' :
@@ -135,7 +146,9 @@ export function selectWorkView(input: WorkViewInput): WorkViewModel {
     const review = workReviewState(run, task);
     const candidate = review === 'pending' ? 'held' : review === 'accepted' || review === 'rejected' || review === 'stale' ? review :
         run?.candidateDelta ? 'unknown' : 'none';
-    const promotion = candidate === 'held' || candidate === 'stale' || candidate === 'rejected' ? 'held' :
+    const promotion = run?.executionMode === 'direct' ? run.directApplied?.some(item => item.result === 'applied') ||
+        run.appliedFiles?.length ? 'applied' : 'not-applicable' :
+        candidate === 'held' || candidate === 'stale' || candidate === 'rejected' ? 'held' :
         candidate === 'accepted' ? run?.status === 'completed' && Array.isArray(run.appliedFiles) ? 'applied' : 'unknown' :
         'not-applicable';
     const checkpoint = saved ? saved.checkpoints.some(proof => proof.entryNumber === saved.currentEntryNumber && !!proof.sha) ?
@@ -165,10 +178,22 @@ export function selectWorkView(input: WorkViewInput): WorkViewModel {
         status = 'Candidate ready for review'; next = 'Inspect the candidate and required validation before deciding.';
     } else if (saved && ['checkpoint-pending', 'checkpoint-failed'].includes(saved.blockedReason ?? '')) {
         status = 'Checkpoint needs verification'; next = 'Inspect the Git checkpoint evidence.';
+    } else if (run?.executionMode === 'direct' && run.status === 'cancelled') {
+        status = 'Stopped'; next = 'Review the applied changes and validation before another segment.';
+    } else if (run?.executionMode === 'direct' && ['failed', 'interrupted'].includes(run.status) &&
+        (run.directApplied?.some(item => item.result === 'applied') || !!run.appliedFiles?.length)) {
+        status = 'Partial'; next = 'Review applied changes and unresolved effects.';
+    } else if (run?.executionMode === 'direct' && run.status === 'completed') {
+        status = 'Finished'; next = validation === 'failed' ?
+            'Required validation failed. Review Changes and the applied source.' :
+            'Review Changes and the saved validation.';
     } else if (validation === 'failed') {
         status = 'Validation failed'; next = 'Inspect the failed check and preserve its evidence.';
     } else if (run && ['blocked', 'failed', 'interrupted', 'cancelled'].includes(run.status)) {
-        status = 'Work needs review'; next = 'Inspect the run diagnostics.';
+        status = run.executionMode === 'direct' ?
+            run.status === 'interrupted' ? 'Interrupted' : run.status === 'failed' ? 'Failed' : 'Work needs review' :
+            'Work needs review';
+        next = 'Inspect the run diagnostics.';
     } else if (validation === 'unavailable' || validation === 'not-run' && run && run.status !== 'running') {
         status = validation === 'unavailable' ? 'Validation unavailable' : 'Validation not run';
         next = 'Inspect the required check before continuing.';
@@ -185,7 +210,9 @@ export function selectWorkView(input: WorkViewInput): WorkViewModel {
         status = 'Completed with evidence'; next = 'Inspect the saved checkpoints and qualification record.';
     } else if (!saved && run?.status === 'completed' && validation === 'passed' &&
         (task?.reviewPolicy?.kind !== 'required' || promotion === 'applied')) {
-        status = 'Completed with evidence'; next = 'Inspect the saved validation and decision.';
+        status = run.executionMode === 'direct' ? 'Finished' : 'Completed with evidence';
+        next = run.executionMode === 'direct' ? 'Review Changes and the saved validation.' :
+            'Inspect the saved validation and decision.';
     } else if (saved?.status === 'blocked' || saved?.status === 'interrupted') {
         status = 'Work needs review'; next = 'Inspect the saved blocker and reconcile if available.';
     } else if (run?.status === 'completed' || saved?.status === 'completed') {
@@ -289,10 +316,14 @@ export class WorkSelectionController {
     tasks: AgentTask[] = [];
     runs: AgentRun[] = [];
     selectedRun?: AgentRun;
+    directReview?: DirectWorkReview;
+    directReviewError = '';
+    directReviewBusy = false;
     session?: WorkSession;
     sessionBusy = false;
     sessionError = '';
     followUpOpen = false;
+    followUpMode: 'direct' | 'isolated' = 'direct';
     followUpInstructions = '';
     followUpAccepted = false;
     followUpRecoveryDiscardAccepted = false;
@@ -352,6 +383,25 @@ export class WorkSelectionController {
             target?: AgentTarget; targets?: AgentTarget[]; reason: string }>,
         private readonly attachLimitMs = 10000, private readonly tools?: WorkToolPreferences) {
         this.phase = new PhaseStackController(runtime, changed, attachLimitMs, resolveTarget, tools);
+    }
+    async reviewDirect(): Promise<void> {
+        const run = this.selectedRun, handle = this.handle;
+        if (!run || !handle || run.executionMode !== 'direct') return;
+        this.directReviewBusy = true; this.directReviewError = ''; this.changed();
+        try {
+            this.directReview = await this.runtime.reviewDirectWork(handle, run.id);
+        } catch (error) { this.directReviewError = error instanceof Error ? error.message : 'Direct review unavailable'; }
+        finally { this.directReviewBusy = false; this.changed(); }
+    }
+    async revertDirect(paths: string[]): Promise<void> {
+        const run = this.selectedRun, handle = this.handle;
+        if (!run || !handle || run.executionMode !== 'direct' || this.directReviewBusy) return;
+        this.directReviewBusy = true; this.directReviewError = ''; this.changed();
+        try {
+            this.directReview = await this.runtime.revertDirectWork(handle, run.id, paths);
+            this.selectedRun = await this.runtime.readRun(handle, run.id);
+        } catch (error) { this.directReviewError = error instanceof Error ? error.message : 'Direct revert unavailable'; }
+        finally { this.directReviewBusy = false; this.changed(); }
     }
     /** Adapter for the UI: capture only existing controller eligibility, then project it without effects. */
     view(selection: WorkSelection): WorkViewModel {
@@ -503,6 +553,7 @@ export class WorkSelectionController {
             !['completed', 'stopped', 'recovery-required'].includes(this.session.status) ||
             this.session.segments.at(-1)?.runId !== this.selectedRun.id) return;
         this.followUpOpen = true;
+        this.followUpMode = 'direct';
         this.followUpAccepted = false;
         this.followUpRecoveryDiscardAccepted = false;
         this.followUpDirtyReview = undefined;
@@ -554,6 +605,7 @@ export class WorkSelectionController {
         const handle = this.handle, project = this.project, shown = this.selectedRun;
         const session = this.session, task = this.selectedTask;
         const selectedToolIds = [...this.followUpToolIds];
+        const selectedMode = this.followUpMode;
         const approvedInstructions = this.followUpInstructions.trim();
         if (!handle || !project || !shown || !session || !task || this.followUpBusy ||
             !this.followUpOpen || !approvedInstructions ||
@@ -579,19 +631,22 @@ export class WorkSelectionController {
                 throw new Error('Saved Work or selected local model changed. Review the segment again.');
             if (shown.candidateReview && !shown.reviewDecision)
                 throw new Error('Resolve the pending candidate review before another Work segment.');
-            if (shown.status !== 'completed' && shown.appliedFiles?.length)
+            if (shown.executionMode !== 'direct' && shown.status !== 'completed' && shown.appliedFiles?.length)
                 throw new Error('Earlier run applied project files; verify or restore that source before another segment.');
             const verifiedNoEffect = verifiedNoEffectWorkSegment(shown, session);
-            const uncertain = shown.status === 'interrupted' || shown.status === 'failed' && !verifiedNoEffect ||
-                shown.status === 'cancelled' && !!shown.candidateDelta?.effects.length;
+            const uncertain = shown.executionMode !== 'direct' && (shown.status === 'interrupted' ||
+                shown.status === 'failed' && !verifiedNoEffect ||
+                shown.status === 'cancelled' && !!shown.candidateDelta?.effects.length);
             if (uncertain && !this.followUpRecoveryDiscardAccepted)
                 throw new Error('Review and discard uncertain isolated effects before starting another segment.');
             if (!review.clean && (!acceptDirty || review.fingerprint !== this.followUpDirtyReview?.fingerprint)) {
                 this.followUpDirtyReview = review; return;
             }
             if (review.clean && acceptDirty) throw new Error('Project changed since Work review');
+            if (selectedMode === 'direct' && shown.executionMode !== 'direct' && !review.clean)
+                throw new Error('Direct Work requires a clean source after an Isolated segment. Review and checkpoint its applied files first.');
             if (!review.head) throw new Error('Current source HEAD unavailable for new segment');
-            if (approvedInstructions !== this.followUpInstructions.trim() ||
+            if (approvedInstructions !== this.followUpInstructions.trim() || selectedMode !== this.followUpMode ||
                 JSON.stringify(selectedToolIds) !== JSON.stringify(this.followUpToolIds) ||
                 selectedToolIds.includes('mcp_godot_server_info') ||
                 selectedToolIds.some(id => !WORK_TOOL_CATALOG.some(tool => tool.id === id)) ||
@@ -601,7 +656,7 @@ export class WorkSelectionController {
                 throw new Error('Selected tools require a fresh valid review.');
             const newTask = parseAgentTask({ ...task, id: crypto.randomUUID(),
                 createdAt: new Date().toISOString(), instructions: approvedInstructions,
-                executionMode: task.executionMode ?? 'isolated',
+                executionMode: selectedMode,
                 modelPolicy: { kind: 'exact', connectionId: target.target.connectionId,
                     modelId: target.target.modelId } });
             const selection = makeWorkToolSelection({ projectUri: project, taskId: newTask.id,
@@ -701,9 +756,12 @@ export class WorkSelectionController {
                 selection.kind === 'task' ? await this.runtime.readTask(handle, selection.id) : undefined;
             if (serial !== this.serial || handle !== this.handle) return;
             this.selectedRun = run; this.selectedTask = task;
+            this.directReview = undefined; this.directReviewError = '';
             this.session = run ? await (this.runtime.readWorkSessionForRun?.(handle, run.id) ??
                 this.runtime.readWorkSession?.(handle, run.id)) : undefined;
             if (serial !== this.serial || handle !== this.handle) return;
+            if (run?.executionMode === 'direct' && ['completed', 'cancelled', 'failed', 'interrupted'].includes(run.status))
+                void this.reviewDirect();
             if (run && ['failed', 'cancelled', 'interrupted'].includes(run.status)) {
                 void this.runtime.previewCandidateResume(handle, run.id).then(preview => {
                     if (serial !== this.serial || handle !== this.handle || this.selectedRun?.id !== run.id) return;
@@ -858,6 +916,8 @@ export class WorkSelectionController {
             task.completion.validation.some(target => !target.command?.trim()))
             return 'This saved task has no required Dope validation. Return to its Planning Map and launch a new task with an approved validation command.';
         if (!this.startTarget) return this.startTargetReason;
+        if (task.executionMode === 'direct' && this.startTarget.locality !== 'local')
+            return 'Direct Work is unavailable for this hosted model. Launch a new Isolated Work task from the Planning Map.';
         if (this.startTarget.locality === 'local' && this.tools) {
             const unavailable = this.tools.resolve(this.project, `task:${task.id}`,
                 task.completion.validation.some(item => hasApprovedWorkCommand(item.command, item.kind)),
@@ -895,6 +955,9 @@ export class WorkSelectionController {
         if (!review.clean && (!continueDirty || review.fingerprint !== this.startWorktreeReview?.fingerprint)) {
             this.startWorktreeReview = review; this.changed(); return;
         }
+        if (shown.executionMode === 'direct' && !review.clean)
+            { this.message = 'Direct Work requires a clean source basis. Save or commit owner changes first.';
+                this.changed(); return; }
         this.startWorktreeReview = undefined;
         const startEpoch = ++this.startEpoch;
         this.startBusy = true; this.message = ''; this.changed();

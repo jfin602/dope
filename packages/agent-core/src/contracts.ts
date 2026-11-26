@@ -86,11 +86,14 @@ export interface AgentRun {
     projectRoot: '.'; projectId?: string; createdAt: string; startedAt?: string; endedAt?: string;
     executionWorkspace?: { id: string; basisHead: string };
     directJournal?: { id: string; path: string };
+    directApplied?: { path: string; operation: 'create' | 'modify'; before: string | null;
+        after: string; result: 'applied' | 'uncertain' }[];
+    directReverts?: { path: string; at: string; result: 'reverted' | 'conflict'; reason?: string }[];
     provenance?: ExecutionProvenance; basis?: GitBasis; acceptedDirty?: AcceptedDirtyBasis;
     finalGit?: GitFinal; changedFiles: string[];
     commandEvidence?: CommandEvidence[];
     validationResults: ValidationResult[]; changeSummary?: ChangeSummary;
-    validationBasis?: 'execution-workspace'; candidateDelta?: CandidateDelta;
+    validationBasis?: 'execution-workspace' | 'direct-applied-snapshot'; candidateDelta?: CandidateDelta;
     candidateFingerprint?: string;
     /** Checked owner projection captured at Start. It conveys no authority of its own. */
     taskContract?: TaskContractSnapshot;
@@ -433,7 +436,7 @@ export function parseAgentRun(value: unknown): AgentRun {
     const x = record(value, ['version', 'id', 'taskId', 'status', 'grantId', 'grantRevision', 'requestedPolicy',
         'projectRoot', 'projectId', 'toolSelection', 'createdAt', 'startedAt', 'endedAt', 'provenance', 'basis', 'acceptedDirty',
         'changedFiles', 'validationResults', 'changeSummary', 'finalGit', 'commandEvidence', 'recovery', 'outcome',
-        'validationBasis', 'candidateDelta', 'candidateFingerprint', 'resumedFrom', 'candidateReview', 'reviewDecision', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries', 'taskContract', 'documentReads', 'mcpObservations', 'contextCompactions', 'executionMode', 'directJournal']);
+        'validationBasis', 'candidateDelta', 'candidateFingerprint', 'resumedFrom', 'candidateReview', 'reviewDecision', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries', 'taskContract', 'documentReads', 'mcpObservations', 'contextCompactions', 'executionMode', 'directJournal', 'directApplied', 'directReverts']);
     if (projectPath(x.projectRoot, true) !== '.') throw new Error('Invalid project root');
     const status = parseAgentRunStatus(x.status);
     const basis = x.basis === undefined ? undefined : record(x.basis, ['head', 'clean', 'metadataChanged']);
@@ -471,6 +474,7 @@ export function parseAgentRun(value: unknown): AgentRun {
     if (directJournal && (x.executionMode !== 'direct' ||
         directJournal.path !== `.dope/agent/direct-journals/${directJournal.id}.json`))
         throw new Error('Direct journal identity mismatch');
+    if (x.directApplied !== undefined && !directJournal) throw new Error('Direct effects require a journal');
     if (executionWorkspace && (!basis || executionWorkspace.basisHead !== basis.head))
         throw new Error('Execution workspace basis does not match run');
     const changedFiles = array(x.changedFiles, 500, item => projectPath(item));
@@ -540,6 +544,18 @@ export function parseAgentRun(value: unknown): AgentRun {
             id: id(executionWorkspace.id), basisHead: id(executionWorkspace.basisHead) } }),
         ...(directJournal === undefined ? {} : { directJournal: {
             id: id(directJournal.id), path: projectPath(directJournal.path) } }),
+        ...(x.directApplied === undefined ? {} : { directApplied: array(x.directApplied, 500, value => {
+            const effect = record(value, ['path', 'operation', 'before', 'after', 'result']);
+            return { path: projectPath(effect.path), operation: select(effect.operation, ['create', 'modify'] as const),
+                before: effect.before === null ? null : hash(effect.before), after: hash(effect.after),
+                result: select(effect.result, ['applied', 'uncertain'] as const) };
+        }) }),
+        ...(x.directReverts === undefined ? {} : { directReverts: array(x.directReverts, 500, value => {
+            const entry = record(value, ['path', 'at', 'result', 'reason']);
+            return { path: projectPath(entry.path), at: timestamp(entry.at),
+                result: select(entry.result, ['reverted', 'conflict'] as const),
+                ...(entry.reason === undefined ? {} : { reason: bounded(entry.reason, 500) }) };
+        }) }),
         ...(x.provenance === undefined ? {} : { provenance: parseExecutionProvenance(x.provenance) }),
         ...(basis === undefined ? {} : { basis: { head: basis.head === null ? null : id(basis.head),
             clean: bool(basis.clean), ...(basis.metadataChanged === undefined ? {} :
@@ -550,7 +566,8 @@ export function parseAgentRun(value: unknown): AgentRun {
         ...(x.commandEvidence === undefined ? {} : { commandEvidence: array(x.commandEvidence, 24, parseCommandEvidence) }),
         ...(x.finalGit === undefined ? {} : { finalGit: parseGitFinal(x.finalGit) }),
         ...(x.changeSummary === undefined ? {} : { changeSummary: parseChangeSummary(x.changeSummary) }),
-        ...(x.validationBasis === undefined ? {} : { validationBasis: select(x.validationBasis, ['execution-workspace'] as const) }),
+        ...(x.validationBasis === undefined ? {} : { validationBasis: select(x.validationBasis,
+            ['execution-workspace', 'direct-applied-snapshot'] as const) }),
         ...(candidateDelta === undefined ? {} : { candidateDelta }),
         ...(x.candidateFingerprint === undefined ? {} : { candidateFingerprint: hash(x.candidateFingerprint) }),
         ...(x.resumedFrom === undefined ? {} : { resumedFrom: (() => {

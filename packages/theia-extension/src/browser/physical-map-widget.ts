@@ -58,6 +58,7 @@ function iconButton(button: HTMLButtonElement, label: string, icon: string): voi
 }
 
 export class PhysicalMapWidget extends BaseWidget {
+    private workExecutionMode: 'direct' | 'isolated' = 'direct';
     historyFocusTarget(projectUri?: string): HistoryFocusTarget | undefined {
         return planningFocusTarget({ planningMode: this.planning.planningMode,
             projectMatches: this.controller.projectMatches && this.controller.mapWorkspace === projectUri,
@@ -1065,6 +1066,20 @@ export class PhysicalMapWidget extends BaseWidget {
             void this.planning.putWorkItem({ ...item, assignment: assignment as WorkItem['assignment'],
                 delegablePaths: delegable, humanReservedPaths: reserved });
         }, !!this.planning.workItemBlocker);
+        const workModeLabel = document.createElement('label');
+        workModeLabel.textContent = 'Execution Mode ';
+        const workMode = document.createElement('select'); workMode.setAttribute('aria-label', 'WorkItem execution mode');
+        workMode.append(new Option('Direct Work — Default', 'direct'), new Option('Isolated Work', 'isolated'));
+        workMode.value = this.workExecutionMode;
+        const workModeDetail = document.createElement('p');
+        workModeDetail.textContent = this.workExecutionMode === 'direct' ?
+            'The agent edits your open project as it works. Changes appear in the editor immediately. You can review changes and safely revert agent-owned edits.' :
+            'The agent edits a separate copy. Your project stays unchanged until you review and accept the candidate.';
+        workMode.onchange = () => { this.workExecutionMode = workMode.value as 'direct' | 'isolated';
+            workModeDetail.textContent = this.workExecutionMode === 'direct' ?
+                'The agent edits your open project as it works. Changes appear in the editor immediately. You can review changes and safely revert agent-owned edits.' :
+                'The agent edits a separate copy. Your project stays unchanged until you review and accept the candidate.'; };
+        workModeLabel.append(workMode); panel.append(workModeLabel, workModeDetail);
         button('Launch Work', async () => {
             const projectId = this.planning.collection?.projectId, projectRevision = this.planning.collection?.revision;
             const mapId = this.planning.selected?.id, mapRevision = this.planning.selected?.revision;
@@ -1077,8 +1092,12 @@ export class PhysicalMapWidget extends BaseWidget {
                 this.status.textContent = 'Enter one local required test command (1–160 characters, one line); no task was created.';
                 return;
             }
+            const executionMode = this.workExecutionMode;
             const approved = await new ConfirmDialog({ title: 'Approve WorkItem validation',
-                msg: `Create a new WorkItem task with required test command “${command}”? Dope will run it in a Dope-owned ValidationWorkspace against the frozen candidate before developer review and authorized promotion. This does not start an AgentRun.`,
+                msg: `Create a new ${executionMode === 'direct' ? 'Direct' : 'Isolated'} WorkItem task with required test command “${command}”? ` +
+                    (executionMode === 'direct' ? 'The agent will edit the open project as it works. Dope will validate a frozen snapshot and offer source-checked revert.' :
+                        'Dope will validate a frozen candidate before developer review and authorized promotion.') +
+                    ' This does not start an AgentRun.',
                 ok: 'Approve and create task', cancel: 'Cancel' }).open();
             if (!approved) { this.status.textContent = 'Work launch cancelled; no task was created.'; return; }
             if (this.planning.collection?.projectId !== projectId || this.planning.collection?.revision !== projectRevision ||
@@ -1087,8 +1106,11 @@ export class PhysicalMapWidget extends BaseWidget {
                 this.status.textContent = 'Work selection or revision changed; no task was created. Review the current WorkItem and launch again.';
                 return;
             }
-            const task = await this.planning.launchWork(command, true);
-            if (task) await this.openWorkTask?.(task.id);
+            const task = await this.planning.launchWork(command, true, executionMode);
+            if (task) {
+                this.workExecutionMode = 'direct';
+                await this.openWorkTask?.(task.id);
+            }
         }, !this.planning.canLaunchWork || !this.openWorkTask);
         for (const task of this.planning.linkedTasks) {
             button(`Open Work: ${task.objective}`, () => { void this.openWorkTask?.(task.id); }, !this.openWorkTask);
