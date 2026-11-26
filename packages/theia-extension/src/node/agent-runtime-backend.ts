@@ -73,8 +73,9 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         const promise = (async () => {
             await this.execution?.reconcile(root);
             this.root = root;
-            this.releaseEditorGuard = this.execution?.registerEditorGuard(root, path =>
-                this.client.hasUnsavedEditor(pathToFileURL(join(root, path)).toString()));
+            this.releaseEditorGuard = this.execution?.registerEditorGuard(root,
+                path => this.client.hasUnsavedEditor(pathToFileURL(join(root, path)).toString()),
+                path => this.client.refreshDirectEditor(pathToFileURL(join(root, path)).toString()));
             try {
                 for (const sequence of await this.store.listSequences(root)) await this.reconcileStoredSequence(root, sequence);
             } catch (error) {

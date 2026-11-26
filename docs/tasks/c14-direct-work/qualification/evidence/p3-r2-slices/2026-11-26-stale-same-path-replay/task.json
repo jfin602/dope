@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "id": "f38fff01-9d69-44df-9137-aa55225ec18c",
+  "createdAt": "2026-11-26T21:02:41.651Z",
+  "objective": "In this disposable Git fixture, inspect the current Owner Teal source in src/main.ts and change only its headline to Stale Amber, keeping a single export line and final newline. Use only selected Dope read/list/edit tools; do not touch other files or run commands.",
+  "instructions": "In this disposable Git fixture, inspect the current Owner Teal source in src/main.ts and change only its headline to Stale Amber, keeping a single export line and final newline. Use only selected Dope read/list/edit tools; do not touch other files or run commands.",
+  "projectRoot": ".",
+  "modelPolicy": {
+    "kind": "exact",
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b"
+  },
+  "controls": {},
+  "authority": {
+    "profile": "phase-8b-project"
+  },
+  "executionMode": "direct",
+  "completion": {
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "requireValidationPass": true
+  },
+  "origin": {
+    "kind": "direct"
+  },
+  "reviewPolicy": {
+    "kind": "required"
+  }
+}

@@ -20,7 +20,7 @@ import { PiRuntimeFactory } from '../../packages/theia-extension/lib/node/pi-run
 const execute = promisify(execFile);
 const tick = () => new Promise(resolve => setTimeout(resolve, 10));
 
-test('real Work service finishes for review and continues as a linked, ceiling-bound run',
+test('real Work service presents Coral as history and Violet as the linked, ceiling-bound request',
     { timeout: 40_000 }, async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-work-session-runtime-'));
     const store = new AgentStore();
@@ -81,17 +81,23 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
             createDefaultExecutionGrant({ id, revision: 0, taskId, acceptedAt: new Date().toISOString(),
                 toolSelection: makeWorkToolSelection({ projectUri: uri, taskId, grantRevision: 0,
                     connectionId: 'local', modelId: model.id }, tools) });
-        await backend.createTask(handle, task('task-one', 'First Work turn', new Date(Date.now() - 2000).toISOString()) as any);
+        const coralObjective = 'Set the fixture headline to Coral.';
+        await backend.createTask(handle, task('task-one', coralObjective,
+            new Date(Date.now() - 2000).toISOString(), 'Change only src/main.ts to Coral.') as any);
         const firstGrant = grant('grant-one', 'task-one', ['read_file']);
         const first = await backend.startWorkSession(handle, uri, 'task-one', firstGrant, false);
         for (let n = 0; n < 300 && (await backend.readWorkSession(handle, first.id))?.status !== 'awaiting-input'; n++)
             await tick();
         const waiting = await backend.readWorkSession(handle, first.id);
         assert.equal(waiting?.status, 'awaiting-input');
+        assert.equal(waiting?.segments[0].executionMode, 'isolated');
         assert.equal(waiting?.candidateSnapshot?.runId, first.id);
         assert.deepEqual(await new AgentStore().readWorkCandidateSnapshot(root, first.id,
             waiting!.candidateSnapshot!.id), waiting!.candidateSnapshot);
         assert.equal((await backend.readRun(handle, first.id))?.status, 'running');
+        const firstPrompt = JSON.stringify(seen[0]);
+        assert.match(firstPrompt, /Set the fixture headline to Coral\.\\n\\nChange only src\/main\.ts to Coral\./);
+        assert.doesNotMatch(firstPrompt, /DOPE SAVED WORK CONTEXT|CURRENT APPROVED DEVELOPER REQUEST FOR THIS SEGMENT/);
         await Promise.all([
             backend.submitWorkMessage(handle, first.id, 'message-one', 'First follow-up.'),
             backend.submitWorkMessage(handle, first.id, 'message-one', 'First follow-up.')
@@ -114,7 +120,7 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
         assert.equal(held.candidateReview?.state, 'ready');
         assert.equal(held.validationResults[0]?.status, 'passed');
         assert.equal(held.validationResults[0]?.candidateFingerprint, held.candidateFingerprint);
-        await backend.createTask(handle, task('task-before-review', 'First Work turn',
+        await backend.createTask(handle, task('task-before-review', coralObjective,
             new Date().toISOString(), 'Do not bypass the pending candidate.') as any);
         await assert.rejects(backend.continueWorkSession(handle, uri, first.id, first.id,
             'task-before-review', grant('grant-before-review', 'task-before-review'), false,
@@ -124,8 +130,8 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
         const decided = await backend.decideCandidate(handle, first.id, 0,
             held.candidateReview!.candidateFingerprint, 'reject');
         assert.equal(decided.status, 'cancelled');
-        await backend.createTask(handle, task('task-two', 'First Work turn',
-            new Date().toISOString(), 'Continue the first Work task with fresh instructions.') as any);
+        await backend.createTask(handle, task('task-two', coralObjective,
+            new Date().toISOString(), 'Change only src/main.ts to Violet.') as any);
         const secondGrant = grant('grant-two', 'task-two', []);
         await assert.rejects(backend.continueWorkSession(handle, uri, first.id, first.id,
             'task-two', secondGrant, false, 'f'.repeat(40), false), /source HEAD changed/);
@@ -138,6 +144,7 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
         const linked = await backend.readWorkSession(handle, first.id);
         assert.equal(linked?.id, first.id);
         assert.deepEqual(linked?.segments.map(segment => segment.runId), [first.id, second.id]);
+        assert.deepEqual(linked?.segments.map(segment => segment.executionMode), ['isolated', 'isolated']);
         assert.equal(linked?.toolSelectionHash, waiting?.toolSelectionHash);
         assert.equal(second.provenance?.modelId, first.provenance?.modelId);
         assert.deepEqual(linked?.segments[1].permissions, expandedGrant.permissions);
@@ -146,6 +153,21 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
             await tick();
         assert.equal((await backend.readWorkSession(handle, first.id))?.status, 'awaiting-input');
         assert.equal(seen.length, 4);
+        const followUpRequest = JSON.stringify(seen[3]);
+        assert.match(followUpRequest, /Historical objective for run .*Set the fixture headline to Coral/);
+        assert.match(followUpRequest, /Historical task instructions for run /);
+        assert.match(followUpRequest, /newer developer request can supersede earlier task content/i);
+        assert.match(followUpRequest, /subject to its exact grant, selected tools, project and source basis, mode, and broker checks/);
+        assert.ok(followUpRequest.indexOf('DOPE SAVED WORK CONTEXT') <
+            followUpRequest.lastIndexOf('CURRENT APPROVED DEVELOPER REQUEST FOR THIS SEGMENT'));
+        const currentRequest = followUpRequest.slice(followUpRequest.lastIndexOf(
+            'CURRENT APPROVED DEVELOPER REQUEST FOR THIS SEGMENT'));
+        assert.match(currentRequest, /Change only src\/main\.ts to Violet/);
+        assert.doesNotMatch(currentRequest, /Coral|Historical|First follow-up|Second follow-up/);
+        assert.match(followUpRequest, /Historical delivered Work message .*First follow-up/);
+        assert.match(followUpRequest, /do not perform or replay them/i);
+        assert.equal((await backend.readTask(handle, 'task-two'))?.objective, coralObjective);
+        assert.equal((await backend.readRun(handle, second.id))?.taskContract?.objective, coralObjective);
         await backend.finishWorkSession(handle, first.id);
         const secondHeld = await runtime.waitForRun(root, second.id);
         assert.equal(secondHeld.status, 'blocked');
@@ -160,6 +182,7 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
         const thirdAt = new Date().toISOString();
         const pending: any = { version: 1, id: 'abandoned-run', taskId: 'task-three',
             status: 'pending', grantId: thirdGrant.id, grantRevision: thirdGrant.revision,
+            executionMode: 'isolated',
             toolSelection: thirdGrant.toolSelection, requestedPolicy: { kind: 'exact', connectionId: 'local',
                 modelId: model.id }, projectRoot: '.', createdAt: thirdAt, basis: { head, clean: true },
             changedFiles: [], validationResults: [] };
@@ -172,11 +195,12 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
             status: 'running', revision: completedSession.revision + 1,
             segments: [...completedSession.segments, { runId: pending.id, taskId: pending.taskId,
                 grantId: pending.grantId, grantRevision: pending.grantRevision, basisHead: head, startedAt: thirdAt,
+                executionMode: 'isolated',
                 connectionId: 'local', modelId: model.id, prompt: 'Answer concisely.',
                 permissions: thirdGrant.permissions,
                 toolSelectionHash: createHash('sha256').update(JSON.stringify(thirdGrant.toolSelection)).digest('hex'),
                 sandboxHash: createHash('sha256').update(JSON.stringify({ adapter: 'pi-local-work',
-                    sandbox: 'local-tool-sandbox' })).digest('hex') }],
+                    sandbox: 'local-tool-sandbox', executionMode: 'isolated' })).digest('hex') }],
             messages: [...completedSession.messages, { id: 'uncertain-message', text: 'Do not replay me',
                 queuedAt, status: 'queued' }] });
         await store.updateWorkSession(root, recovering, { ...recovering, revision: recovering.revision + 1,
@@ -195,7 +219,7 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
         assert.equal((await backend.readRun(restartedHandle, pending.id))?.status, 'interrupted');
         assert.deepEqual((await backend.readWorkSession(restartedHandle, first.id))?.messages.slice(-2)
             .map(message => message.status), ['delivering', 'queued']);
-        await backend.createTask(restartedHandle, task('task-four', 'First Work turn',
+        await backend.createTask(restartedHandle, task('task-four', coralObjective,
             new Date().toISOString(), 'Resume the first Work task after verified recovery.') as any);
         const fourthGrant = grant('grant-four', 'task-four', []);
         await assert.rejects(backend.continueWorkSession(restartedHandle, uri, first.id, pending.id,
@@ -204,7 +228,7 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
             'task-four', fourthGrant, false, head, true);
         assert.equal((await backend.readWorkSession(restartedHandle, first.id))?.messages.at(-2)?.status,
             'abandoned');
-        for (let n = 0; n < 300 && (await backend.readWorkSession(restartedHandle, first.id))?.status !== 'awaiting-input'; n++)
+        for (let n = 0; n < 600 && (await backend.readWorkSession(restartedHandle, first.id))?.status !== 'awaiting-input'; n++)
             await tick();
         assert.equal((await backend.readWorkSession(restartedHandle, first.id))?.status, 'awaiting-input',
             JSON.stringify({ run: await backend.readRun(restartedHandle, fourth.id), seen: seen.length,
@@ -231,6 +255,7 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
         const deniedAt = new Date().toISOString();
         const deniedPending: any = { version: 1, id: 'denied-run', taskId: 'task-denied',
             status: 'pending', grantId: deniedGrant.id, grantRevision: deniedGrant.revision,
+            executionMode: 'isolated',
             toolSelection: deniedGrant.toolSelection, requestedPolicy: { kind: 'exact', connectionId: 'local',
                 modelId: model.id }, projectRoot: '.', createdAt: deniedAt,
             basis: { head, clean: true }, changedFiles: [], validationResults: [] };
@@ -240,11 +265,12 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
         const stoppedSession = (await restartedStore.readWorkSession(root, first.id))!;
         const deniedSegment = { runId: deniedPending.id, taskId: deniedPending.taskId,
             grantId: deniedGrant.id, grantRevision: deniedGrant.revision, basisHead: head,
+            executionMode: 'isolated',
             startedAt: deniedAt, connectionId: 'local', modelId: model.id, prompt: 'Try a read.',
             permissions: deniedGrant.permissions,
             toolSelectionHash: createHash('sha256').update(JSON.stringify(deniedGrant.toolSelection)).digest('hex'),
             sandboxHash: createHash('sha256').update(JSON.stringify({ adapter: 'pi-local-work',
-                sandbox: 'local-tool-sandbox' })).digest('hex') };
+                sandbox: 'local-tool-sandbox', executionMode: 'isolated' })).digest('hex') };
         const denialOpen = await restartedStore.updateWorkSession(root, stoppedSession, { ...stoppedSession,
             status: 'running', revision: stoppedSession.revision + 1,
             segments: [...stoppedSession.segments, deniedSegment] });
@@ -256,7 +282,7 @@ test('real Work service finishes for review and continues as a linked, ceiling-b
         await restartedStore.updateWorkSession(root, denialOpen, { ...denialOpen,
             status: 'stopped', revision: denialOpen.revision + 1 });
         await tick();
-        await backend.createTask(restartedHandle, task('task-after-denial', 'First Work turn',
+        await backend.createTask(restartedHandle, task('task-after-denial', coralObjective,
             new Date().toISOString(), 'Continue after denied read.') as any);
         const afterDenial = await backend.continueWorkSession(restartedHandle, uri, first.id, deniedPending.id,
             'task-after-denial', grant('grant-after-denial', 'task-after-denial', ['read_file']),

@@ -129,7 +129,8 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
         private readonly commands: (request: AgentExecutionRequest) => readonly LocalProcessCommand[],
         private readonly mcp?: WorkMCPObservationAuthority,
         private readonly direct?: (request: AgentExecutionRequest) => {
-            journal: DirectWorkJournal; unsaved(path: string): Promise<boolean> }) {}
+            journal: DirectWorkJournal; unsaved(path: string): Promise<boolean>;
+            refresh(path: string): Promise<boolean> }) {}
 
     async start(request: AgentExecutionRequest): Promise<AgentExecutionHandle> {
         if (this.disposed || request.reasoningEffort || !request.prompt?.trim() ||
@@ -286,6 +287,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                   const isMCP = !!mcpObservation?.descriptors.some(tool => tool.name === raw.name);
                   const toolName = expectedTools.includes(raw.name) || isMCP ? raw.name : 'unknown';
                   let brokerInvoked = false;
+                  let directEditNeedsReview = false;
                   const observe = (phase: 'requested' | 'validating' | 'executing' | 'completed' | 'failed' | 'recoverable' | 'denied' | 'cancelled',
                       extra: { detail?: string; stage?: string; code?: string; effectExecuted?: boolean } = {}) =>
                       request.onEvent({ kind: 'work-observation', toolId, toolName, phase,
@@ -462,7 +464,25 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                         if (response.status === 'completed' || response.status === 'failed')
                             observe('executing', { stage: 'broker-execute' });
                     }
-                    if (cancelled || this.disposed) throw new Error('Pi Work stopped');
+                    directEditNeedsReview = request.executionMode === 'direct' && call.name === 'edit' &&
+                        (response.output === 'DIRECT_EDIT_APPLIED_MODEL_VIEW_UNAVAILABLE' ||
+                            response.output === 'DIRECT_EDIT_RECONCILE_REQUIRED');
+                    if (cancelled || this.disposed) {
+                        if (request.executionMode === 'direct' && call.name === 'edit' &&
+                            (response.status === 'completed' || directEditNeedsReview))
+                            observe(response.status === 'completed' ? 'completed' : 'failed', {
+                                stage: 'broker-execute', code: directEditNeedsReview ?
+                                    response.output : undefined,
+                                ...(response.output === 'DIRECT_EDIT_RECONCILE_REQUIRED' ? {} :
+                                    { effectExecuted: true }) });
+                        throw new Error('Pi Work stopped');
+                    }
+                    if (directEditNeedsReview) {
+                        observe('failed', { stage: 'broker-execute', code: response.output,
+                            ...(response.output === 'DIRECT_EDIT_RECONCILE_REQUIRED' ? {} :
+                                { effectExecuted: true }) });
+                        throw new Error('Direct Work edit requires source review');
+                    }
                     let documentRead: DocumentRead | undefined;
                     if (call.name === 'read') {
                         const page = response.status === 'completed' && call.arguments.offset !== undefined ?
@@ -553,6 +573,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                         response.output : safe(response.output, 1024) };
                   } catch (error) {
                     if (cancelled || this.disposed) throw new Error('Pi Work stopped');
+                    if (directEditNeedsReview) { denied = true; throw error; }
                     const feedback = stage === 'request-parse' ?
                         recoverableLocalWorkError(raw.name, raw.arguments, error) : undefined;
                     if (feedback) {

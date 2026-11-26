@@ -1,0 +1,13 @@
+430e9001155aa51d1b3e90e8043c962d368cc2373245ffbe279b4b78c41e148f  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-final-prepared-replay/events-after-restart.jsonl
+b236c184d1b894b8b9e25386ece0bdb054821950323000a5a2f79d2ff7fdd06b  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-final-prepared-replay/journal-after-restart.json
+f9b260ddbabf65c2725c69bb3e95f252beed49e78c249c9b2c56c7d41990c4f0  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-final-prepared-replay/journal-prepared.json
+60596ee01b4ccab766c317e509ac3020b330238a89c05240b2fd8d8b28ca3c66  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-final-prepared-replay/kill-boundary.json
+5dfdb2eb1ec3e15e7bccbb3abbc86876e65bd4596ced71204e8b2ad78e2f42b9  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-final-prepared-replay/run-after-restart.json
+699736a1af5139b18c5120847741773a1e90165dee307c3d18f4ddd395680652  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-final-prepared-replay/run-before-restart.json
+220578ef5d3663110f1cb516c7a6f97964076a0b749085e5f761cdbfab973b1c  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-final-prepared-replay/session-after-restart.json
+50d6178317c13e50f30bd55847b41c8f6062353f559b03d10d0aaca310e5bbc5  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-final-prepared-replay/session-before-restart.json
+05192ed5b4fd8c23d4500a37de09f0ad09284405ca38f32ba579d262a24f0fe9  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-final-prepared-replay/task.json
+f826e3e9c82d3c6afbfc02cdb60d7058de24cbe49948dd4e61df43d0c4d7e199  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-final-prepared-replay/transcript-after-restart.jsonl
+929cf3f575ee5f7b439bd0ef81b8bf2448fcfe76bddd624f4f92a73407864990  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-final-prepared-replay/transcript-before-restart.jsonl
+e5dd729df05c3356edc5293786e40f7374a4193528c9185fbef0a8d96b8660d2  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-final-prepared-replay/ui-observations.txt
+cd605be8be2774da272cbc333154b834ab9c92b78ef3c03c39a832faf45511d1  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-final-prepared-replay/watch-prepared.mjs

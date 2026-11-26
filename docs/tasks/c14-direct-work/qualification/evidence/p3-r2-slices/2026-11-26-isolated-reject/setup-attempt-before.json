@@ -1,0 +1,14 @@
+{
+  "at": "2026-11-26T19:27:43.244951+00:00",
+  "productHead": "328043fe18274514f68cd49bdf3a10dfec3b3241",
+  "productDiffSha256": "b98cf7641ab9b797c054fb2acd28a655bbbe2230e0744e7acb697affbdd4b5a8",
+  "frontendSha256": "82e2754895e88b1c012391cfe7bbf1d40d0a121c1f80b9131a6a7837b61379f3",
+  "backendSha256": "36bb3f10136a2b6f7d15a4893ee5493ce62dc8fac378e2824767cf5d3b59e63c",
+  "fixture": "/tmp/dope-p3-r2-isolated-jlgm9ymw",
+  "fixtureHead": "b497a0d0ba3e383a5810ba22b9c20a4b3225337f",
+  "fixtureStatus": "",
+  "mainSha256": "b23ea54a6afd3b5c745b63858721b1375c781dc30f6222c73bc597c7b9ec3d21",
+  "styleSha256": "766703e507b752deea2114dc3eec1190e3a22c43594a25e199bc40e48603a3b1",
+  "previewSha256": "42301cca93745f2a4ad62f15882e8939510fe4ca0cbaa398f38f4efafff3f4b8",
+  "previewText": "<!doctype html><title>Isolated fixture</title><h1>Owner Indigo</h1>"
+}

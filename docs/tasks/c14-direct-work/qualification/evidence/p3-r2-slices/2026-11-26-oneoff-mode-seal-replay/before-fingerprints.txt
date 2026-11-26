@@ -1,0 +1,44 @@
+328043fe18274514f68cd49bdf3a10dfec3b3241
+86dc1302cc36ad82ede39fbf366cbdd129a243cbfc22eab5a4de6a28d425ce6e  -
+266f90e65dce085ae4d86ecde4df4b3a86e73e1fcf35fe79fe8fe0cbc1ba3014  packages/agent-core/src/work-session.ts
+f05f9b4ba3adfa40131f3c450c5fa1881d933fa6e62ddbeff2ef9a1a8ca17734  packages/agent-core/src/node/agent-store.ts
+920aee4af041e3f1afe3a2b8551d6cc2bc1742418e9999a8e2bf37a45d110529  packages/theia-extension/src/node/agent-execution-runtime.ts
+db7c03a2fde63b29daa8d56f59f7063d88eb65328c9916891dae2d59519868a2  packages/theia-extension/src/browser/chat-panel-widget.ts
+15084e2508f88c74a8ab23b8c5be1c388b75d43655f0ed5745d33452b8eec991  packages/theia-extension/src/browser/work-conversation-presentation.ts
+c367e1940938425385c3d51dd802e6285338a8964ceefc1e94337556abc08edc  packages/theia-extension/src/browser/work-selection-controller.ts
+2ad80037d235fc37e764ac9ace30dca10ecbace2f8a9fea8b1f1cc362c6cbf9b  apps/browser/lib/frontend/bundle.js
+afba664485aca446beba1e87b3680c9fc74552d6e2e2c649fc8145e4c057e1e4  packages/theia-extension/lib/node/agent-runtime-backend.js
+ M packages/agent-core/src/node/agent-store.ts
+ M packages/agent-core/src/node/direct-work-journal.ts
+ M packages/agent-core/src/node/dirty-basis.ts
+ M packages/agent-core/src/work-session.ts
+ M packages/contracts/src/agent-runtime-service.ts
+ M packages/theia-extension/src/browser/agent-run-controller.ts
+ M packages/theia-extension/src/browser/agent-runtime-connection.ts
+ M packages/theia-extension/src/browser/chat-panel-widget.ts
+ M packages/theia-extension/src/browser/dope.css
+ M packages/theia-extension/src/browser/work-conversation-presentation.ts
+ M packages/theia-extension/src/browser/work-selection-controller.ts
+ M packages/theia-extension/src/node/agent-execution-runtime.ts
+ M packages/theia-extension/src/node/agent-runtime-backend.ts
+ M packages/theia-extension/src/node/local-agent-turn-loop.ts
+ M packages/theia-extension/src/node/pi-work-execution.ts
+ M test/unit/agent-store.test.ts
+ M test/unit/chat-backend.test.ts
+ M test/unit/direct-work-journal.test.ts
+ M test/unit/direct-work-runtime.test.ts
+ M test/unit/roadmap-chat-context.test.ts
+ M test/unit/roadmap-gate-chat.test.ts
+ M test/unit/work-conversation-presentation.test.ts
+ M test/unit/work-selection.test.ts
+ M test/unit/work-session-runtime.test.ts
+?? docs/tasks/c14-direct-work/P3-R1-dirty-source-and-live-requalification.txt
+?? docs/tasks/c14-direct-work/P3-R2-remaining-live-qualification.txt
+?? docs/tasks/c14-direct-work/qualification/2026-11-26-p3-live.md
+?? docs/tasks/c14-direct-work/qualification/2026-11-26-p3-r1-dirty-source-requalification.md
+?? docs/tasks/c14-direct-work/qualification/2026-11-26-p3-r2-paused-checkpoint.md
+?? docs/tasks/c14-direct-work/qualification/evidence/
+?? docs/tasks/c14-direct-work/qualification/p3-r2-slices/
+c887c3c0d791b1e49a3117bc551bdc3c544cbcd4
+b23ea54a6afd3b5c745b63858721b1375c781dc30f6222c73bc597c7b9ec3d21  /tmp/dope-p3-r2-mode-seal-IfFazm/src/main.ts
+766703e507b752deea2114dc3eec1190e3a22c43594a25e199bc40e48603a3b1  /tmp/dope-p3-r2-mode-seal-IfFazm/src/style.css

@@ -1,0 +1,5 @@
+P3-R2 — ISOLATED REGRESSION (Reject already run; Accept remains open)
+
+Read 00-shared-contract.md and previous results from this prompt. On the current rebuilt source, explicitly select Isolated Work in a disposable fixture. Record canonical file/Git/preview hashes before and while the model edits its separate candidate. The candidate must not write canonical source before approval. Finish, inspect the exact diff, corrected Isolated label, source basis and Dope-owned validation.
+
+The first session is already recorded in results/2026-11-26-isolated-reject.md: valid candidate Reject PASS on its source epoch. Do not rerun that case merely to repeat it. If continuing Isolated qualification, produce a separate valid candidate, Accept only its reviewed files, and prove canonical change occurs at Accept with correct History. A malformed candidate or failed validation is an attempt, not a PASS. Save a NEW dated result for the Accept case. Until then, report final-source Isolated Accept as open; prior P3-R1 Accept is historical evidence, not a new-source pass. If product source changes after a PASS, replay only the affected case on the final source.

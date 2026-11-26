@@ -1,0 +1,167 @@
+{
+  "version": 1,
+  "id": "7a68aa7e-8615-48ae-9d40-1270eef698eb",
+  "taskId": "d2251285-21f2-4235-8270-10f876296311",
+  "status": "completed",
+  "grantId": "8cea68d3-48f5-4f3c-8c91-67300f88d987",
+  "grantRevision": 1,
+  "executionMode": "direct",
+  "requestedPolicy": {
+    "kind": "exact",
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b"
+  },
+  "projectRoot": ".",
+  "toolSelection": {
+    "catalogRevision": 2,
+    "projectUri": "file:///tmp/dope-p3-r2-mode-seal-IfFazm",
+    "taskId": "d2251285-21f2-4235-8270-10f876296311",
+    "grantRevision": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b",
+    "tools": [
+      {
+        "id": "read_file",
+        "schemaRevision": 1
+      },
+      {
+        "id": "list_files",
+        "schemaRevision": 1
+      },
+      {
+        "id": "edit_file",
+        "schemaRevision": 1
+      }
+    ]
+  },
+  "taskContract": {
+    "taskId": "d2251285-21f2-4235-8270-10f876296311",
+    "taskHash": "6bc8972de80eb5a316d98a873b078d517e6fe3c2689bf253210e77ca6f452f56",
+    "objective": "In this disposable Git fixture, change only src/main.ts so its single exported headline is 'Oneoff Coral'. Keep the exact one-line export format. Use the selected Dope tools to inspect and edit the file, then briefly report the change. Do not touch any other file or run commands.",
+    "instructionsHash": "0fa85bef36217dff12ced68e8edc27ffac2257f1a033d3859c0303565aa53832",
+    "acceptance": "unknown",
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "planning": "unknown",
+    "roadmap": "unknown",
+    "grant": {
+      "id": "8cea68d3-48f5-4f3c-8c91-67300f88d987",
+      "revision": 1,
+      "acceptedAt": "2026-11-26T20:56:00.250Z",
+      "permissionsHash": "5fe68989f5a311d9aab35b5a92f0a343db515f1b8e4c498e1583141e5a354550"
+    },
+    "sourceHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4"
+  },
+  "createdAt": "2026-11-26T20:56:01.249Z",
+  "startedAt": "2026-11-26T20:56:01.249Z",
+  "endedAt": "2026-11-26T20:56:48.583Z",
+  "executionWorkspace": {
+    "id": "a6c03af0-7ebe-4beb-8905-6ffb4216a523",
+    "basisHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4"
+  },
+  "directJournal": {
+    "id": "681af966-bcd7-4458-8a50-bb58f4e4bbb5",
+    "path": ".dope/agent/direct-journals/681af966-bcd7-4458-8a50-bb58f4e4bbb5.json"
+  },
+  "directApplied": [
+    {
+      "path": "src/main.ts",
+      "operation": "modify",
+      "before": "5c28c9b185ab6c51aa1837983b28b28b58a1aa94664bd8cead96a658d8d6918f",
+      "after": "d2ddd98899acfd1c616481a502e7a4f562b444470f910c0f0a3df8fc8c3fc9c8",
+      "result": "applied"
+    }
+  ],
+  "provenance": {
+    "version": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b",
+    "providerId": "local",
+    "runtimeKind": "local",
+    "adapterId": "pi-local-work"
+  },
+  "basis": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "clean": false,
+    "metadataChanged": false
+  },
+  "acceptedDirty": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "paths": [
+      {
+        "path": "src/main.ts",
+        "code": " M",
+        "hash": "5c28c9b185ab6c51aa1837983b28b28b58a1aa94664bd8cead96a658d8d6918f",
+        "size": 40,
+        "mode": 436
+      }
+    ]
+  },
+  "changedFiles": [
+    "src/main.ts"
+  ],
+  "validationResults": [
+    {
+      "version": 1,
+      "kind": "test",
+      "label": "Required validation",
+      "status": "passed",
+      "durationMs": 133,
+      "owner": "dope",
+      "command": "node --test test/fixture.test.mjs",
+      "candidateFingerprint": "a69df57c0ccc8e8cb81b8059e60bf4e30505a82a13c8bf5989c74c80b396113f",
+      "workspaceId": "5dc21376-e5dd-49ed-8677-27c364db3ec8",
+      "exitCode": 0,
+      "stdout": "✔ headline remains a valid single export (1.423658ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 72.896558\n",
+      "stderr": "",
+      "stdoutTruncated": false,
+      "stderrTruncated": false
+    }
+  ],
+  "finalGit": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "clean": false,
+    "headChanged": false,
+    "metadataChanged": false,
+    "statuses": [
+      {
+        "code": " M",
+        "path": "src/main.ts"
+      }
+    ],
+    "truncated": false
+  },
+  "changeSummary": {
+    "version": 1,
+    "filesChanged": 1,
+    "insertions": 1,
+    "deletions": 1,
+    "summary": "1 task files changed; 1 bounded text insertions, 1 deletions; 0 untracked bytes",
+    "truncated": false
+  },
+  "validationBasis": "direct-applied-snapshot",
+  "candidateDelta": {
+    "version": 1,
+    "effects": [
+      {
+        "kind": "modify",
+        "path": "src/main.ts",
+        "before": "5c28c9b185ab6c51aa1837983b28b28b58a1aa94664bd8cead96a658d8d6918f",
+        "after": "d2ddd98899acfd1c616481a502e7a4f562b444470f910c0f0a3df8fc8c3fc9c8"
+      }
+    ]
+  },
+  "candidateFingerprint": "a69df57c0ccc8e8cb81b8059e60bf4e30505a82a13c8bf5989c74c80b396113f",
+  "authorityDecision": {
+    "allowed": true,
+    "blocked": []
+  },
+  "appliedFiles": [
+    "src/main.ts"
+  ]
+}

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { WorkSelectionController, selectWorkView, workRows, workRunOverview, workTitle } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
+import { WorkSelectionController, directBatchRevertPaths, selectWorkView, workRows, workRunOverview, workTitle } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
 import type { AgentRuntimeService } from '../../packages/contracts/src/agent-runtime-service.ts';
 import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/authority.js';
 import { WorkToolPreferences } from '../../packages/theia-extension/lib/browser/work-tool-preferences.js';
@@ -106,6 +106,16 @@ test('Direct Work keeps Finish separate from failed validation and counts only u
     assert.match(workRunOverview(failed, direct).state, /1 agent file applied/);
     const reverted = { ...failed, directReverts: [{ path: 'src/a.ts', result: 'reverted' }] };
     assert.match(workRunOverview(reverted, direct).state, /0 agent files applied/);
+});
+
+test('batch Direct revert submits conflicted and safe paths together for truthful receipts', () => {
+    const review: any = { files: [
+        { path: 'src/owner.ts', conflict: true, reverted: false },
+        { path: 'src/safe.ts', conflict: false, reverted: false },
+        { path: 'src/done.ts', conflict: false, reverted: true }
+    ] };
+    assert.deepEqual(directBatchRevertPaths(review), ['src/owner.ts', 'src/safe.ts']);
+    assert.deepEqual(directBatchRevertPaths({ ...review, files: [review.files[0]] }), []);
 });
 
 test('held candidate and stale or foreign identities never earn acceptance or completion', () => {
@@ -315,7 +325,7 @@ test('completed local Work follow-up creates a new exact-model task and fresh ce
     const toolSelection: any = { catalogRevision: 1, projectUri: 'file:///project', taskId: task.id,
         grantRevision: 1, connectionId: 'local', modelId: 'model',
         tools: [{ id: 'read_file', schemaRevision: 1 }] };
-    const run: any = { id: 'run-one', taskId: task.id, status: 'cancelled',
+    const run: any = { id: 'run-one', taskId: task.id, status: 'cancelled', executionMode: 'isolated',
         reviewDecision: { kind: 'reject' }, basis: { head: 'a'.repeat(40) }, toolSelection };
     const permissions = createDefaultExecutionGrant({ id: 'preview', revision: 1, taskId: task.id,
         acceptedAt: '2026-11-24T00:00:00Z' }).permissions;
@@ -605,4 +615,40 @@ test('saved WorkItem Local start uses its persisted task ID and separate grant w
     await controller.startSelectedWorkItemTask();
     assert.equal(starts, 1);
     assert.match(controller.message, /selection changed/);
+});
+
+test('Direct WorkItem requires a fresh explicit dirty review before start', async () => {
+    const saved: any = { id: 'dirty-work', objective: 'Local edit', projectId: 'project', planningMapId: 'map',
+        projectRoot: '.', authority: { profile: 'phase-8b-project' }, reviewPolicy: { kind: 'required' },
+        executionMode: 'direct', origin: { kind: 'work-item', projectId: 'project', planningMapId: 'map' },
+        modelPolicy: { kind: 'exact', connectionId: 'local', modelId: 'model' },
+        completion: { validation: [{ kind: 'test', label: 'Required', command: 'npm test' }], requireValidationPass: true } };
+    let fingerprint = 'owner-first', starts = 0, accepted: unknown;
+    const runtime = { async readTask() { return saved; }, async listTasks() { return [saved]; },
+        async listRuns() { return []; }, async codingAgentReady() { return true; },
+        async previewWorktree() { return { clean: false, paths: ['src/main.ts'], fingerprint }; },
+        async startWorkSession(_handle: string, _project: string, _taskId: string, _grant: unknown,
+            _hosted: boolean, dirty: unknown) {
+            starts++; accepted = dirty;
+            return { id: 'dirty-run', taskId: saved.id, projectId: saved.projectId, status: 'running' };
+        }, async readRun() { return { id: 'dirty-run', taskId: saved.id,
+            projectId: saved.projectId, status: 'running' }; },
+        async readSteering() { return undefined; }, async listActions() { return []; },
+        async readMapImpact() { return undefined; }, async readTranscript() {
+            return { state: 'not-recorded', entries: [], nextSequence: 0, hasMore: false, incomplete: false };
+        } } as unknown as AgentRuntimeService;
+    const controller = new WorkSelectionController(runtime, () => {}, async () => ({ target: {
+        connectionId: 'local', modelId: 'model', label: 'Local', locality: 'local' }, reason: '' }));
+    controller.project = 'file:///project'; controller.handle = 'handle'; controller.phase.codingAgentReady = true;
+    await controller.select({ kind: 'task', id: saved.id });
+    await controller.startSelectedWorkItemTask();
+    assert.equal(controller.startWorktreeReview?.fingerprint, 'owner-first');
+    fingerprint = 'owner-second';
+    await controller.startSelectedWorkItemTask(true);
+    assert.equal(starts, 0);
+    assert.match(controller.message, /source changed since review/);
+    assert.equal(controller.startWorktreeReview?.fingerprint, 'owner-second');
+    await controller.startSelectedWorkItemTask(true);
+    assert.equal(starts, 1);
+    assert.equal(accepted, 'owner-second');
 });

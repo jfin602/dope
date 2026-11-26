@@ -15,6 +15,8 @@ export interface AgentRuntimeClient {
     notifyAgentStateChanged(change: AgentStoreChange): void;
     /** Checked immediately before a Direct Work canonical write. A disconnected editor fails closed. */
     hasUnsavedEditor(fileUri: string): Promise<boolean>;
+    /** Refresh clean open editors after a Direct Work canonical write. */
+    refreshDirectEditor(fileUri: string): Promise<boolean>;
 }
 export interface DiscoveredTaskStack {
     folderName: string; path: string; mode: StackMode; phase: number;

@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "id": "482fd2e5-9d83-4e0a-913e-1c2a3cae58f5",
+  "taskId": "bd7a2832-4eb7-43af-bd99-64788048aecd",
+  "status": "interrupted",
+  "grantId": "b6f48e30-1c9a-40bd-8eba-a4af1f4f03b8",
+  "grantRevision": 1,
+  "executionMode": "direct",
+  "requestedPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "projectRoot": ".",
+  "toolSelection": {
+    "catalogRevision": 2,
+    "projectUri": "file:///tmp/dope-p3-r2-final-prepared-joZ1yY",
+    "taskId": "bd7a2832-4eb7-43af-bd99-64788048aecd",
+    "grantRevision": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b",
+    "tools": [
+      {
+        "id": "read_file",
+        "schemaRevision": 1
+      },
+      {
+        "id": "list_files",
+        "schemaRevision": 1
+      },
+      {
+        "id": "edit_file",
+        "schemaRevision": 1
+      }
+    ]
+  },
+  "taskContract": {
+    "taskId": "bd7a2832-4eb7-43af-bd99-64788048aecd",
+    "taskHash": "034cb27a445209ed5aabd8b87728f38a7917d295ee9c1c533b83d8cdb4118fdb",
+    "objective": "In this disposable fixture, read src/main.ts, then use edit_file once to change its displayed label from Owner Indigo to Restart Amber. Preserve the final newline. Do not edit any other file. After the edit, report what happened.",
+    "instructionsHash": "40684ff6ee43771cd854222b5276ff3cd0f843994b965f0d718504325da1a03b",
+    "acceptance": "unknown",
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "planning": "unknown",
+    "roadmap": "unknown",
+    "grant": {
+      "id": "b6f48e30-1c9a-40bd-8eba-a4af1f4f03b8",
+      "revision": 1,
+      "acceptedAt": "2026-11-26T22:02:33.630Z",
+      "permissionsHash": "d2dfca9c48c6e0a55ca68d86bb730e7faf275fc7ae5687ffd828871df966f98e"
+    },
+    "sourceHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4"
+  },
+  "createdAt": "2026-11-26T22:02:33.970Z",
+  "startedAt": "2026-11-26T22:02:33.970Z",
+  "endedAt": "2026-11-26T22:03:34.955Z",
+  "executionWorkspace": {
+    "id": "b3940f4c-99b7-4ef1-b6ed-f27603992404",
+    "basisHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4"
+  },
+  "directJournal": {
+    "id": "21987630-0c2f-4c3c-bb4f-af0459d58c0d",
+    "path": ".dope/agent/direct-journals/21987630-0c2f-4c3c-bb4f-af0459d58c0d.json"
+  },
+  "directApplied": [
+    {
+      "path": "src/main.ts",
+      "operation": "modify",
+      "before": "b23ea54a6afd3b5c745b63858721b1375c781dc30f6222c73bc597c7b9ec3d21",
+      "after": "0fe57f2ef6599c3d003b17ba42b07d2634cf30f36f68b713a01578dde43431b3",
+      "result": "uncertain"
+    }
+  ],
+  "provenance": {
+    "version": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b",
+    "providerId": "local",
+    "runtimeKind": "local",
+    "adapterId": "pi-local-work",
+    "policyRevision": 29
+  },
+  "basis": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "clean": true,
+    "metadataChanged": false
+  },
+  "changedFiles": [
+    "src/main.ts"
+  ],
+  "validationResults": [],
+  "finalGit": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "clean": false,
+    "headChanged": false,
+    "metadataChanged": false,
+    "statuses": [
+      {
+        "code": " M",
+        "path": "src/main.ts"
+      }
+    ],
+    "truncated": false
+  },
+  "changeSummary": {
+    "version": 1,
+    "filesChanged": 1,
+    "insertions": 1,
+    "deletions": 1,
+    "summary": "1 task files changed; 1 bounded text insertions, 1 deletions; 0 untracked bytes",
+    "truncated": false
+  },
+  "outcome": {
+    "code": "interrupted",
+    "summary": "Direct Work journal has uncertain canonical effects; inspect source before another run"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "fixture": "/tmp/dope-p3-r2-gemma-isolated-1lSbRF/fixture",
+  "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+  "beforeAndActiveAndHeldReview": {
+    "mainSha256": "b23ea54a6afd3b5c745b63858721b1375c781dc30f6222c73bc597c7b9ec3d21",
+    "styleSha256": "766703e507b752deea2114dc3eec1190e3a22c43594a25e199bc40e48603a3b1",
+    "gitStatus": "clean",
+    "previewSha256": "42301cca93745f2a4ad62f15882e8939510fe4ca0cbaa398f38f4efafff3f4b8",
+    "previewHeading": "Owner Indigo"
+  },
+  "afterAccept": {
+    "mainSha256": "fa9a6a68e164ba01dbf01546b946c0b646b28aa1675acb9827886c45e3d1c976",
+    "styleSha256": "766703e507b752deea2114dc3eec1190e3a22c43594a25e199bc40e48603a3b1",
+    "gitStatus": " M src/main.ts",
+    "gitDiffSha256": "f845af2b885204f0b2a3d10b81486aea2588f1bd7fd9cd5612a31d647d4d8e48",
+    "previewSha256": "d13ce0f79a946f0f5b4eecbfedbf9e6771e266720da1b09aea0f85721c7af370",
+    "previewHeading": "Silver Arc"
+  }
+}

@@ -58,7 +58,7 @@ test('Pi Chat binds selected Roadmap identity without automatic source bytes', a
     await writeFile(join(root, 'docs/phase.md'), '# Changed\n');
     await assert.rejects(composer.compose(root, chat, 'Next', context, capabilities,
       undefined, false, false, undefined, true), /Stale Roadmap source/);
-  } finally { await rm(root, { recursive: true, force: true }); }
+  } finally { await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }); }
 });
 
 test('source-change help has one grounded no-action route in preview and saved Chat turns', async () => {
@@ -226,5 +226,5 @@ test('source-change help has one grounded no-action route in preview and saved C
     assert.equal(failed?.role, 'assistant');
     if (failed?.role === 'assistant') assert.equal(failed.execution.status, 'failed');
     restored.dispose();
-  } finally { await rm(root, { recursive: true, force: true }); }
+  } finally { await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }); }
 });

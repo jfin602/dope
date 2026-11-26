@@ -1,0 +1,124 @@
+{
+  "version": 1,
+  "id": "db0f187d-1581-400c-b255-1fe8d5724306",
+  "taskId": "f2ed3945-4a46-4242-a800-4efdd580ac74",
+  "status": "failed",
+  "grantId": "0e5fac04-f4e2-4156-9806-db700b016bda",
+  "grantRevision": 1,
+  "executionMode": "direct",
+  "requestedPolicy": {
+    "kind": "exact",
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "google/gemma-4-26b-a4b-qat"
+  },
+  "projectRoot": ".",
+  "toolSelection": {
+    "catalogRevision": 2,
+    "projectUri": "file:///tmp/dope-p3-r2-gemma-race-YotJda/fixture",
+    "taskId": "f2ed3945-4a46-4242-a800-4efdd580ac74",
+    "grantRevision": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "google/gemma-4-26b-a4b-qat",
+    "tools": [
+      {
+        "id": "read_file",
+        "schemaRevision": 1
+      },
+      {
+        "id": "list_files",
+        "schemaRevision": 1
+      },
+      {
+        "id": "edit_file",
+        "schemaRevision": 1
+      }
+    ]
+  },
+  "taskContract": {
+    "taskId": "f2ed3945-4a46-4242-a800-4efdd580ac74",
+    "taskHash": "d27e9b07a735b76bc37790612684dcd26200408d6f17d83f476410091fe9b881",
+    "objective": "Disposable fixture authority test. First call read_file with path src/main.ts and offset 0. Immediately after that successful read, call edit_file exactly once with operation modify, path src/main.ts, content \"export const headline = 'Agent Jade';\\n\". Do not read again and do not retry a denied edit. Report the actual tool outcome.",
+    "instructionsHash": "62cb88fd27acc2f725c2877b527a14517a84c738bb53dfa6b574e7b64115c9b7",
+    "acceptance": "unknown",
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "planning": "unknown",
+    "roadmap": "unknown",
+    "grant": {
+      "id": "0e5fac04-f4e2-4156-9806-db700b016bda",
+      "revision": 1,
+      "acceptedAt": "2026-11-26T22:25:22.687Z",
+      "permissionsHash": "d3e6dad71ed05602d959e568cd7cbcf4dda8aaa14f523f6b1db7f85cef9c5523"
+    },
+    "sourceHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4"
+  },
+  "createdAt": "2026-11-26T22:25:22.950Z",
+  "startedAt": "2026-11-26T22:25:22.950Z",
+  "endedAt": "2026-11-26T22:25:47.420Z",
+  "executionWorkspace": {
+    "id": "ac6857ee-0b3c-49ee-88a5-5d803faef551",
+    "basisHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4"
+  },
+  "directJournal": {
+    "id": "292180a9-22be-4b36-aec0-22047eb2a6e3",
+    "path": ".dope/agent/direct-journals/292180a9-22be-4b36-aec0-22047eb2a6e3.json"
+  },
+  "directApplied": [],
+  "provenance": {
+    "version": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "google/gemma-4-26b-a4b-qat",
+    "providerId": "local",
+    "runtimeKind": "local",
+    "adapterId": "pi-local-work"
+  },
+  "basis": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "clean": true,
+    "metadataChanged": false
+  },
+  "changedFiles": [
+    "src/main.ts"
+  ],
+  "validationResults": [
+    {
+      "version": 1,
+      "kind": "test",
+      "label": "Required validation",
+      "status": "not-started",
+      "owner": "dope",
+      "command": "node --test test/fixture.test.mjs",
+      "reason": "Provider or candidate did not reach validation"
+    }
+  ],
+  "finalGit": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "clean": false,
+    "headChanged": false,
+    "metadataChanged": false,
+    "statuses": [
+      {
+        "code": " M",
+        "path": "src/main.ts"
+      }
+    ],
+    "truncated": false
+  },
+  "changeSummary": {
+    "version": 1,
+    "filesChanged": 1,
+    "insertions": 1,
+    "deletions": 1,
+    "summary": "1 task files changed; 1 bounded text insertions, 1 deletions; 0 untracked bytes",
+    "truncated": false
+  },
+  "outcome": {
+    "code": "authority-denied",
+    "summary": "Candidate promotion failed; inspect applied files"
+  }
+}

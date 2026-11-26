@@ -38,6 +38,14 @@ export async function captureDirtyBasis(root: string): Promise<AcceptedDirtyBasi
         const code = field.slice(0, 2), path = projectPath(field.slice(3));
         if (/[RC]/u.test(code)) throw new Error('Dirty continuation does not accept rename/copy status');
         if (agentState(path)) continue;
+        // This exact untracked file is written by Dope's History focus owner. It is
+        // still protected from Work tools; other .dope paths remain blocking.
+        if (code === '??' && path === '.dope/history-focus.json') {
+            const info = await lstat(join(root, path));
+            if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1 || info.size > 2048)
+                throw new Error('Protected dirty path');
+            continue;
+        }
         if (code[0] !== ' ' && code !== '??') throw new Error('External staged changes block dirty continuation');
         if (![' M', ' D', '??'].includes(code)) throw new Error('Unsupported dirty status');
         if (path.split('/').some(part => ['.dope', '.codex', '.ssh', '.aws', '.npmrc', '.yarnrc'].includes(part) ||

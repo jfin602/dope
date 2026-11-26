@@ -11,6 +11,7 @@ import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/autho
 import { makeWorkToolSelection } from '../../packages/agent-core/lib/work-tool-selection.js';
 import { parseAgentRun, parseAgentTask } from '../../packages/agent-core/lib/contracts.js';
 import { DirectWorkJournal } from '../../packages/agent-core/lib/node/direct-work-journal.js';
+import { captureDirtyBasis } from '../../packages/agent-core/lib/node/dirty-basis.js';
 import { ExecutionWorkspace } from '../../packages/agent-core/lib/node/execution-workspace.js';
 import { launchLocalSandboxedTool } from '../../packages/agent-core/lib/node/local-tool-sandbox.js';
 
@@ -65,6 +66,74 @@ test('Direct Work creates, modifies successively, and retains exact before image
         ['completed', 'completed', 'completed']);
     assert.deepEqual((await DirectWorkJournal.reconcile(root, journal.path)).map(item => item.result),
         ['completed', 'completed', 'completed']);
+}));
+
+test('reviewed owner-dirty files remain attributable through successive edits and selective revert', async () => fixture(async (root, head) => {
+    await writeFile(join(root, 'src', 'old.txt'), 'owner before\n');
+    await writeFile(join(root, 'src', 'owner.txt'), 'owner untracked\n');
+    const basis = await captureDirtyBasis(root);
+    const journal = await DirectWorkJournal.create(root, head, 'task-direct', 'dirty-owner', grant(root),
+        undefined, undefined, basis);
+    await journal.edit('modify', 'src/old.txt', 'agent first\n', async () => false);
+    await journal.edit('modify', 'src/old.txt', 'agent second\n', async () => false);
+    assert.equal((await DirectWorkJournal.review(root, journal.path)).conflicts.length, 0);
+    assert.equal((await DirectWorkJournal.revert(root, journal.path, ['src/old.txt'], async () => false))[0].result,
+        'reverted');
+    assert.equal(await readFile(join(root, 'src', 'old.txt'), 'utf8'), 'owner before\n');
+    assert.equal(await readFile(join(root, 'src', 'owner.txt'), 'utf8'), 'owner untracked\n');
+}));
+
+test('Dope History focus metadata does not block repeat Work, while other protected dirty paths do',
+    async () => fixture(async (root) => {
+        await mkdir(join(root, '.dope'));
+        await writeFile(join(root, '.dope', 'history-focus.json'), '{"schemaVersion":1}\n');
+        assert.deepEqual((await captureDirtyBasis(root)).paths, []);
+        await writeFile(join(root, '.dope', 'foreign.json'), 'owner data\n');
+        await assert.rejects(captureDirtyBasis(root), /Protected dirty path/);
+        await rm(join(root, '.dope', 'foreign.json'));
+        await rm(join(root, '.dope', 'history-focus.json'));
+        await symlink('missing', join(root, '.dope', 'history-focus.json'));
+        await assert.rejects(captureDirtyBasis(root), /Protected dirty path/);
+    }));
+
+test('reviewed untracked owner file is modified and restored as owner source, never an agent creation', async () => fixture(async (root, head) => {
+    await writeFile(join(root, 'src', 'owner.txt'), 'owner untracked\n');
+    const basis = await captureDirtyBasis(root);
+    const journal = await DirectWorkJournal.create(root, head, 'task-direct', 'dirty-untracked', grant(root),
+        undefined, undefined, basis);
+    await assert.rejects(journal.edit('create', 'src/owner.txt', 'bad', async () => false), /create\/modify conflict/);
+    const change = await journal.edit('modify', 'src/owner.txt', 'agent\n', async () => false);
+    assert.equal(change.before, digest('owner untracked\n'));
+    assert.equal((await DirectWorkJournal.revert(root, journal.path, ['src/owner.txt'], async () => false))[0].result,
+        'reverted');
+    assert.equal(await readFile(join(root, 'src', 'owner.txt'), 'utf8'), 'owner untracked\n');
+}));
+
+test('reviewed dirty basis rejects changes before start and before a brokered write', async () => fixture(async (root, head) => {
+    await writeFile(join(root, 'src', 'old.txt'), 'owner before\n');
+    const basis = await captureDirtyBasis(root);
+    await writeFile(join(root, 'src', 'old.txt'), 'owner changed\n');
+    await assert.rejects(DirectWorkJournal.create(root, head, 'task-direct', 'stale', grant(root),
+        undefined, undefined, basis), /basis changed/);
+    await writeFile(join(root, 'src', 'old.txt'), 'owner before\n');
+    const journal = await DirectWorkJournal.create(root, head, 'task-direct', 'dirty-race', grant(root),
+        undefined, undefined, await captureDirtyBasis(root));
+    await writeFile(join(root, 'src', 'replacement.txt'), 'owner before\n');
+    await rename(join(root, 'src', 'replacement.txt'), join(root, 'src', 'old.txt'));
+    await assert.rejects(journal.edit('modify', 'src/old.txt', 'agent\n', async () => false), /owner source changed/);
+    assert.equal(await readFile(join(root, 'src', 'old.txt'), 'utf8'), 'owner before\n');
+}));
+
+test('unrelated reviewed owner edit changing during Direct Work blocks further broker writes', async () => fixture(async (root, head) => {
+    await writeFile(join(root, 'src', 'owner.txt'), 'owner before\n');
+    const journal = await DirectWorkJournal.create(root, head, 'task-direct', 'dirty-unrelated', grant(root),
+        undefined, undefined, await captureDirtyBasis(root));
+    await journal.edit('modify', 'src/old.txt', 'agent first\n', async () => false);
+    await writeFile(join(root, 'src', 'owner.txt'), 'owner changed\n');
+    await assert.rejects(journal.edit('modify', 'src/old.txt', 'agent second\n', async () => false),
+        /owner source changed/);
+    assert.equal(await readFile(join(root, 'src', 'old.txt'), 'utf8'), 'agent first\n');
+    assert.equal(await readFile(join(root, 'src', 'owner.txt'), 'utf8'), 'owner changed\n');
 }));
 
 test('Direct Work denies owner edits, dirty/untracked targets, unsaved editors, and unsafe paths', async () => fixture(async (root, head) => {
@@ -145,6 +214,23 @@ test('new Direct segment binds prior applied source and reverts only its own edi
     await second.edit('modify', 'src/old.txt', 'segment two\n', async () => false);
     assert.equal((await DirectWorkJournal.revert(root, second.path, ['src/old.txt'], async () => false))[0].result, 'reverted');
     assert.equal(await readFile(join(root, 'src/old.txt'), 'utf8'), 'segment one\n');
+}));
+
+test('new Direct segment retains an unchanged owner baseline beside inherited agent edits', async () => fixture(async (root, head) => {
+    await writeFile(join(root, 'src', 'old.txt'), 'owner before\n');
+    await writeFile(join(root, 'src', 'owner.txt'), 'owner untracked\n');
+    const first = await DirectWorkJournal.create(root, head, 'task-direct', 'dirty-segment-1', grant(root),
+        undefined, undefined, await captureDirtyBasis(root));
+    const prior = await first.edit('modify', 'src/old.txt', 'agent first\n', async () => false);
+    const second = await DirectWorkJournal.create(root, head, 'task-direct', 'dirty-segment-2', grant(root),
+        undefined, [{ path: prior.path, after: prior.after, afterIdentity: prior.afterIdentity! }],
+        await captureDirtyBasis(root));
+    await second.assertActive();
+    await second.edit('modify', 'src/old.txt', 'agent second\n', async () => false);
+    assert.equal((await DirectWorkJournal.revert(root, second.path, ['src/old.txt'], async () => false))[0].result,
+        'reverted');
+    assert.equal(await readFile(join(root, 'src', 'old.txt'), 'utf8'), 'agent first\n');
+    assert.equal(await readFile(join(root, 'src', 'owner.txt'), 'utf8'), 'owner untracked\n');
 }));
 
 test('restart reconciliation distinguishes completed, absent and uncertain prepared writes', async () => fixture(async (root, head) => {

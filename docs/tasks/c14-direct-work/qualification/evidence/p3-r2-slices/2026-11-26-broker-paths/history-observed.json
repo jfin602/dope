@@ -1,0 +1,21 @@
+{
+  "source": "connected Dope browser History after Refresh History, 2026-11-26 America/Chicago",
+  "runs": [
+    {
+      "runId": "998de1ce-2a92-4946-ad3b-c76e5148a95b",
+      "display": "Direct Work: failed",
+      "applied": 0,
+      "reverted": 0,
+      "revertConflicts": 0,
+      "validation": "not-started"
+    },
+    {
+      "runId": "01de99b0-e754-40e0-af1b-14e5bfeae681",
+      "display": "Direct Work: failed",
+      "applied": 0,
+      "reverted": 0,
+      "revertConflicts": 0,
+      "validation": "not-started"
+    }
+  ]
+}

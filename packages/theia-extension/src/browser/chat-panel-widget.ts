@@ -25,13 +25,13 @@ import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { fadeInNewAnswerText } from './live-answer-fade';
 import { readSharedPanelLayout, SharedPanelState, WorkOpenOwners } from './shared-panel-state';
 import type { WorkSelection } from './shared-panel-state';
-import { WorkSelectionController, workManualGateReady, workReviewCanAccept, workReviewState, workRows, workRunOverview, workTitle } from './work-selection-controller';
+import { WorkSelectionController, directBatchRevertPaths, workManualGateReady, workReviewCanAccept, workReviewState, workRows, workRunOverview, workTitle } from './work-selection-controller';
 import { WorkSelectionNavigator } from './work-selection-navigator';
 import { WorkListOrganization, workRowKey, type WorkTree } from './work-list-organization';
 import type { WorkRow } from './work-selection-controller';
 import { restoreWorkScroll, workDisclosureKeydown } from './work-transcript-presentation';
 import { reuseWorkTranscript } from './work-panel-update';
-import { renderWorkConversation, workSegmentReviewEnabled } from './work-conversation-presentation';
+import { lockedWorkMode, renderWorkConversation, workSegmentReviewEnabled } from './work-conversation-presentation';
 import { formatRunElapsed, formatRunElapsedCompact } from './run-elapsed';
 import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-service';
 import type { AgentRun, AgentTask } from '@dope/agent-core';
@@ -125,7 +125,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
     newWorkFromToolbar(): void {
         if (!this.canCreateWorkFromToolbar) return;
         this.workNewParent = '';
-        if (this.directController) this.directController.forkedFromRunId = undefined;
+        if (this.directController) {
+            this.directController.forkedFromRunId = undefined;
+            this.directController.setExecutionMode('direct');
+        }
         this.composingWork = true;
         this.render();
     }
@@ -2021,6 +2024,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                 remove.append(trash, 'Delete Folder'); menu.append(colorLabel, colors, divider, remove);
                 const add = this.button('', () => {
                     if (!this.canCreateWorkFromToolbar) return;
+                    this.directController?.setExecutionMode('direct');
                     this.workNewParent = folder.path; this.composingWork = true; this.render();
                 });
                 add.setAttribute('aria-label', `New Work in folder ${name}`);
@@ -2440,6 +2444,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             return button;
         };
         let conversationComposer: HTMLElement | undefined;
+        let followUpReview: HTMLElement | undefined;
         let runSteerComposer: HTMLElement | undefined;
         let runDetailsControl: HTMLDetailsElement | undefined;
         let lockedConfig: HTMLDetailsElement | undefined;
@@ -2649,10 +2654,13 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     const label = document.createElement('summary'); label.textContent = 'Locked Work configuration';
                     const values = document.createElement('p');
                     const currentSegment = session.segments.find(segment => segment.runId === run.id);
+                    const sealedMode = lockedWorkMode(run, currentSegment,
+                        controller.selectedTask?.id === run.taskId ? controller.selectedTask : undefined);
                     values.textContent = `Model: ${currentSegment?.connectionId ?? session.connectionId} / ` +
                         `${currentSegment?.modelId ?? session.modelId} · ` +
                         `Tools: ${run.toolSelection?.tools.map(tool => tool.id).join(', ') ?? 'selection unavailable'} · ` +
-                        `Sandbox: isolated candidate (binding ${(currentSegment?.sandboxHash ?? session.sandboxHash).slice(0, 12)}) · ` +
+                        `Mode: ${sealedMode.mode ?? 'unavailable/unknown'} · ${sealedMode.description} · ` +
+                        `Sandbox binding: ${(currentSegment?.sandboxHash ?? session.sandboxHash).slice(0, 12)} · ` +
                         `Grant: ${currentSegment?.grantId ?? session.grantId} revision ` +
                         `${currentSegment?.grantRevision ?? session.grantRevision}`;
                     const ceiling = document.createElement('p');
@@ -2687,10 +2695,11 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                             controller.sessionBusy || session.messages.some(message =>
                                 ['queued', 'delivering'].includes(message.status)));
                         finish.className = 'dope-work-conversation-finish';
+                        const stop = this.button('Stop Work', () => void controller.stopSession(), controller.sessionBusy);
                         const toolbar = document.createElement('div'); toolbar.className = 'dope-chat-composer-toolbar';
                         const mode = document.createElement('span'); mode.className = 'dope-work-composer-mode';
                         mode.textContent = 'Queue for this run';
-                        toolbar.append(mode, finish, queue);
+                        toolbar.append(mode, stop, finish, queue);
                         const inputWrap = document.createElement('div'); inputWrap.className = 'dope-chat-input-wrap';
                         inputWrap.append(input); form.append(inputWrap, toolbar);
                         resizeChatInput(input);
@@ -2749,7 +2758,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         }
                         if (controller.followUpOpen) {
                             const follow = document.createElement('section');
-                            follow.className = 'dope-work-review';
+                            follow.className = 'dope-work-review dope-work-segment-review dope-work-controls';
+                            follow.setAttribute('aria-label', 'New Work segment review');
                             const title = document.createElement('h3');
                             title.textContent = 'Review new Work segment';
                             const facts = document.createElement('p'); facts.className = 'dope-work-detail';
@@ -2829,7 +2839,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                                 follow.append(error); }
                             const actions = document.createElement('div'); actions.className = 'dope-work-conversation-actions';
                             actions.append(this.button('Cancel review', () => controller.cancelFollowUp(), controller.followUpBusy));
-                            follow.append(actions); scroll.append(follow);
+                            follow.append(actions); followUpReview = follow;
                         }
                     }
                 }
@@ -3053,9 +3063,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                                 void controller.revertDirect([file.path]), controller.directReviewBusy || file.conflict));
                             section.append(details);
                         }
-                        const eligible = controller.directReview.files.filter(file => !file.reverted && !file.conflict);
-                        if (eligible.length) section.append(this.button('Revert Agent Changes', () =>
-                            void controller.revertDirect(eligible.map(file => file.path)), controller.directReviewBusy));
+                        const pending = directBatchRevertPaths(controller.directReview);
+                        if (pending.length) section.append(this.button('Revert Agent Changes', () =>
+                            void controller.revertDirect(pending), controller.directReviewBusy));
                     } else if (['completed', 'cancelled', 'failed', 'interrupted'].includes(run.status))
                         section.append(this.button('Review Changes', () => void controller.reviewDirect(), controller.directReviewBusy));
                     scroll.append(section);
@@ -3078,7 +3088,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         `Human reserved: ${controller.selectedTask.origin.scope.humanReservedPaths.join(', ') || 'none'}` :
                         controller.selectedTask.origin.kind === 'phase-stack' ?
                             'Phase-stack candidate: inspect changed paths against the authored prompt and accepted grant.' :
-                            'Direct Work candidate: inspect changed paths against your instructions and accepted grant.';
+                            'Isolated Work candidate: inspect changed paths against your instructions and accepted grant.';
                     section.append(scope);
                     const paths = document.createElement('p'); paths.className = 'dope-work-detail';
                     paths.textContent = `Changed paths: ${review.changedPaths.join(', ') || 'none'}`; section.append(paths);
@@ -3242,7 +3252,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                         commit.oninput = () => { controller.startCommitMessage = commit.value; };
                         const actions = document.createElement('div'); actions.className = 'dope-work-dirty-actions';
                         actions.append(this.button('Continue without commit', () => void controller.startSelectedWorkItemTask(true).then(finishStart),
-                            task.executionMode === 'direct'),
+                            controller.startBusy),
                             this.button('Commit listed changes and start', () => void controller.commitStartWorktree().then(finishStart)),
                             this.button('Cancel', () => controller.cancelStartWorktreeReview()));
                         panel.append(title, text, paths, commit, actions); section.append(panel);
@@ -3257,6 +3267,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
         if (!decision.children.length) decision.remove();
         this.content.append(region);
         if (runSteerComposer) this.content.append(runSteerComposer);
+        if (followUpReview) this.content.append(followUpReview);
         if (conversationComposer) this.content.append(conversationComposer);
         if (runDetailsControl) {
             runDetailsControl.open = this.workDetailsOpen;

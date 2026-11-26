@@ -43,7 +43,8 @@ export interface LocalTurnLoopBroker {
 /** Binds P3–P5's guarded broker to the same candidate workspace for the whole run. */
 export function localWorkspaceBroker(request: AgentExecutionRequest, workspace: ExecutionWorkspace,
     commands: readonly LocalProcessCommand[], direct?: {
-        journal: DirectWorkJournal; unsaved(path: string): Promise<boolean> }): LocalTurnLoopBroker {
+        journal: DirectWorkJournal; unsaved(path: string): Promise<boolean>;
+        refresh(path: string): Promise<boolean> }): LocalTurnLoopBroker {
     if (!(workspace instanceof ExecutionWorkspace)) throw fail('Local execution workspace unavailable');
     return {
         assertActive: () => workspace.assertActiveBasis(request.projectRoot, request.executionRoot),
@@ -62,13 +63,35 @@ export function localWorkspaceBroker(request: AgentExecutionRequest, workspace: 
             request.reservedPaths?.some(path => call.arguments.path === path ||
                 call.arguments.path.startsWith(`${path}/`) || path.startsWith(`${call.arguments.path}/`)))
             return parseLocalToolResult({ id: call.id, name: call.name, status: 'denied', output: '', truncated: false });
+        const priorChanges = direct!.journal.changes.length;
         try {
             await direct!.journal.edit(call.arguments.operation, call.arguments.path,
                 call.arguments.content, direct!.unsaved);
-            const mirrored = await brokerLocalEdit(request, workspace, call, signal);
+            // Once canonical source changed, Stop must not cancel this safe candidate
+            // mirror and turn a recorded effect into a reported denial.
+            const mirrored = await brokerLocalEdit(request, workspace, call);
             if (mirrored.status !== 'completed') throw new Error('Direct Work model view could not mirror canonical write');
+            try {
+                if (!await direct!.refresh(call.arguments.path)) request.onEvent({ kind: 'warning',
+                    summary: 'Open editor could not refresh after Direct Work edit' });
+            } catch {
+                request.onEvent({ kind: 'warning', summary: 'Open editor could not refresh after Direct Work edit' });
+            }
             return mirrored;
         } catch {
+            const changes = direct!.journal.changes.slice(priorChanges);
+            if (changes.some(change => change.result === 'completed')) {
+                request.onEvent({ kind: 'warning',
+                    summary: 'Direct Work edit applied; model view failed. Stop and review the recorded change.' });
+                return parseLocalToolResult({ id: call.id, name: call.name, status: 'failed',
+                    output: 'DIRECT_EDIT_APPLIED_MODEL_VIEW_UNAVAILABLE', truncated: false });
+            }
+            if (changes.some(change => change.result === 'prepared' || change.result === 'uncertain')) {
+                request.onEvent({ kind: 'warning',
+                    summary: 'Direct Work edit requires journal reconciliation before further Work.' });
+                return parseLocalToolResult({ id: call.id, name: call.name, status: 'failed',
+                    output: 'DIRECT_EDIT_RECONCILE_REQUIRED', truncated: false });
+            }
             return parseLocalToolResult({ id: call.id, name: call.name, status: 'denied', output: '', truncated: false });
         }
     }

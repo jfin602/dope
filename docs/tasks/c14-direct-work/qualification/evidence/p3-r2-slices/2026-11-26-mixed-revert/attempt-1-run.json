@@ -1,0 +1,180 @@
+{
+  "version": 1,
+  "id": "fd102e03-1a4a-42e9-8da9-a995a54d6247",
+  "taskId": "b2cef88b-2148-4bee-a752-d104b667b67d",
+  "status": "completed",
+  "grantId": "31547e4a-c41e-4c63-aeb0-02148e49875d",
+  "grantRevision": 1,
+  "executionMode": "direct",
+  "requestedPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "projectRoot": ".",
+  "toolSelection": {
+    "catalogRevision": 2,
+    "projectUri": "file:///tmp/dope-p3-r2-mixed-7H9SZ7",
+    "taskId": "b2cef88b-2148-4bee-a752-d104b667b67d",
+    "grantRevision": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b",
+    "tools": [
+      {
+        "id": "read_file",
+        "schemaRevision": 1
+      },
+      {
+        "id": "list_files",
+        "schemaRevision": 1
+      },
+      {
+        "id": "edit_file",
+        "schemaRevision": 1
+      }
+    ]
+  },
+  "taskContract": {
+    "taskId": "b2cef88b-2148-4bee-a752-d104b667b67d",
+    "taskHash": "9bcb82fe3eeef337fdf7cbf0a695457ebbb9445814a99264b98df2fb9285605c",
+    "objective": "In this disposable fixture, make exactly two separate brokered edit_file calls. First change only src/main.ts from `export const headline = 'Owner Indigo';` to `export const headline = 'Agent Copper';`. Second change only src/theme.ts from `export const accent = 'Owner Azure';` to `export const accent = 'Agent Violet';`. Preserve the one-line syntax and trailing newline in each file. You may read each file first. Do not use commands or edit any other path. After both edits, finish with a short summary.",
+    "instructionsHash": "69fe22e04da236b699617e7a070a200b93084be4be0f49a6b43938b1100fcd94",
+    "acceptance": "unknown",
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "planning": "unknown",
+    "roadmap": "unknown",
+    "grant": {
+      "id": "31547e4a-c41e-4c63-aeb0-02148e49875d",
+      "revision": 1,
+      "acceptedAt": "2026-11-26T19:02:30.126Z",
+      "permissionsHash": "c7c73862054b06ae90fe2ad39f6db3fd360281f3b31fee5ec97b6334149d47f2"
+    },
+    "sourceHead": "3cd72f80b047ae9e1f0812870c70cc828d6c992b"
+  },
+  "createdAt": "2026-11-26T19:02:30.402Z",
+  "startedAt": "2026-11-26T19:02:30.402Z",
+  "endedAt": "2026-11-26T19:03:11.155Z",
+  "executionWorkspace": {
+    "id": "6447a5c8-844a-4274-a306-982f25fa6c06",
+    "basisHead": "3cd72f80b047ae9e1f0812870c70cc828d6c992b"
+  },
+  "directJournal": {
+    "id": "c28c6ad0-8ede-4105-86a5-e6581eae8034",
+    "path": ".dope/agent/direct-journals/c28c6ad0-8ede-4105-86a5-e6581eae8034.json"
+  },
+  "directApplied": [
+    {
+      "path": "src/main.ts",
+      "operation": "modify",
+      "before": "b23ea54a6afd3b5c745b63858721b1375c781dc30f6222c73bc597c7b9ec3d21",
+      "after": "c5ff3a2560d3aa1c631834ac97440802c28415ddfe4e08ada8193a9340e71f9b",
+      "result": "applied"
+    },
+    {
+      "path": "src/theme.ts",
+      "operation": "modify",
+      "before": "01a375f281aa06a949ffcef881e564c518ab82b03ae1879138961294ad6ec2d7",
+      "after": "be9c9ebd59d2ad5dbe749e98dddb73c40e5aa9bd1cc6737196bb944ad5dd9d30",
+      "result": "applied"
+    }
+  ],
+  "directReverts": [
+    {
+      "path": "src/theme.ts",
+      "at": "2026-11-26T19:03:49.912Z",
+      "result": "reverted"
+    }
+  ],
+  "provenance": {
+    "version": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b",
+    "providerId": "local",
+    "runtimeKind": "local",
+    "adapterId": "pi-local-work",
+    "policyRevision": 29
+  },
+  "basis": {
+    "head": "3cd72f80b047ae9e1f0812870c70cc828d6c992b",
+    "clean": true,
+    "metadataChanged": false
+  },
+  "changedFiles": [
+    "src/main.ts",
+    "src/theme.ts"
+  ],
+  "validationResults": [
+    {
+      "version": 1,
+      "kind": "test",
+      "label": "Required validation",
+      "status": "passed",
+      "durationMs": 152,
+      "owner": "dope",
+      "command": "node --test test/fixture.test.mjs",
+      "candidateFingerprint": "b635a34c3ffce9439ba092d02a49cb685869e1e03491322822ebd7b43381d3c8",
+      "workspaceId": "88aa2f74-579f-4a29-9e26-34b4d929fdd1",
+      "exitCode": 0,
+      "stdout": "✔ both visible fixture markers remain present (1.699099ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 89.477708\n",
+      "stderr": "",
+      "stdoutTruncated": false,
+      "stderrTruncated": false
+    }
+  ],
+  "finalGit": {
+    "head": "3cd72f80b047ae9e1f0812870c70cc828d6c992b",
+    "clean": false,
+    "headChanged": false,
+    "metadataChanged": false,
+    "statuses": [
+      {
+        "code": " M",
+        "path": "src/main.ts"
+      },
+      {
+        "code": " M",
+        "path": "src/theme.ts"
+      }
+    ],
+    "truncated": false
+  },
+  "changeSummary": {
+    "version": 1,
+    "filesChanged": 2,
+    "insertions": 2,
+    "deletions": 2,
+    "summary": "2 task files changed; 2 bounded text insertions, 2 deletions; 0 untracked bytes",
+    "truncated": false
+  },
+  "validationBasis": "direct-applied-snapshot",
+  "candidateDelta": {
+    "version": 1,
+    "effects": [
+      {
+        "kind": "modify",
+        "path": "src/main.ts",
+        "before": "b23ea54a6afd3b5c745b63858721b1375c781dc30f6222c73bc597c7b9ec3d21",
+        "after": "c5ff3a2560d3aa1c631834ac97440802c28415ddfe4e08ada8193a9340e71f9b"
+      },
+      {
+        "kind": "modify",
+        "path": "src/theme.ts",
+        "before": "01a375f281aa06a949ffcef881e564c518ab82b03ae1879138961294ad6ec2d7",
+        "after": "be9c9ebd59d2ad5dbe749e98dddb73c40e5aa9bd1cc6737196bb944ad5dd9d30"
+      }
+    ]
+  },
+  "candidateFingerprint": "b635a34c3ffce9439ba092d02a49cb685869e1e03491322822ebd7b43381d3c8",
+  "authorityDecision": {
+    "allowed": true,
+    "blocked": []
+  },
+  "appliedFiles": [
+    "src/main.ts",
+    "src/theme.ts"
+  ]
+}

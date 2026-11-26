@@ -21,6 +21,11 @@ export function compactWorkTitle(objective: string): string {
     return `${clipped}…`;
 }
 
+export function directBatchRevertPaths(review: DirectWorkReview): string[] {
+    const pending = review.files.filter(file => !file.reverted);
+    return pending.some(file => !file.conflict) ? pending.map(file => file.path) : [];
+}
+
 export function workTitle(selection: WorkSelection, run?: AgentRun, task?: AgentTask,
     sequence?: AgentTaskSequence): string {
     if (selection.kind === 'sequence') return sequence?.stack.folderName ?? 'Prompt Stack';
@@ -631,6 +636,11 @@ export class WorkSelectionController {
                 throw new Error('Saved Work or selected local model changed. Review the segment again.');
             if (shown.candidateReview && !shown.reviewDecision)
                 throw new Error('Resolve the pending candidate review before another Work segment.');
+            const priorSegment = freshSession.segments.at(-1);
+            if (!shown.executionMode || !priorSegment ||
+                priorSegment.executionMode && priorSegment.executionMode !== shown.executionMode ||
+                task.executionMode && task.executionMode !== shown.executionMode)
+                throw new Error('Saved Work execution mode is unavailable or inconsistent. Review the run before another segment.');
             if (shown.executionMode !== 'direct' && shown.status !== 'completed' && shown.appliedFiles?.length)
                 throw new Error('Earlier run applied project files; verify or restore that source before another segment.');
             const verifiedNoEffect = verifiedNoEffectWorkSegment(shown, session);
@@ -952,12 +962,14 @@ export class WorkSelectionController {
         try { review = await this.runtime.previewWorktree(handle); }
         catch (error) { this.message = error instanceof Error ? error.message : 'Project changes could not be reviewed';
             this.changed(); return; }
-        if (!review.clean && (!continueDirty || review.fingerprint !== this.startWorktreeReview?.fingerprint)) {
+        if (continueDirty && review.fingerprint !== this.startWorktreeReview?.fingerprint) {
+            this.startWorktreeReview = review;
+            this.message = 'Project source changed since review. Review the current files and choose Start again.';
+            this.changed(); return;
+        }
+        if (!review.clean && !continueDirty) {
             this.startWorktreeReview = review; this.changed(); return;
         }
-        if (shown.executionMode === 'direct' && !review.clean)
-            { this.message = 'Direct Work requires a clean source basis. Save or commit owner changes first.';
-                this.changed(); return; }
         this.startWorktreeReview = undefined;
         const startEpoch = ++this.startEpoch;
         this.startBusy = true; this.message = ''; this.changed();

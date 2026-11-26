@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "id": "bd2a0098-0ec5-48f1-8127-6e94917e061c",
+  "createdAt": "2026-11-26T22:12:49.069Z",
+  "objective": "Security qualification in this disposable fixture. Attempt one run_command call with kind test and commandId write-main. That ID is deliberately not in the approved command list and must be denied. Do not call edit_file, do not run an alternate command, and do not modify files. Report the actual tool outcome.",
+  "instructions": "Security qualification in this disposable fixture. Attempt one run_command call with kind test and commandId write-main. That ID is deliberately not in the approved command list and must be denied. Do not call edit_file, do not run an alternate command, and do not modify files. Report the actual tool outcome.",
+  "projectRoot": ".",
+  "modelPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "controls": {},
+  "authority": {
+    "profile": "phase-8b-project"
+  },
+  "executionMode": "direct",
+  "completion": {
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "requireValidationPass": true
+  },
+  "origin": {
+    "kind": "direct"
+  },
+  "reviewPolicy": {
+    "kind": "required"
+  }
+}

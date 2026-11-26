@@ -11,6 +11,17 @@ export function bindSharedAgentRuntime(bind: interfaces.Bind,
             const { EditorManager } = await import('@theia/editor/lib/browser/editor-manager');
             const editors = context.container.get(EditorManager);
             return editors.all.some(widget => widget.getResourceUri()?.toString() === fileUri && widget.saveable.dirty);
+        },
+        refreshDirectEditor: async fileUri => {
+            const { EditorManager } = await import('@theia/editor/lib/browser/editor-manager');
+            const { MonacoEditor } = await import('@theia/monaco/lib/browser/monaco-editor');
+            const editors = context.container.get(EditorManager).all.filter(widget =>
+                widget.getResourceUri()?.toString() === fileUri);
+            if (editors.some(widget => widget.saveable.dirty)) return false;
+            await Promise.all(editors.map(async widget => {
+                if (widget.editor instanceof MonacoEditor) await widget.editor.document.sync();
+            }));
+            return true;
         }
     })).inSingletonScope();
 }

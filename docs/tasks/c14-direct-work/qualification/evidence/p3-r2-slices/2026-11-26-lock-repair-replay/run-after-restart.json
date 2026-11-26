@@ -1,0 +1,106 @@
+{
+  "version": 1,
+  "id": "b65d4e86-b201-4ad7-a440-8acc4f381ab7",
+  "taskId": "d73ccb18-f9c4-415d-9c1b-beda6753e7d2",
+  "status": "interrupted",
+  "grantId": "19c37562-a2be-49f4-966f-1c7b9197b560",
+  "grantRevision": 1,
+  "executionMode": "direct",
+  "requestedPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "projectRoot": ".",
+  "toolSelection": {
+    "catalogRevision": 2,
+    "projectUri": "file:///tmp/dope-p3-r2-lock-replay-NUeuwj",
+    "taskId": "d73ccb18-f9c4-415d-9c1b-beda6753e7d2",
+    "grantRevision": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b",
+    "tools": [
+      {
+        "id": "read_file",
+        "schemaRevision": 1
+      },
+      {
+        "id": "list_files",
+        "schemaRevision": 1
+      },
+      {
+        "id": "edit_file",
+        "schemaRevision": 1
+      }
+    ]
+  },
+  "taskContract": {
+    "taskId": "d73ccb18-f9c4-415d-9c1b-beda6753e7d2",
+    "taskHash": "f469597dc3be621af30a92613ee63fed20a55bf51476893a714d93522e9db313",
+    "objective": "Inspect src/main.ts, then use edit_file to change only the displayed owner headline from Owner Indigo to Owner Copper. Do not change any other file. Stop after the edit.",
+    "instructionsHash": "552d5d1e33eab4971c84efdf54c136d7b9c43c1b8bd3af0ff27ea61f91f625d5",
+    "acceptance": "unknown",
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "planning": "unknown",
+    "roadmap": "unknown",
+    "grant": {
+      "id": "19c37562-a2be-49f4-966f-1c7b9197b560",
+      "revision": 1,
+      "acceptedAt": "2026-11-26T21:40:59.367Z",
+      "permissionsHash": "30e361acba033ea6394410831e3d94941121447e6ba0253edaec26a8086c2fc0"
+    },
+    "sourceHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4"
+  },
+  "createdAt": "2026-11-26T21:40:59.730Z",
+  "startedAt": "2026-11-26T21:40:59.730Z",
+  "endedAt": "2026-11-26T21:41:46.696Z",
+  "executionWorkspace": {
+    "id": "ceea27d3-ad18-4cc1-b31a-b2c0940a83d1",
+    "basisHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4"
+  },
+  "directJournal": {
+    "id": "47fe88ea-f3e3-43b3-82e5-8f0a8ac50930",
+    "path": ".dope/agent/direct-journals/47fe88ea-f3e3-43b3-82e5-8f0a8ac50930.json"
+  },
+  "directApplied": [],
+  "provenance": {
+    "version": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b",
+    "providerId": "local",
+    "runtimeKind": "local",
+    "adapterId": "pi-local-work",
+    "policyRevision": 29
+  },
+  "basis": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "clean": true,
+    "metadataChanged": false
+  },
+  "changedFiles": [],
+  "validationResults": [],
+  "finalGit": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "clean": true,
+    "headChanged": false,
+    "metadataChanged": false,
+    "statuses": [],
+    "truncated": false
+  },
+  "changeSummary": {
+    "version": 1,
+    "filesChanged": 0,
+    "insertions": 0,
+    "deletions": 0,
+    "summary": "0 task files changed; 0 bounded text insertions, 0 deletions; 0 untracked bytes",
+    "truncated": false
+  },
+  "outcome": {
+    "code": "interrupted",
+    "summary": "Execution abandoned after backend restart"
+  }
+}

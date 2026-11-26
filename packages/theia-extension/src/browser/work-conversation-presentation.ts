@@ -1,4 +1,4 @@
-import type { AgentRun, AgentRunEvent, AgentSteeringState, AgentTranscriptEntry, WorkSession } from '@dope/agent-core';
+import type { AgentRun, AgentRunEvent, AgentSteeringState, AgentTask, AgentTranscriptEntry, WorkSession } from '@dope/agent-core';
 import type { MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
 import { workCommandLabel, workCommandOutput, workToolCall, workToolFeedback, workToolLabel,
@@ -9,6 +9,18 @@ import { copyChatText } from './chat-copy-text';
 export function workSegmentReviewEnabled(text: string, busy: boolean, reviewOpen: boolean,
     targetsBusy: boolean, targetSelected: boolean): boolean {
     return !!text.trim() && !busy && (!reviewOpen || !targetsBusy && targetSelected);
+}
+
+/** Legacy segments may display their linked run mode; they never acquire a synthetic saved mode. */
+export function lockedWorkMode(run: AgentRun, segment: WorkSession['segments'][number] | undefined,
+    task?: AgentTask): { mode?: 'direct' | 'isolated'; description: string } {
+    if (!segment || segment.runId !== run.id || segment.taskId !== run.taskId ||
+        !run.executionMode || segment.executionMode && segment.executionMode !== run.executionMode ||
+        task && (task.id !== run.taskId || task.executionMode && task.executionMode !== run.executionMode))
+        return { description: 'Execution mode unavailable: saved run, task, and segment evidence is missing or inconsistent.' };
+    return run.executionMode === 'direct' ?
+        { mode: 'direct', description: 'Direct Work · brokered edits apply to the open project immediately; review and safe revert are available.' } :
+        { mode: 'isolated', description: 'Isolated Work · edits remain in a separate candidate until reviewed and accepted.' };
 }
 
 export function workConversationTimeline(entries: readonly AgentTranscriptEntry[],

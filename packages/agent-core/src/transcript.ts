@@ -36,8 +36,8 @@ export type AgentTranscriptRecord = AgentTranscriptEntry | {
     stdoutTruncated?: boolean; stderrTruncated?: boolean; outputTruncated?: boolean;
 };
 
-export type WorkPhase = 'requested' | 'validating' | 'executing' | 'completed' | 'failed' | 'recoverable' | 'denied' | 'cancelled';
-const workPhases = ['requested', 'validating', 'executing', 'completed', 'failed', 'recoverable', 'denied', 'cancelled'] as const;
+export type WorkPhase = 'requested' | 'validating' | 'executing' | 'completed' | 'failed' | 'recoverable' | 'denied' | 'cancelled' | 'interrupted';
+const workPhases = ['requested', 'validating', 'executing', 'completed', 'failed', 'recoverable', 'denied', 'cancelled', 'interrupted'] as const;
 
 export interface AgentTranscriptStorage {
     appendTranscript(root: string, runId: string, input: AgentTranscriptInput): Promise<{

@@ -210,7 +210,7 @@ test('saved Chat retains a native staged Roadmap proposal and validated preview 
             assert.deepEqual(await readFile(join(root, '.dope', 'roadmap.json')), canonical);
             assert.deepEqual(await readFile(join(root, 'ROADMAP.md')), source);
         } finally { reloaded.dispose(); }
-    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }); }
 });
 
 test('revision-zero /roadmap cannot trigger model-staged greenfield generation', async () => {
@@ -243,7 +243,7 @@ test('revision-zero /roadmap cannot trigger model-staged greenfield generation',
         assert.equal(await store.gateIndexHash(root), null);
         await assert.rejects(readFile(join(root, '.dope', 'roadmap.json')), { code: 'ENOENT' });
         await assert.rejects(readFile(join(root, 'ROADMAP.md')), { code: 'ENOENT' });
-    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }); }
 });
 
 test('linked native Chat subset approval synchronizes Markdown while rejected operations stay inert', async () => {

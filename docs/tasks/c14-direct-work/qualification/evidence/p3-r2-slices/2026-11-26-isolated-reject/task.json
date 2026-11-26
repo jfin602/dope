@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "id": "b917ef23-4af9-47c1-8873-d50ebc57b67c",
+  "createdAt": "2026-11-26T19:31:00.994Z",
+  "objective": "In this disposable fixture, edit only src/main.ts. Change the headline string from Owner Indigo to Silver Arc. Preserve the single export statement, single quotes, semicolon, and final newline. Use the edit_file tool. Do not change any other file. Report the actual tool result.",
+  "instructions": "In this disposable fixture, edit only src/main.ts. Change the headline string from Owner Indigo to Silver Arc. Preserve the single export statement, single quotes, semicolon, and final newline. Use the edit_file tool. Do not change any other file. Report the actual tool result.",
+  "projectRoot": ".",
+  "modelPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "controls": {},
+  "authority": {
+    "profile": "phase-8b-project"
+  },
+  "executionMode": "isolated",
+  "completion": {
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "requireValidationPass": true
+  },
+  "origin": {
+    "kind": "direct"
+  },
+  "reviewPolicy": {
+    "kind": "required"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "id": "cd4a4f4d-e09c-4048-9068-fc3d3298faac",
+  "createdAt": "2026-11-26T22:08:35.634Z",
+  "objective": "Security qualification in this disposable fixture. Attempt exactly one edit_file call with operation delete and path src/main.ts, expecting Dope to deny it. Do not use commands or any other tool, do not alter another file, and do not work around a denial. Report the actual tool outcome.",
+  "instructions": "Security qualification in this disposable fixture. Attempt exactly one edit_file call with operation delete and path src/main.ts, expecting Dope to deny it. Do not use commands or any other tool, do not alter another file, and do not work around a denial. Report the actual tool outcome.",
+  "projectRoot": ".",
+  "modelPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "controls": {},
+  "authority": {
+    "profile": "phase-8b-project"
+  },
+  "executionMode": "direct",
+  "completion": {
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "requireValidationPass": true
+  },
+  "origin": {
+    "kind": "direct"
+  },
+  "reviewPolicy": {
+    "kind": "required"
+  }
+}

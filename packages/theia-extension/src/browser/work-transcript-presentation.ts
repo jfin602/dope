@@ -52,7 +52,8 @@ function metadata(detail?: string): Record<string, unknown> {
 }
 export function workToolStatus(phase: WorkToolEntry['phase']): string {
     return ({ requested: 'Running', validating: 'Validating', executing: 'Running', completed: 'Completed',
-        failed: 'Failed', recoverable: 'Invalid arguments', denied: 'Authority denied', cancelled: 'Cancelled' })[phase];
+        failed: 'Failed', recoverable: 'Invalid arguments', denied: 'Authority denied', cancelled: 'Cancelled',
+        interrupted: 'Interrupted' })[phase];
 }
 
 /** Keep the concise saved-tool summary separate from its call-shaped detail. */

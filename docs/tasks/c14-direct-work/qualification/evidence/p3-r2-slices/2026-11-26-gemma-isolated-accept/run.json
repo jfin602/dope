@@ -1,0 +1,176 @@
+{
+  "version": 1,
+  "id": "6730da99-8fbb-4484-a1e2-0054e3e0e0f5",
+  "taskId": "4d850732-3c3f-4c26-a60b-0dec41264191",
+  "status": "completed",
+  "grantId": "60175f58-81ae-4c8c-ad9a-0ffd33d5b80a",
+  "grantRevision": 1,
+  "executionMode": "isolated",
+  "requestedPolicy": {
+    "kind": "exact",
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "google/gemma-4-26b-a4b-qat"
+  },
+  "projectRoot": ".",
+  "toolSelection": {
+    "catalogRevision": 2,
+    "projectUri": "file:///tmp/dope-p3-r2-gemma-isolated-1lSbRF/fixture",
+    "taskId": "4d850732-3c3f-4c26-a60b-0dec41264191",
+    "grantRevision": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "google/gemma-4-26b-a4b-qat",
+    "tools": [
+      {
+        "id": "read_file",
+        "schemaRevision": 1
+      },
+      {
+        "id": "list_files",
+        "schemaRevision": 1
+      },
+      {
+        "id": "edit_file",
+        "schemaRevision": 1
+      }
+    ]
+  },
+  "taskContract": {
+    "taskId": "4d850732-3c3f-4c26-a60b-0dec41264191",
+    "taskHash": "3dd9c7d16d7053008ca9cc810380b47659f3159fe80c76ab7c5a8c5c6268d656",
+    "objective": "In this disposable fixture, change only src/main.ts so its entire content is exactly \"export const headline = 'Silver Arc';\\n\". First call read_file with path src/main.ts and offset 0, then call edit_file once with operation modify and that complete content. Do not change another file. Report the tool result.",
+    "instructionsHash": "1e18da4d6c639d0c8fc9693724c7ad297b0304d226ea2018a3e52b4e32bae7f2",
+    "acceptance": "unknown",
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "planning": "unknown",
+    "roadmap": "unknown",
+    "grant": {
+      "id": "60175f58-81ae-4c8c-ad9a-0ffd33d5b80a",
+      "revision": 1,
+      "acceptedAt": "2026-11-26T22:28:48.512Z",
+      "permissionsHash": "d7098aa19b7bf393a7ba5bdaa88e751595625bde983f60385e4577e5e0ba710d"
+    },
+    "sourceHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4"
+  },
+  "createdAt": "2026-11-26T22:28:48.781Z",
+  "startedAt": "2026-11-26T22:28:48.781Z",
+  "endedAt": "2026-11-26T22:29:57.905Z",
+  "executionWorkspace": {
+    "id": "fd658afc-8782-4c92-80ad-4161d9fac997",
+    "basisHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4"
+  },
+  "provenance": {
+    "version": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "google/gemma-4-26b-a4b-qat",
+    "providerId": "local",
+    "runtimeKind": "local",
+    "adapterId": "pi-local-work"
+  },
+  "basis": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "clean": true,
+    "metadataChanged": false
+  },
+  "changedFiles": [
+    "src/main.ts"
+  ],
+  "validationResults": [
+    {
+      "version": 1,
+      "kind": "test",
+      "label": "Required validation",
+      "status": "passed",
+      "durationMs": 139,
+      "owner": "dope",
+      "command": "node --test test/fixture.test.mjs",
+      "candidateFingerprint": "cf37604cfa8bfc286d3c7f4463550e5550e84dcefcc412ead2ac75646015e615",
+      "workspaceId": "751c789b-c5e6-40dc-ac95-55f9c211d5be",
+      "exitCode": 0,
+      "stdout": "✔ headline remains a valid single export (1.955054ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 89.126294\n",
+      "stderr": "",
+      "stdoutTruncated": false,
+      "stderrTruncated": false
+    }
+  ],
+  "finalGit": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "clean": false,
+    "headChanged": false,
+    "metadataChanged": false,
+    "statuses": [
+      {
+        "code": " M",
+        "path": "src/main.ts"
+      }
+    ],
+    "truncated": false
+  },
+  "changeSummary": {
+    "version": 1,
+    "filesChanged": 1,
+    "insertions": 1,
+    "deletions": 1,
+    "summary": "1 task files changed; 1 bounded text insertions, 1 deletions; 0 untracked bytes",
+    "truncated": false
+  },
+  "validationBasis": "execution-workspace",
+  "candidateDelta": {
+    "version": 1,
+    "effects": [
+      {
+        "kind": "modify",
+        "path": "src/main.ts",
+        "before": "b23ea54a6afd3b5c745b63858721b1375c781dc30f6222c73bc597c7b9ec3d21",
+        "after": "fa9a6a68e164ba01dbf01546b946c0b646b28aa1675acb9827886c45e3d1c976"
+      }
+    ]
+  },
+  "candidateFingerprint": "cf37604cfa8bfc286d3c7f4463550e5550e84dcefcc412ead2ac75646015e615",
+  "candidateReview": {
+    "state": "ready",
+    "revision": 0,
+    "candidateFingerprint": "cf37604cfa8bfc286d3c7f4463550e5550e84dcefcc412ead2ac75646015e615",
+    "diff": "diff --git a/src/main.ts b/src/main.ts\n--- a/src/main.ts\n+++ b/src/main.ts\n@@ -1,1 +1,1 @@\n-export const headline = 'Owner Indigo';\n+export const headline = 'Silver Arc';\n",
+    "diffTruncated": false,
+    "changedPaths": [
+      "src/main.ts"
+    ],
+    "validation": [
+      {
+        "version": 1,
+        "kind": "test",
+        "label": "Required validation",
+        "status": "passed",
+        "durationMs": 139,
+        "owner": "dope",
+        "command": "node --test test/fixture.test.mjs",
+        "candidateFingerprint": "cf37604cfa8bfc286d3c7f4463550e5550e84dcefcc412ead2ac75646015e615",
+        "workspaceId": "751c789b-c5e6-40dc-ac95-55f9c211d5be",
+        "exitCode": 0,
+        "stdout": "✔ headline remains a valid single export (1.955054ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 89.126294\n",
+        "stderr": "",
+        "stdoutTruncated": false,
+        "stderrTruncated": false
+      }
+    ]
+  },
+  "reviewDecision": {
+    "kind": "accept",
+    "revision": 1,
+    "at": "2026-11-26T22:29:57.523Z",
+    "candidateFingerprint": "cf37604cfa8bfc286d3c7f4463550e5550e84dcefcc412ead2ac75646015e615"
+  },
+  "authorityDecision": {
+    "allowed": true,
+    "blocked": []
+  },
+  "appliedFiles": [
+    "src/main.ts"
+  ]
+}

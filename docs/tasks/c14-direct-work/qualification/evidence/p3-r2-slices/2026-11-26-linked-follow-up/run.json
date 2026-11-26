@@ -1,0 +1,171 @@
+{
+  "version": 1,
+  "id": "e5809fee-fe25-4809-82d1-4d0f10953107",
+  "taskId": "0317dd10-e3bb-49be-9d54-61431879d87c",
+  "status": "failed",
+  "grantId": "7a7378bb-550b-42b2-8e07-669671186518",
+  "grantRevision": 1,
+  "executionMode": "direct",
+  "requestedPolicy": {
+    "kind": "exact",
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b"
+  },
+  "projectRoot": ".",
+  "toolSelection": {
+    "catalogRevision": 2,
+    "projectUri": "file:///tmp/dope-p3-r2-mode-seal-IfFazm",
+    "taskId": "0317dd10-e3bb-49be-9d54-61431879d87c",
+    "grantRevision": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b",
+    "tools": [
+      {
+        "id": "read_file",
+        "schemaRevision": 1
+      },
+      {
+        "id": "list_files",
+        "schemaRevision": 1
+      },
+      {
+        "id": "edit_file",
+        "schemaRevision": 1
+      }
+    ]
+  },
+  "taskContract": {
+    "taskId": "0317dd10-e3bb-49be-9d54-61431879d87c",
+    "taskHash": "75b93b1fe3d829d7f17b080fce5720e54206b44045fabb6954a1f230247e34a4",
+    "objective": "In this disposable Git fixture, change only src/main.ts so its single exported headline is 'Oneoff Coral'. Keep the exact one-line export format. Use the selected Dope tools to inspect and edit the file, then briefly report the change. Do not touch any other file or run commands.",
+    "instructionsHash": "bb151979229dc4cf8aefbd5321585f179eaac316801621a1439517d1f194eebb",
+    "acceptance": "unknown",
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "planning": "unknown",
+    "roadmap": "unknown",
+    "grant": {
+      "id": "7a7378bb-550b-42b2-8e07-669671186518",
+      "revision": 1,
+      "acceptedAt": "2026-11-26T20:27:00.834Z",
+      "permissionsHash": "fdd5a39fe9e1a8e958c72a5b341d936333112f11e3c15700b32411d73c83a182"
+    },
+    "sourceHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4"
+  },
+  "createdAt": "2026-11-26T20:27:01.977Z",
+  "startedAt": "2026-11-26T20:27:01.977Z",
+  "endedAt": "2026-11-26T20:29:00.946Z",
+  "executionWorkspace": {
+    "id": "b406f047-2c83-4138-a9cb-3a5bcb2ee7eb",
+    "basisHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4"
+  },
+  "directJournal": {
+    "id": "f71ea3e2-950d-48a2-aa7e-2fc3e97f6a2e",
+    "path": ".dope/agent/direct-journals/f71ea3e2-950d-48a2-aa7e-2fc3e97f6a2e.json"
+  },
+  "directApplied": [
+    {
+      "path": "src/main.ts",
+      "operation": "modify",
+      "before": "554bda9cc9bdca7587c3bfc5af9bc426dfe46520b5519641e67ba1f6eb74c4f9",
+      "after": "5c28c9b185ab6c51aa1837983b28b28b58a1aa94664bd8cead96a658d8d6918f",
+      "result": "applied"
+    }
+  ],
+  "provenance": {
+    "version": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b",
+    "providerId": "local",
+    "runtimeKind": "local",
+    "adapterId": "pi-local-work"
+  },
+  "basis": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "clean": false,
+    "metadataChanged": false
+  },
+  "acceptedDirty": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "paths": [
+      {
+        "path": "src/main.ts",
+        "code": " M",
+        "hash": "554bda9cc9bdca7587c3bfc5af9bc426dfe46520b5519641e67ba1f6eb74c4f9",
+        "size": 40,
+        "mode": 436
+      }
+    ]
+  },
+  "changedFiles": [
+    "src/main.ts"
+  ],
+  "validationResults": [
+    {
+      "version": 1,
+      "kind": "test",
+      "label": "Required validation",
+      "status": "failed",
+      "durationMs": 151,
+      "owner": "dope",
+      "command": "node --test test/fixture.test.mjs",
+      "candidateFingerprint": "dd09921c16d3dfd5c4e969dfd8e678dab44730b8e81d753df969412536feb607",
+      "workspaceId": "f019c807-f722-4f40-b367-4868fb987ec9",
+      "exitCode": 1,
+      "stdout": "✖ headline remains a valid single export (1.214136ms)\nℹ tests 1\nℹ suites 0\nℹ pass 0\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 65.240526\n\n✖ failing tests:\n\ntest at test/fixture.test.mjs:4:1\n✖ headline remains a valid single export (1.214136ms)\n  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /^export const headline = '[A-Za-z ]+';\\n$/. Input:\n  \n  \"export const headline = 'Oneoff Violet';\"\n  \n      at TestContext.<anonymous> (file:///work/test/fixture.test.mjs:6:10)\n      at Test.runInAsyncScope (node:async_hooks:227:14)\n      at Test.run (node:internal/test_runner/test:1402:25)\n      at Test.start (node:internal/test_runner/test:1262:17)\n      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {\n    generatedMessage: true,\n    code: 'ERR_ASSERTION',\n    actual: \"export const headline = 'Oneoff Violet';\",\n    expected: /^export const headline = '[A-Za-z ]+';\\n$/,\n    operator: 'match',\n    diff: 'simple'\n  }\n",
+      "stderr": "",
+      "stdoutTruncated": false,
+      "stderrTruncated": false
+    }
+  ],
+  "finalGit": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "clean": false,
+    "headChanged": false,
+    "metadataChanged": false,
+    "statuses": [
+      {
+        "code": " M",
+        "path": "src/main.ts"
+      }
+    ],
+    "truncated": false
+  },
+  "changeSummary": {
+    "version": 1,
+    "filesChanged": 1,
+    "insertions": 1,
+    "deletions": 1,
+    "summary": "1 task files changed; 1 bounded text insertions, 1 deletions; 0 untracked bytes",
+    "truncated": false
+  },
+  "validationBasis": "direct-applied-snapshot",
+  "candidateDelta": {
+    "version": 1,
+    "effects": [
+      {
+        "kind": "modify",
+        "path": "src/main.ts",
+        "before": "554bda9cc9bdca7587c3bfc5af9bc426dfe46520b5519641e67ba1f6eb74c4f9",
+        "after": "5c28c9b185ab6c51aa1837983b28b28b58a1aa94664bd8cead96a658d8d6918f"
+      }
+    ]
+  },
+  "candidateFingerprint": "dd09921c16d3dfd5c4e969dfd8e678dab44730b8e81d753df969412536feb607",
+  "authorityDecision": {
+    "allowed": true,
+    "blocked": []
+  },
+  "appliedFiles": [
+    "src/main.ts"
+  ],
+  "outcome": {
+    "code": "validation-failed",
+    "summary": "Required validation did not pass"
+  }
+}

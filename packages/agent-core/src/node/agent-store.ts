@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { constants } from 'node:fs';
-import { lstat, mkdir, open, readdir, realpath, rename, rm, stat } from 'node:fs/promises';
+import { link, lstat, mkdir, open, readFile, readdir, realpath, rename, rm, stat } from 'node:fs/promises';
+import { hostname } from 'node:os';
 import { isAbsolute, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { AgentRun, AgentRunEvent, AgentTask, CandidateDelta, id, integer, parseAgentRun, parseAgentRunEvent, parseAgentTask, parseCandidateDelta, projectPath } from '../contracts';
@@ -130,11 +131,17 @@ export class AgentStore implements AgentTranscriptStorage {
     async createWorkSession(root: string, value: WorkSession): Promise<WorkSession> {
         const session = checked(value, parseWorkSession);
         const run = await this.readRun(root, session.runId);
+        const task = run && await this.readTask(root, run.taskId);
+        const segment = session.segments[0];
         if (!run || run.taskId !== session.taskId || run.grantId !== session.grantId ||
             run.grantRevision !== session.grantRevision || run.provenance?.connectionId !== session.connectionId ||
             run.provenance.modelId !== session.modelId || session.revision !== 0 ||
             session.status !== 'running' || session.messages.length ||
-            session.segments.length !== 1 || session.segments[0].basisHead !== run.basis?.head)
+            session.segments.length !== 1 || segment.basisHead !== run.basis?.head ||
+            !task || !run.executionMode ||
+            segment.executionMode !== run.executionMode ||
+            segment.executionMode !== (task.executionMode ?? 'isolated') ||
+            run.createdAt !== segment.startedAt)
             throw new Error('Work session does not match active run');
         const parent = await this.collection(root, 'work-sessions', true);
         await this.locked(parent!, async () => {
@@ -205,13 +212,17 @@ export class AgentStore implements AgentTranscriptStorage {
                     run.taskId !== newSegment.taskId || run.grantId !== newSegment.grantId ||
                     run.grantRevision !== newSegment.grantRevision || run.basis?.head !== newSegment.basisHead ||
                     run.createdAt !== newSegment.startedAt ||
+                    !run.executionMode || !task ||
+                    newSegment.executionMode !== run.executionMode ||
+                    newSegment.executionMode !== (task.executionMode ?? 'isolated') ||
                     run.provenance?.connectionId !== newSegment.connectionId ||
                     run.provenance?.modelId !== newSegment.modelId ||
                     !run.toolSelection || !newSegment.toolSelectionHash || !newSegment.sandboxHash ||
                     !newSegment.permissions || !task || newSegment.prompt !== task.instructions ||
                     newSegment.toolSelectionHash !== createHash('sha256').update(JSON.stringify(run.toolSelection)).digest('hex') ||
                     newSegment.sandboxHash !== createHash('sha256').update(JSON.stringify({ adapter: 'pi-local-work',
-                        sandbox: 'local-tool-sandbox' })).digest('hex') ||
+                        sandbox: 'local-tool-sandbox',
+                        ...(run.executionMode ? { executionMode: run.executionMode } : {}) })).digest('hex') ||
                     run.taskContract?.grant.permissionsHash &&
                         run.taskContract.grant.permissionsHash !== createHash('sha256').update(JSON.stringify({
                             permissions: newSegment.permissions, toolSelection: run.toolSelection })).digest('hex') ||
@@ -537,17 +548,78 @@ export class AgentStore implements AgentTranscriptStorage {
         });
     }
 
+    /** Publish a complete owner before making the hard link visible to another process. */
+    private async publishLock(path: string): Promise<number> {
+        const temporary = `${path}.${randomUUID()}.tmp`;
+        const handle = await open(temporary, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600);
+        try {
+            await handle.writeFile(JSON.stringify({ version: 1, pid: process.pid, host: hostname() }));
+            await handle.sync();
+            await link(temporary, path);
+            return (await handle.stat()).ino;
+        } finally {
+            await handle.close();
+            await rm(temporary, { force: true });
+        }
+    }
+
+    private async releaseLock(path: string, inode: number): Promise<void> {
+        if ((await lstat(path)).ino !== inode) throw new Error('Agent lock changed; inspect state');
+        await rm(path);
+    }
+
+    private async recoverLock(path: string, depth = 0): Promise<void> {
+        if (depth >= 8) throw new Error('Agent state locked by another writer');
+        const guard = `${path}.recovery`;
+        let guardInode: number;
+        try { guardInode = await this.publishLock(guard); }
+        catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+            await this.recoverLock(guard, depth + 1);
+            try { guardInode = await this.publishLock(guard); }
+            catch (retryError) {
+                if ((retryError as NodeJS.ErrnoException).code === 'EEXIST')
+                    throw new Error('Agent state locked by another writer');
+                throw retryError;
+            }
+        }
+        try {
+            const info = await lstat(path).catch(error => { if (missing(error)) return undefined; throw error; });
+            if (!info) return;
+            if (!info.isFile() || info.nlink !== 1 || info.size > 256) throw new Error('Agent state locked by another writer');
+            let owner: { version?: number; pid?: number; host?: string };
+            try { owner = JSON.parse(await readFile(path, 'utf8')); }
+            catch { throw new Error('Agent state locked by another writer'); }
+            if (owner.version !== 1 || !Number.isSafeInteger(owner.pid) || owner.pid! <= 0 || owner.host !== hostname())
+                throw new Error('Agent state locked by another writer');
+            try { process.kill(owner.pid!, 0); }
+            catch (error) {
+                if ((error as NodeJS.ErrnoException).code !== 'ESRCH')
+                    throw new Error('Agent state locked by another writer');
+                if ((await lstat(path)).ino !== info.ino) throw new Error('Agent lock changed; inspect state');
+                await rm(path);
+                return;
+            }
+            throw new Error('Agent state locked by another writer');
+        } finally { await this.releaseLock(guard, guardInode); }
+    }
+
     private async locked<T>(directory: string, work: () => Promise<T>): Promise<T> {
         const lock = join(directory, '.write.lock');
-        const handle = await open(lock, constants.O_WRONLY | constants.O_CREAT | constants.O_EXCL | constants.O_NOFOLLOW, 0o600)
-            .catch(error => { if ((error as NodeJS.ErrnoException).code === 'EEXIST') throw new Error('Agent state locked by another writer'); throw error; });
-        try { return await work(); }
-        finally {
-            const acquired = await handle.stat();
-            await handle.close();
-            if ((await lstat(lock)).ino !== acquired.ino) throw new Error('Agent lock changed; inspect state');
-            await rm(lock);
+        let inode: number;
+        try { inode = await this.publishLock(lock); }
+        catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+            await this.recoverLock(lock);
+            try { inode = await this.publishLock(lock); }
+            catch (retryError) {
+                if ((retryError as NodeJS.ErrnoException).code === 'EEXIST')
+                    throw new Error('Agent state locked by another writer');
+                throw retryError;
+            }
         }
+        try { return await work(); }
+        finally { await this.releaseLock(lock, inode); }
     }
 
     async readSequence(root: string, sequenceId: string): Promise<AgentTaskSequence | undefined> {

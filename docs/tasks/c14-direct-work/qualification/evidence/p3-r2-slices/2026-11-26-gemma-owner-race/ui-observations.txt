@@ -1,0 +1,6 @@
+2026-11-26 America/Chicago, connected Codex in-app browser, localhost Dope on port 3005.
+AI Center after Refresh Models and Verify Coding Agent tools: google/gemma-4-26b-a4b-qat ready, agentExecution yes (adapter-known), context 16384 loaded; local tool capability supported.
+Prepare Work: Direct Work — Default; exact LM Studio google/gemma-4-26b-a4b-qat selected; read_file, list_files, edit_file effective; required validation node --test test/fixture.test.mjs.
+Work saved conversation after run: read_file · src/main.ts · Completed, then edit_file · src/main.ts · Authority denied. Run ended Error; Review Changes said validation missing, failed or no longer applicable.
+Refreshed History: agent run db0f187d-1581-400c-b255-1fe8d5724306, Direct Work: failed · 0 applied · 0 reverted · 0 revert conflicts · validation not-started.
+The browser screenshot API rendered inline, but did not provide a supported filesystem export for a screenshot artifact. Saved transcript, run and this UI observation are retained.

@@ -850,7 +850,7 @@ test('output-limit choices retain one execution, reject stale owners, and keep s
     } finally {
         if (owned) await backend.release(owned.projectHandle, owned.chatId, owned.token).catch(() => undefined);
         backend.dispose();
-        await rm(root, { recursive: true, force: true });
+        await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
     }
 });
 
@@ -912,7 +912,7 @@ test('Managed Allow caps segments; Unmanaged Allow continues; Cancel retains fir
         assert.equal(generated, 4);
         assert.equal(resumed, 7);
         assert.equal(stopped, 3);
-    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }); }
 });
 test('Chat command approval is lease and turn scoped, one use, redacted, and sandboxed', async () => {
     const root = await folder(), repository = new ChatRepository();
@@ -1017,7 +1017,7 @@ test('Chat command approval is lease and turn scoped, one use, redacted, and san
         await assert.rejects(backend.decideCommand(projectHandle, chatId, next.token, fifth.id, true), /stale/);
         await backend.cancelTurn(projectHandle, chatId, next.token);
         await Promise.allSettled([fifthTurn]);
-    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }); }
 });
 
 test('greenfield G1 stays ordinary Pi Chat without automatic source or plan creation', async () => {
@@ -1070,7 +1070,7 @@ test('greenfield G1 stays ordinary Pi Chat without automatic source or plan crea
         assert.equal(saved[1].execution?.finishReason, 'stop');
         assert.equal(saved[1].execution?.contextUsage?.usedTokens, result.usedTokens);
         assert.equal(saved[1].planningActivity, undefined);
-    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }); }
 });
 
 test('ordinary Chat dispatches formatting guidance without changing its output budget', async () => {
@@ -1174,7 +1174,7 @@ test('retired response-parsed Roadmap offer cannot bypass current proposal autho
         assert.equal('decideStrategicDraft' in backend, false);
         assert.equal((await new RoadmapStore().read(root)).revision, 0);
         await assert.rejects(readFile(join(root, '.dope', 'roadmap.json')), { code: 'ENOENT' });
-    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }); }
 });
 
 test('G2 keeps Pi source tool-driven while hosted context refresh requires consent', async () => {
@@ -1223,7 +1223,7 @@ test('G2 keeps Pi source tool-driven while hosted context refresh requires conse
         assert.equal(ref.sourceHash, ref.contentHash);
         assert.equal((await backend.get(projectHandle, chatId))!.messages[2].contextRefs
             .find(item => item.id === 'src/game.ts')?.contentHash, ref.contentHash);
-    } finally { backend.dispose(); await rm(root, { recursive: true, force: true }); }
+    } finally { backend.dispose(); await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }); }
 });
 
 test('dedicated Chat connections share project changes without crossing projects', async () => {
@@ -1322,7 +1322,7 @@ test('socket close releases only its token, even with a live backend PID', async
         await successor.release(nextHandle, chatId, replacement.token);
     } finally {
         old.dispose(); active.dispose(); successor.dispose(); otherProject.dispose();
-        await rm(root, { recursive: true, force: true }); await rm(foreign, { recursive: true, force: true });
+        await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }); await rm(foreign, { recursive: true, force: true });
     }
 });
 
@@ -1352,7 +1352,7 @@ test('transport close during an in-flight claim releases the late token', async 
         assert.equal((await repository.claim(root, chatId, 'new-tab')).acquired, true);
     } finally {
         resume?.(); service.dispose();
-        await rm(root, { recursive: true, force: true });
+        await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 });
     }
 });
 
@@ -1406,5 +1406,5 @@ test('ownership gates turn writes and transient deltas; search reads saved Chat'
         assert.equal(events.at(-1)?.kind, 'lease-changed');
         await assert.rejects(service.publishDelta({ projectHandle, chatId, messageId: assistantId,
             executionId, sequence: 1, delta: 'late', leaseToken: claim.token }), /lease required/);
-    } finally { service.dispose(); await rm(root, { recursive: true, force: true }); }
+    } finally { service.dispose(); await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }); }
 });

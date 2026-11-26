@@ -4,7 +4,10 @@ import { constants } from 'node:fs';
 import { lstat, mkdir, open, readFile, realpath, rename } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, resolve, sep } from 'node:path';
 import { checkEffect, parseExecutionGrant, type ExecutionGrant } from '../authority';
-import { projectPath } from '../contracts';
+import { projectPath, type AcceptedDirtyBasis } from '../contracts';
+import { assertDirtyBasis, captureDirtyBasis, parseAcceptedDirtyBasis } from './dirty-basis';
+
+type FileIdentity = { device: number; inode: number; mtimeNs: string; ctimeNs: string };
 
 type Result = 'prepared' | 'completed' | 'not-applied' | 'uncertain';
 export interface DirectChange {
@@ -15,6 +18,7 @@ export interface DirectChange {
 }
 interface Ledger { version: 1; id: string; root: string; head: string; taskId: string; runId: string;
     grantId: string; grantRevision: number; changes: DirectChange[];
+    ownerBasis?: { basis: AcceptedDirtyBasis; identities: Record<string, FileIdentity | null> };
     inherited?: { path: string; after: string; afterIdentity: { device: number; inode: number; mtimeNs: string; ctimeNs: string } }[];
     reverts?: { path: string; at: string; result: 'prepared' | 'reverted' | 'conflict' | 'uncertain'; reason?: string }[] }
 const hash = (bytes: Buffer): string => createHash('sha256').update(bytes).digest('hex');
@@ -29,7 +33,7 @@ const protectedPart = (part: string): boolean => {
         ['.pem', '.key', '.p12', '.pfx'].some(suffix => value.endsWith(suffix));
 };
 const WRITE = `import os,sys,stat,hashlib,base64,json,uuid,ctypes
-root,path,operation,expected,encoded=sys.argv[1:]
+root,path,operation,expected,encoded,expected_device,expected_inode,expected_mtime,expected_ctime=sys.argv[1:]
 def stop(): print(json.dumps({'status':'denied'})); sys.exit(0)
 parts=path.split('/')
 if not parts or any(not x or x in ('.','..') for x in parts): stop()
@@ -53,6 +57,7 @@ try:
  except FileNotFoundError: pass
  if (operation=='create' and before is not None) or (operation=='modify' and before is None): stop()
  if (hashlib.sha256(before).hexdigest() if before is not None else '-')!=expected: stop()
+ if expected_device!='-' and (identity is None or (identity[0],identity[1],identity[3],identity[4])!=(int(expected_device),int(expected_inode),int(expected_mtime),int(expected_ctime))): stop()
  temp='.dope-direct-'+uuid.uuid4().hex
  keep_temp=False
  try:
@@ -250,6 +255,18 @@ async function bytesAt(path: string): Promise<Buffer | null> {
         return bytes;
     } finally { await file.close(); }
 }
+async function identityAt(path: string): Promise<FileIdentity | null> {
+    const info = await lstat(path, { bigint: true }).catch(error =>
+        error?.code === 'ENOENT' ? undefined : Promise.reject(error));
+    if (!info) return null;
+    if (!info.isFile() || info.isSymbolicLink() || info.nlink !== 1n ||
+        !Number.isSafeInteger(Number(info.dev)) || !Number.isSafeInteger(Number(info.ino)))
+        throw new Error('Unsafe Direct Work owner file');
+    return { device: Number(info.dev), inode: Number(info.ino),
+        mtimeNs: info.mtimeNs.toString(), ctimeNs: info.ctimeNs.toString() };
+}
+const sameIdentity = (left: FileIdentity | null, right: FileIdentity | null): boolean =>
+    JSON.stringify(left) === JSON.stringify(right);
 async function git(root: string, args: string[]): Promise<string> {
     return new Promise((resolveResult, reject) => {
         const child = spawn('git', ['--no-optional-locks', '-c', 'core.fsmonitor=false', ...args], { cwd: root, env: { PATH: '/usr/bin:/bin',
@@ -283,14 +300,24 @@ export class DirectWorkJournal {
         offeredGrant: ExecutionGrant,
         scope?: { authorizedPaths: readonly string[]; reservedPaths: readonly string[] },
         inherited?: readonly { path: string; after: string; afterIdentity: {
-            device: number; inode: number; mtimeNs: string; ctimeNs: string } }[]): Promise<DirectWorkJournal> {
+            device: number; inode: number; mtimeNs: string; ctimeNs: string } }[],
+        acceptedDirty?: AcceptedDirtyBasis): Promise<DirectWorkJournal> {
         const grant = parseExecutionGrant(offeredGrant);
         if (!isAbsolute(root) || await realpath(root) !== root || grant.taskId !== taskId ||
             !/^[a-f0-9]{40}$/u.test(head) || !runId || (await git(root, ['rev-parse', 'HEAD'])).trim() !== head)
             throw new Error('Direct Work identity mismatch');
         const directory = await journalDirectory(root);
+        if (acceptedDirty) await assertDirtyBasis(root, acceptedDirty);
+        const identities: Record<string, FileIdentity | null> = Object.create(null);
+        for (const item of acceptedDirty?.paths ?? []) {
+            identities[item.path] = await identityAt(await safePath(root, item.path));
+            if ((item.code === ' D') !== (identities[item.path] === null))
+                throw new Error('Reviewed owner file changed before Direct Work started');
+        }
+        if (acceptedDirty) await assertDirtyBasis(root, acceptedDirty);
         const ledger: Ledger = { version: 1, id: randomUUID(), root, head, taskId, runId,
             grantId: grant.id, grantRevision: grant.revision, changes: [],
+            ...(acceptedDirty ? { ownerBasis: { basis: acceptedDirty, identities } } : {}),
             ...(inherited?.length ? { inherited: [...inherited] } : {}) };
         const path = join(directory, `${ledger.id}.json`);
         await syncJson(path, ledger);
@@ -307,12 +334,21 @@ export class DirectWorkJournal {
             throw new Error('Direct Work source identity changed');
         if (this.ledger.changes.some(change => change.result === 'prepared' || change.result === 'uncertain'))
             throw new Error('Direct Work journal requires reconciliation');
-        const own = new Set([...(this.ledger.inherited?.map(item => item.path) ?? []),
-            ...this.ledger.changes.filter(change => change.result === 'completed').map(change => change.path)]);
-        const status = await git(this.root, ['status', '--porcelain=v1', '-z', '--untracked-files=all']);
-        for (const entry of status.split('\0')) if (entry && !entry.slice(3).startsWith('.dope/') &&
-            !own.has(entry.slice(3)))
+        const completed = new Set(this.ledger.changes.filter(change => change.result === 'completed').map(change => change.path));
+        const inherited = new Set(this.ledger.inherited?.map(item => item.path) ?? []);
+        const owner = this.ledger.ownerBasis;
+        const own = new Set([...(owner?.basis.paths.map(item => item.path) ?? []), ...inherited, ...completed]);
+        const dirty = await captureDirtyBasis(this.root);
+        for (const item of dirty.paths) if (!own.has(item.path))
             throw new Error('Concurrent or dirty owner source changes');
+        for (const item of owner?.basis.paths ?? []) {
+            if (completed.has(item.path) || inherited.has(item.path)) continue;
+            const current = dirty.paths.find(entry => entry.path === item.path);
+            if (JSON.stringify(current) !== JSON.stringify(item) ||
+                !sameIdentity(await identityAt(await safePath(this.root, item.path)),
+                    owner!.identities[item.path] ?? null))
+                throw new Error('Reviewed owner source changed during Direct Work');
+        }
         for (const change of this.ledger.changes.filter(item => item.result === 'completed')) {
             const latest = [...this.ledger.changes].reverse().find(item => item.path === change.path && item.result === 'completed');
             if (latest !== change) continue;
@@ -356,9 +392,15 @@ export class DirectWorkJournal {
             throw new Error('Direct Work create/modify conflict');
         const prior = [...this.ledger.changes].reverse().find(change => change.path === path && change.result === 'completed');
         const inherited = this.ledger.inherited?.find(item => item.path === path);
-        if (prior ? hash(before!) !== prior.after : inherited ? hash(before!) !== inherited.after : (await git(this.root,
-            ['status', '--porcelain=v1', '-z', '--untracked-files=all', '--', path])).length > 0)
+        const owner = this.ledger.ownerBasis?.basis.paths.find(item => item.path === path);
+        const ownerIdentity = this.ledger.ownerBasis?.identities[path];
+        if (prior ? hash(before!) !== prior.after : inherited ? hash(before!) !== inherited.after :
+            owner ? owner.code === ' D' || !before || hash(before) !== owner.hash ||
+                !sameIdentity(await identityAt(target), ownerIdentity ?? null) : (await git(this.root,
+                    ['status', '--porcelain=v1', '-z', '--untracked-files=all', '--', path])).length > 0)
             throw new Error('Direct Work source changed or was dirty');
+        const expectedIdentity = prior?.afterIdentity ?? inherited?.afterIdentity ?? ownerIdentity ??
+            (before ? await identityAt(target) : null);
         const afterBytes = Buffer.from(content, 'utf8');
         if (afterBytes.length > 65_536) throw new Error('Direct Work edit exceeds limit');
         const change: DirectChange = { id: randomUUID(), taskId: this.ledger.taskId, runId: this.ledger.runId,
@@ -367,7 +409,9 @@ export class DirectWorkJournal {
             afterBytes: afterBytes.toString('base64'), at: new Date().toISOString(), result: 'prepared' };
         this.ledger.changes.push(change);
         await syncJson(this.path, this.ledger);
-        const writer = await python([this.root, path, operation, change.before ?? '-', afterBytes.toString('base64')]);
+        const writer = await python([this.root, path, operation, change.before ?? '-', afterBytes.toString('base64'),
+            String(expectedIdentity?.device ?? '-'), String(expectedIdentity?.inode ?? '-'),
+            expectedIdentity?.mtimeNs ?? '-', expectedIdentity?.ctimeNs ?? '-']);
         const current = await bytesAt(target).catch(() => null);
         change.result = writer.status === 'uncertain' ? 'uncertain' :
             writer.status === 'completed' && current && hash(current) === change.after ? 'completed' :
@@ -395,6 +439,24 @@ export class DirectWorkJournal {
             basename(path) !== `${ledger.id}.json` || !/^[a-f0-9-]{36}$/u.test(ledger.id) ||
             !Array.isArray(ledger.changes) || ledger.changes.length > 500)
             throw new Error('Invalid Direct Work journal');
+        if (ledger.ownerBasis) {
+            const basis = parseAcceptedDirtyBasis(ledger.ownerBasis.basis);
+            if (!ledger.ownerBasis.identities || typeof ledger.ownerBasis.identities !== 'object' ||
+                Object.keys(ledger.ownerBasis.identities).length !== basis.paths.length)
+                throw new Error('Invalid Direct Work owner basis');
+            for (const item of basis.paths) {
+                await safePath(root, item.path);
+                if (!Object.prototype.hasOwnProperty.call(ledger.ownerBasis.identities, item.path)) {
+                    throw new Error('Direct Work owner basis identity is missing.');
+                }
+                const identity = ledger.ownerBasis.identities[item.path];
+                if (item.code === ' D' ? identity !== null :
+                    !Number.isSafeInteger(identity?.device) || !Number.isSafeInteger(identity?.inode) ||
+                    !/^\d{1,24}$/u.test(identity?.mtimeNs ?? '') ||
+                    !/^\d{1,24}$/u.test(identity?.ctimeNs ?? ''))
+                    throw new Error('Invalid Direct Work owner identity');
+            }
+        }
         for (const inherited of ledger.inherited ?? []) {
             if (typeof inherited.path !== 'string' || typeof inherited.after !== 'string' ||
                 !/^[a-f0-9]{64}$/u.test(inherited.after) ||

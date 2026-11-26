@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "id": "bd7a2832-4eb7-43af-bd99-64788048aecd",
+  "createdAt": "2026-11-26T22:02:33.613Z",
+  "objective": "In this disposable fixture, read src/main.ts, then use edit_file once to change its displayed label from Owner Indigo to Restart Amber. Preserve the final newline. Do not edit any other file. After the edit, report what happened.",
+  "instructions": "In this disposable fixture, read src/main.ts, then use edit_file once to change its displayed label from Owner Indigo to Restart Amber. Preserve the final newline. Do not edit any other file. After the edit, report what happened.",
+  "projectRoot": ".",
+  "modelPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "controls": {},
+  "authority": {
+    "profile": "phase-8b-project"
+  },
+  "executionMode": "direct",
+  "completion": {
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "requireValidationPass": true
+  },
+  "origin": {
+    "kind": "direct"
+  },
+  "reviewPolicy": {
+    "kind": "required"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "kind": "T2 parser only",
+  "result": [
+    {
+      "probe": "delete",
+      "status": "rejected",
+      "reason": "Unsupported Local edit operation"
+    },
+    {
+      "probe": "rename",
+      "status": "rejected",
+      "reason": "Unsupported Local edit operation"
+    },
+    {
+      "probe": "forged",
+      "status": "rejected",
+      "reason": "Unsupported Local tool name"
+    }
+  ]
+}

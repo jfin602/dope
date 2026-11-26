@@ -1,6 +1,6 @@
 import { bounded, freeze, id, integer, record, select, timestamp } from './contracts';
 import { EFFECT_KINDS, WORK_PERMISSION_MAXIMUM, type EffectKind, type ExecutionGrant } from './authority';
-import type { AgentRun } from './contracts';
+import type { AgentRun, ExecutionMode } from './contracts';
 
 export type WorkSessionStatus = 'running' | 'awaiting-input' | 'finishing' |
     'completed' | 'stopped' | 'recovery-required';
@@ -33,6 +33,8 @@ export interface WorkSessionMessage {
 export interface WorkSessionSegment {
     runId: string; taskId: string; grantId: string; grantRevision: number;
     basisHead: string; startedAt: string;
+    /** Required for new segments. Absence on saved segments is preserved as legacy evidence. */
+    executionMode?: ExecutionMode;
     /** Present for new segments; older saved segments retain their original run/task evidence. */
     connectionId?: string; modelId?: string; toolSelectionHash?: string; sandboxHash?: string;
     permissions?: ExecutionGrant['permissions'];
@@ -77,7 +79,7 @@ export function parseWorkSession(value: unknown): WorkSession {
         throw new Error('Invalid Work session');
     const segments = x.segments.map(raw => {
         const s = record(raw, ['runId', 'taskId', 'grantId', 'grantRevision', 'basisHead', 'startedAt',
-            'connectionId', 'modelId', 'toolSelectionHash', 'sandboxHash', 'permissions', 'prompt']);
+            'connectionId', 'modelId', 'toolSelectionHash', 'sandboxHash', 'permissions', 'prompt', 'executionMode']);
         if (typeof s.basisHead !== 'string' || !/^[a-f0-9]{40}$/u.test(s.basisHead))
             throw new Error('Invalid Work segment basis');
         const permissions = s.permissions === undefined ? undefined : record(s.permissions, EFFECT_KINDS);
@@ -86,6 +88,7 @@ export function parseWorkSession(value: unknown): WorkSession {
             throw new Error('Invalid Work segment permissions');
         return { runId: id(s.runId), taskId: id(s.taskId), grantId: id(s.grantId),
             grantRevision: integer(s.grantRevision), basisHead: s.basisHead, startedAt: timestamp(s.startedAt),
+            ...(s.executionMode === undefined ? {} : { executionMode: select(s.executionMode, ['direct', 'isolated'] as const) }),
             ...(s.connectionId === undefined ? {} : { connectionId: id(s.connectionId) }),
             ...(s.modelId === undefined ? {} : { modelId: bounded(s.modelId, 200, 'model') }),
             ...(s.toolSelectionHash === undefined ? {} : { toolSelectionHash: hash(s.toolSelectionHash) }),

@@ -1,0 +1,149 @@
+{
+  "version": 1,
+  "id": "c940df17-a262-4ccb-868e-1292280a2fc3",
+  "taskId": "b917ef23-4af9-47c1-8873-d50ebc57b67c",
+  "status": "cancelled",
+  "grantId": "16b215fd-4f13-4a29-b452-1c52109b8e5b",
+  "grantRevision": 1,
+  "executionMode": "isolated",
+  "requestedPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "projectRoot": ".",
+  "toolSelection": {
+    "catalogRevision": 2,
+    "projectUri": "file:///tmp/dope-p3-r2-isolated-jlgm9ymw",
+    "taskId": "b917ef23-4af9-47c1-8873-d50ebc57b67c",
+    "grantRevision": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b",
+    "tools": [
+      {
+        "id": "read_file",
+        "schemaRevision": 1
+      },
+      {
+        "id": "list_files",
+        "schemaRevision": 1
+      },
+      {
+        "id": "edit_file",
+        "schemaRevision": 1
+      }
+    ]
+  },
+  "taskContract": {
+    "taskId": "b917ef23-4af9-47c1-8873-d50ebc57b67c",
+    "taskHash": "fb266961689c2589e858fe920e2aad705e69ecf44f20095bcf73cac4f2aedfc1",
+    "objective": "In this disposable fixture, edit only src/main.ts. Change the headline string from Owner Indigo to Silver Arc. Preserve the single export statement, single quotes, semicolon, and final newline. Use the edit_file tool. Do not change any other file. Report the actual tool result.",
+    "instructionsHash": "70d337bb71bdaa727f0ffb4846fae74b44e2a41d8a8780cf41bf8b9e64c96a05",
+    "acceptance": "unknown",
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "planning": "unknown",
+    "roadmap": "unknown",
+    "grant": {
+      "id": "16b215fd-4f13-4a29-b452-1c52109b8e5b",
+      "revision": 1,
+      "acceptedAt": "2026-11-26T19:31:01.014Z",
+      "permissionsHash": "c31e6c1bb2c83c02d0327b72ecb4cd98a4dbf4c6d734431e58ebf9542c3c1cbe"
+    },
+    "sourceHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4"
+  },
+  "createdAt": "2026-11-26T19:31:01.231Z",
+  "startedAt": "2026-11-26T19:31:01.231Z",
+  "endedAt": "2026-11-26T19:33:02.853Z",
+  "executionWorkspace": {
+    "id": "71c0f542-9b8b-4e64-900d-654a8b8ee581",
+    "basisHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4"
+  },
+  "provenance": {
+    "version": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b",
+    "providerId": "local",
+    "runtimeKind": "local",
+    "adapterId": "pi-local-work",
+    "policyRevision": 29
+  },
+  "basis": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "clean": true,
+    "metadataChanged": false
+  },
+  "changedFiles": [],
+  "validationResults": [
+    {
+      "version": 1,
+      "kind": "test",
+      "label": "Required validation",
+      "status": "passed",
+      "durationMs": 153,
+      "owner": "dope",
+      "command": "node --test test/fixture.test.mjs",
+      "candidateFingerprint": "cf37604cfa8bfc286d3c7f4463550e5550e84dcefcc412ead2ac75646015e615",
+      "workspaceId": "3e1779fe-1d01-48ae-b441-6ea7ccfa1406",
+      "exitCode": 0,
+      "stdout": "✔ headline remains a valid single export (1.58957ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 80.969628\n",
+      "stderr": "",
+      "stdoutTruncated": false,
+      "stderrTruncated": false
+    }
+  ],
+  "validationBasis": "execution-workspace",
+  "candidateDelta": {
+    "version": 1,
+    "effects": [
+      {
+        "kind": "modify",
+        "path": "src/main.ts",
+        "before": "b23ea54a6afd3b5c745b63858721b1375c781dc30f6222c73bc597c7b9ec3d21",
+        "after": "fa9a6a68e164ba01dbf01546b946c0b646b28aa1675acb9827886c45e3d1c976"
+      }
+    ]
+  },
+  "candidateFingerprint": "cf37604cfa8bfc286d3c7f4463550e5550e84dcefcc412ead2ac75646015e615",
+  "candidateReview": {
+    "state": "ready",
+    "revision": 0,
+    "candidateFingerprint": "cf37604cfa8bfc286d3c7f4463550e5550e84dcefcc412ead2ac75646015e615",
+    "diff": "diff --git a/src/main.ts b/src/main.ts\n--- a/src/main.ts\n+++ b/src/main.ts\n@@ -1,1 +1,1 @@\n-export const headline = 'Owner Indigo';\n+export const headline = 'Silver Arc';\n",
+    "diffTruncated": false,
+    "changedPaths": [
+      "src/main.ts"
+    ],
+    "validation": [
+      {
+        "version": 1,
+        "kind": "test",
+        "label": "Required validation",
+        "status": "passed",
+        "durationMs": 153,
+        "owner": "dope",
+        "command": "node --test test/fixture.test.mjs",
+        "candidateFingerprint": "cf37604cfa8bfc286d3c7f4463550e5550e84dcefcc412ead2ac75646015e615",
+        "workspaceId": "3e1779fe-1d01-48ae-b441-6ea7ccfa1406",
+        "exitCode": 0,
+        "stdout": "✔ headline remains a valid single export (1.58957ms)\nℹ tests 1\nℹ suites 0\nℹ pass 1\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 80.969628\n",
+        "stderr": "",
+        "stdoutTruncated": false,
+        "stderrTruncated": false
+      }
+    ]
+  },
+  "reviewDecision": {
+    "kind": "reject",
+    "revision": 1,
+    "at": "2026-11-26T19:33:02.853Z",
+    "candidateFingerprint": "cf37604cfa8bfc286d3c7f4463550e5550e84dcefcc412ead2ac75646015e615"
+  },
+  "outcome": {
+    "code": "cancelled",
+    "summary": "Developer rejected candidate"
+  }
+}

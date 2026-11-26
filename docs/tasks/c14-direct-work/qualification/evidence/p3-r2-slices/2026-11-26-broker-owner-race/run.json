@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "id": "aff25def-0181-43fa-b03f-14222cd78ae5",
+  "taskId": "185dde11-c676-4303-ae4a-a7d6621bc53f",
+  "status": "failed",
+  "grantId": "da38c177-b69c-40ec-9392-aacd124e3334",
+  "grantRevision": 1,
+  "executionMode": "direct",
+  "requestedPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "projectRoot": ".",
+  "toolSelection": {
+    "catalogRevision": 2,
+    "projectUri": "file:///tmp/dope-p3-r2-broker-delete-x8pm8v",
+    "taskId": "185dde11-c676-4303-ae4a-a7d6621bc53f",
+    "grantRevision": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b",
+    "tools": [
+      {
+        "id": "read_file",
+        "schemaRevision": 1
+      },
+      {
+        "id": "list_files",
+        "schemaRevision": 1
+      },
+      {
+        "id": "edit_file",
+        "schemaRevision": 1
+      }
+    ]
+  },
+  "taskContract": {
+    "taskId": "185dde11-c676-4303-ae4a-a7d6621bc53f",
+    "taskHash": "aad7916df43e714f2e2fe67bfd8ce5d830155a8c7f6b36f3950e2ede9f9a05b0",
+    "objective": "In this disposable qualification fixture, first call read_file on src/main.ts. Then call edit_file with operation modify to change Owner Indigo to Agent Race. Use the source hash from your read. If the file changed since your read, report the denial and do not retry or overwrite it. Make no other edits.",
+    "instructionsHash": "cb22109ff808dbe9b995a10a75f31b0d02a75d6661ce1e4c5e433f8f3950ce6e",
+    "acceptance": "unknown",
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "planning": "unknown",
+    "roadmap": "unknown",
+    "grant": {
+      "id": "da38c177-b69c-40ec-9392-aacd124e3334",
+      "revision": 1,
+      "acceptedAt": "2026-11-26T22:17:20.968Z",
+      "permissionsHash": "b09a925d1240d6dda274976602d24fdac4077014144b35d62b219d7b22bcc3d3"
+    },
+    "sourceHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4"
+  },
+  "createdAt": "2026-11-26T22:17:21.288Z",
+  "startedAt": "2026-11-26T22:17:21.288Z",
+  "endedAt": "2026-11-26T22:17:45.446Z",
+  "executionWorkspace": {
+    "id": "e4fedd27-23c8-4952-994a-d255ff174a53",
+    "basisHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4"
+  },
+  "directJournal": {
+    "id": "4f5d5952-3d0f-457d-b101-51666fe62f75",
+    "path": ".dope/agent/direct-journals/4f5d5952-3d0f-457d-b101-51666fe62f75.json"
+  },
+  "directApplied": [],
+  "provenance": {
+    "version": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b",
+    "providerId": "local",
+    "runtimeKind": "local",
+    "adapterId": "pi-local-work",
+    "policyRevision": 29
+  },
+  "basis": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "clean": true,
+    "metadataChanged": false
+  },
+  "changedFiles": [
+    "src/main.ts"
+  ],
+  "validationResults": [
+    {
+      "version": 1,
+      "kind": "test",
+      "label": "Required validation",
+      "status": "not-started",
+      "owner": "dope",
+      "command": "node --test test/fixture.test.mjs",
+      "reason": "Provider or candidate did not reach validation"
+    }
+  ],
+  "finalGit": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "clean": false,
+    "headChanged": false,
+    "metadataChanged": false,
+    "statuses": [
+      {
+        "code": " M",
+        "path": "src/main.ts"
+      }
+    ],
+    "truncated": false
+  },
+  "changeSummary": {
+    "version": 1,
+    "filesChanged": 1,
+    "insertions": 1,
+    "deletions": 1,
+    "summary": "1 task files changed; 1 bounded text insertions, 1 deletions; 0 untracked bytes",
+    "truncated": false
+  },
+  "outcome": {
+    "code": "authority-denied",
+    "summary": "Candidate promotion failed; inspect applied files"
+  }
+}

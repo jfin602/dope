@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "id": "185dde11-c676-4303-ae4a-a7d6621bc53f",
+  "createdAt": "2026-11-26T22:17:20.951Z",
+  "objective": "In this disposable qualification fixture, first call read_file on src/main.ts. Then call edit_file with operation modify to change Owner Indigo to Agent Race. Use the source hash from your read. If the file changed since your read, report the denial and do not retry or overwrite it. Make no other edits.",
+  "instructions": "In this disposable qualification fixture, first call read_file on src/main.ts. Then call edit_file with operation modify to change Owner Indigo to Agent Race. Use the source hash from your read. If the file changed since your read, report the denial and do not retry or overwrite it. Make no other edits.",
+  "projectRoot": ".",
+  "modelPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "controls": {},
+  "authority": {
+    "profile": "phase-8b-project"
+  },
+  "executionMode": "direct",
+  "completion": {
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "requireValidationPass": true
+  },
+  "origin": {
+    "kind": "direct"
+  },
+  "reviewPolicy": {
+    "kind": "required"
+  }
+}

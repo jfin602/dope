@@ -1,0 +1,11 @@
+2026-11-26, connected Dope browser at http://127.0.0.1:3002/#/tmp/dope-p3-r2-mode-seal-IfFazm
+
+The closed predecessor showed one completed Direct run, an applied src/main.ts review, and a New Work segment composer outside the saved Work transcript. The follow-up review was a separate panel outside that transcript. It selected Direct Work, LM Studio openai/gpt-oss-20b, and read_file/list_files/edit_file only. The first Start action displayed "Review 1 current project changes as the exact follow-up source basis: src/main.ts". The second Start action accepted that reviewed, unchanged fingerprint.
+
+AI Center refreshed LM Studio. It showed openai/gpt-oss-20b ready with context 16384 loaded; Verify Coding Agent tools ended with "Local tool capability: supported" and agentExecution yes (adapter-known). During the run, Locked Work configuration showed Mode: direct, the open-project edit/review/revert description, the exact selected three tools, sandbox binding 8570396c6847, and grant 7a7378bb-550b-42b2-8e07-669671186518 revision 1. No active mode selector was offered.
+
+The model first treated the completed predecessor's Coral request as conflicting context and made no tool call. A user Work message in the same segment clarified that Violet superseded Coral. The message showed Delivered. The transcript then showed read_file and edit_file as Completed. Before Finish, the open canonical src/main.ts editor visibly showed Oneoff Violet on its only export line. The canonical file was already changed on disk.
+
+Finish marked the new run Error and the session "Conversation recovery required". Review Changes showed src/main.ts applied but validation missing, failed or inapplicable. Run details reported Required validation failed and one changed file. Refreshed History showed Direct Work: failed, 1 applied, 0 reverted, 0 revert conflicts, validation failed, plus task and running/failed transitions. There was no active run after Finish.
+
+The browser screenshot interface displayed the active editor and UI during observation but offered no local PNG export path. No screenshot file or SHA-256 is claimed for this slice.

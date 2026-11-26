@@ -1,0 +1,7 @@
+2026-11-26 America/Chicago, connected Codex in-app browser, localhost Dope port 3005 and canonical preview port 5178.
+Prepare Work explicitly selected Isolated Work and exact LM Studio google/gemma-4-26b-a4b-qat, verified in AI Center at loaded context 16384. Effective tools read_file, list_files, edit_file. Dope validation node --test test/fixture.test.mjs.
+Active Work transcript: read_file · src/main.ts · Completed, edit_file · src/main.ts · Completed. Canonical Git clean, canonical file hashes unchanged, preview heading Owner Indigo.
+After Finish: Work candidate review said Candidate held for developer review. No changes applied. Label Isolated Work candidate. Changed paths src/main.ts. Dope validation Required validation passed. Expanded exact diff: -export const headline = 'Owner Indigo'; +export const headline = 'Silver Arc';. Canonical Git, hashes and preview still unchanged.
+Clicked Accept candidate only after reviewing the exact diff. UI then said Accepted · completed · candidate applied. Canonical Git M src/main.ts, new main hash, style unchanged, preview heading Silver Arc.
+Refreshed History: run 6730da99-8fbb-4484-a1e2-0054e3e0e0f5, Run: completed · validation passed · promotion applied · available.
+The browser screenshot API rendered inline, but did not provide a supported filesystem export for a screenshot artifact. Saved run, transcript, events, snapshots and this UI observation are retained.

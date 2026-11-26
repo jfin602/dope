@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "id": "d11d09e8-781f-46cc-92d1-1dc33dc72459",
+  "createdAt": "2026-11-26T20:59:09.392Z",
+  "objective": "In this disposable Git fixture, change only src/main.ts from Owner Indigo to Provider Azure. Keep exactly one line: export const headline = 'Provider Azure'; followed by a final newline. Use only selected Dope read/list/edit tools. Do not run commands or touch another file. Confirm the final newline before completion.",
+  "instructions": "In this disposable Git fixture, change only src/main.ts from Owner Indigo to Provider Azure. Keep exactly one line: export const headline = 'Provider Azure'; followed by a final newline. Use only selected Dope read/list/edit tools. Do not run commands or touch another file. Confirm the final newline before completion.",
+  "projectRoot": ".",
+  "modelPolicy": {
+    "kind": "exact",
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b"
+  },
+  "controls": {},
+  "authority": {
+    "profile": "phase-8b-project"
+  },
+  "executionMode": "direct",
+  "completion": {
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "requireValidationPass": true
+  },
+  "origin": {
+    "kind": "direct"
+  },
+  "reviewPolicy": {
+    "kind": "required"
+  }
+}

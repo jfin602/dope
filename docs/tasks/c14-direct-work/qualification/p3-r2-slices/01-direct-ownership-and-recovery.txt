@@ -1,0 +1,10 @@
+P3-R2 — DIRECT OWNERSHIP AND RECOVERY (one case, ~10 minutes active)
+
+Read 00-shared-contract.md, the paused checkpoint and previous results from this prompt. Take the FIRST unfinished case below. Do not attempt the next case in the same session just to fill time.
+
+1. Mixed selective Revert: in one reviewed Direct run, make separate brokered edits to two disposable fixture files. After Finish, an independent owner process changes only one agent-after file. Revert both; require conflict/preserved owner bytes on that path and exact safe restore on the other. Save per-file Review, validation applicability, journal and History counts.
+2. Stale same-path review: change a reviewed owner file again before Start while keeping the path list the same. Require a visible changed-source/fresh-review reason, no stale run/write, then a deliberate fresh review. Save a screenshot that contains the message; the paused image did not.
+3. Strict first-of-two Stop: request two separately brokered visible edits with a bounded pause. Stop after the first completed edit_file while Work is active and before the second starts. Prove exactly one disk effect, truthful journal/Review/History, and safe Revert. A two-edit outcome is not a first-of-two PASS.
+4. Restart/uncertainty: interrupt a separate disposable run after a completed effect and, if safely reproducible, with a pending call. Restart Dope; inspect file hashes, journal reconciliation and History. An uncertain call must remain uncertain and must not replay. If live timing cannot produce uncertainty, save T2 proof separately and leave T3 partial.
+
+Record the selected case, exact source/run/artifact fingerprints, verdict and next unfinished case in a NEW dated result. Repair only a demonstrated defect and replay the affected case on rebuilt source. Safely Finish or Stop any active run before ending this session. Do not award P3 GREEN.

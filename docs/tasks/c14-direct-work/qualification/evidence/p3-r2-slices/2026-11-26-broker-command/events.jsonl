@@ -1,0 +1,18 @@
+{"version":1,"runId":"ef422e14-6e75-4d9d-ac1a-c196381b62bb","sequence":1,"at":"2026-11-26T22:12:49.480Z","kind":"status","summary":"Agent run started","status":"running"}
+{"version":1,"runId":"ef422e14-6e75-4d9d-ac1a-c196381b62bb","sequence":2,"at":"2026-11-26T22:12:52.866Z","kind":"message","summary":"Provider status received"}
+{"version":1,"runId":"ef422e14-6e75-4d9d-ac1a-c196381b62bb","sequence":3,"at":"2026-11-26T22:12:54.952Z","kind":"message","summary":"Provider status received"}
+{"version":1,"runId":"ef422e14-6e75-4d9d-ac1a-c196381b62bb","sequence":4,"at":"2026-11-26T22:12:54.977Z","kind":"message","summary":"Pi session started"}
+{"version":1,"runId":"ef422e14-6e75-4d9d-ac1a-c196381b62bb","sequence":5,"at":"2026-11-26T22:12:54.993Z","kind":"message","summary":"Pi model turn running"}
+{"version":1,"runId":"ef422e14-6e75-4d9d-ac1a-c196381b62bb","sequence":6,"at":"2026-11-26T22:13:10.493Z","kind":"message","summary":"Pi run_command started"}
+{"version":1,"runId":"ef422e14-6e75-4d9d-ac1a-c196381b62bb","sequence":7,"at":"2026-11-26T22:13:10.596Z","kind":"message","summary":"Execution warning"}
+{"version":1,"runId":"ef422e14-6e75-4d9d-ac1a-c196381b62bb","sequence":8,"at":"2026-11-26T22:13:10.620Z","kind":"message","summary":"Pi run_command ended"}
+{"version":1,"runId":"ef422e14-6e75-4d9d-ac1a-c196381b62bb","sequence":9,"at":"2026-11-26T22:13:10.632Z","kind":"message","summary":"Pi model turn ended"}
+{"version":1,"runId":"ef422e14-6e75-4d9d-ac1a-c196381b62bb","sequence":10,"at":"2026-11-26T22:13:10.645Z","kind":"message","summary":"Pi model turn running"}
+{"version":1,"runId":"ef422e14-6e75-4d9d-ac1a-c196381b62bb","sequence":11,"at":"2026-11-26T22:13:24.622Z","kind":"message","summary":"Pi model turn ended"}
+{"version":1,"runId":"ef422e14-6e75-4d9d-ac1a-c196381b62bb","sequence":12,"at":"2026-11-26T22:13:24.691Z","kind":"message","summary":"Pi session ended"}
+{"version":1,"runId":"ef422e14-6e75-4d9d-ac1a-c196381b62bb","sequence":13,"at":"2026-11-26T22:13:24.732Z","kind":"message","summary":"Pi session settled"}
+{"version":1,"runId":"ef422e14-6e75-4d9d-ac1a-c196381b62bb","sequence":14,"at":"2026-11-26T22:13:24.753Z","kind":"message","summary":"Provider status received"}
+{"version":1,"runId":"ef422e14-6e75-4d9d-ac1a-c196381b62bb","sequence":15,"at":"2026-11-26T22:13:24.763Z","kind":"message","summary":"Provider status received"}
+{"version":1,"runId":"ef422e14-6e75-4d9d-ac1a-c196381b62bb","sequence":16,"at":"2026-11-26T22:13:24.775Z","kind":"message","summary":"Agent message received"}
+{"version":1,"runId":"ef422e14-6e75-4d9d-ac1a-c196381b62bb","sequence":17,"at":"2026-11-26T22:13:28.109Z","kind":"status","summary":"Agent run cancelling","status":"cancelling"}
+{"version":1,"runId":"ef422e14-6e75-4d9d-ac1a-c196381b62bb","sequence":18,"at":"2026-11-26T22:13:28.495Z","kind":"status","summary":"Agent run stopped","status":"cancelled"}

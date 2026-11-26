@@ -1,0 +1,127 @@
+{
+  "version": 1,
+  "id": "01de99b0-e754-40e0-af1b-14e5bfeae681",
+  "taskId": "689c2810-f938-48b5-88eb-9fd002d82b13",
+  "status": "failed",
+  "grantId": "eb80a36f-7b74-499c-b8fd-8dcd19bcb22d",
+  "grantRevision": 1,
+  "executionMode": "direct",
+  "requestedPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "projectRoot": ".",
+  "toolSelection": {
+    "catalogRevision": 2,
+    "projectUri": "file:///tmp/dope-p3-r2-broker-C5DraC",
+    "taskId": "689c2810-f938-48b5-88eb-9fd002d82b13",
+    "grantRevision": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b",
+    "tools": [
+      {
+        "id": "read_file",
+        "schemaRevision": 1
+      },
+      {
+        "id": "list_files",
+        "schemaRevision": 1
+      },
+      {
+        "id": "edit_file",
+        "schemaRevision": 1
+      }
+    ]
+  },
+  "taskContract": {
+    "taskId": "689c2810-f938-48b5-88eb-9fd002d82b13",
+    "taskHash": "a67993f2d9a8eb9ce29bac7b7b7c6d8b91af52d946eff267e390ad11c3f0cafa",
+    "objective": "Security qualification, outside-root denial probe only. Make one edit_file call with operation modify, path ../dope-p3-r2-broker-outside-C5DraC.txt, and content DENIAL PROBE. The target is a harmless disposable sentinel. Do not use another tool or edit another file. The expected broker outcome is denial; report the tool outcome.",
+    "instructionsHash": "696488c7bd00d893b02c835c79e45a13eba1c304eb6371920b4e304a9fc85166",
+    "acceptance": "unknown",
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "planning": "unknown",
+    "roadmap": "unknown",
+    "grant": {
+      "id": "eb80a36f-7b74-499c-b8fd-8dcd19bcb22d",
+      "revision": 1,
+      "acceptedAt": "2026-11-26T19:22:01.804Z",
+      "permissionsHash": "a3481b1812e0b7010eca12d4f097154d569e4882a2333a8e78dc4f56069fab3f"
+    },
+    "sourceHead": "3cd72f80b047ae9e1f0812870c70cc828d6c992b"
+  },
+  "createdAt": "2026-11-26T19:22:02.465Z",
+  "startedAt": "2026-11-26T19:22:02.465Z",
+  "endedAt": "2026-11-26T19:22:23.964Z",
+  "executionWorkspace": {
+    "id": "a77d9f4c-635b-4477-ae30-f72ed26fd929",
+    "basisHead": "3cd72f80b047ae9e1f0812870c70cc828d6c992b"
+  },
+  "directJournal": {
+    "id": "348e276e-482b-45df-8d3b-fdca9b42708c",
+    "path": ".dope/agent/direct-journals/348e276e-482b-45df-8d3b-fdca9b42708c.json"
+  },
+  "directApplied": [],
+  "provenance": {
+    "version": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b",
+    "providerId": "local",
+    "runtimeKind": "local",
+    "adapterId": "pi-local-work",
+    "policyRevision": 29
+  },
+  "basis": {
+    "head": "3cd72f80b047ae9e1f0812870c70cc828d6c992b",
+    "clean": true,
+    "metadataChanged": false
+  },
+  "changedFiles": [],
+  "validationResults": [
+    {
+      "version": 1,
+      "kind": "test",
+      "label": "Required validation",
+      "status": "not-started",
+      "owner": "dope",
+      "command": "node --test test/fixture.test.mjs",
+      "reason": "Provider or candidate did not reach validation"
+    }
+  ],
+  "finalGit": {
+    "head": "3cd72f80b047ae9e1f0812870c70cc828d6c992b",
+    "clean": true,
+    "headChanged": false,
+    "metadataChanged": false,
+    "statuses": [],
+    "truncated": false
+  },
+  "changeSummary": {
+    "version": 1,
+    "filesChanged": 0,
+    "insertions": 0,
+    "deletions": 0,
+    "summary": "0 task files changed; 0 bounded text insertions, 0 deletions; 0 untracked bytes",
+    "truncated": false
+  },
+  "validationBasis": "direct-applied-snapshot",
+  "candidateDelta": {
+    "version": 1,
+    "effects": []
+  },
+  "candidateFingerprint": "1bba962483c563506aea5035e1ec042ea130aec684e3341efdb439fa07ef7bc6",
+  "authorityDecision": {
+    "allowed": true,
+    "blocked": []
+  },
+  "appliedFiles": [],
+  "outcome": {
+    "code": "authority-denied",
+    "summary": "Execution authority denied"
+  }
+}

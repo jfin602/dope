@@ -4,7 +4,23 @@ import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { build } from 'esbuild';
 import puppeteer from 'puppeteer';
-import { workConversationTimeline, workSegmentReviewEnabled } from '../../packages/theia-extension/lib/browser/work-conversation-presentation.js';
+import { lockedWorkMode, workConversationTimeline, workSegmentReviewEnabled } from '../../packages/theia-extension/lib/browser/work-conversation-presentation.js';
+
+test('locked Work wording distinguishes applied Direct edits, held Isolated candidates, and unknown evidence', () => {
+    const segment: any = { runId: 'run', taskId: 'task', executionMode: 'direct' };
+    const direct = lockedWorkMode({ id: 'run', taskId: 'task', executionMode: 'direct' } as any, segment,
+        { id: 'task', executionMode: 'direct' } as any);
+    assert.match(direct.description, /open project immediately/);
+    assert.doesNotMatch(direct.description, /candidate|promotion/);
+    const isolated = lockedWorkMode({ id: 'run', taskId: 'task', executionMode: 'isolated' } as any,
+        { ...segment, executionMode: 'isolated' }, { id: 'task', executionMode: 'isolated' } as any);
+    assert.match(isolated.description, /separate candidate until reviewed and accepted/);
+    assert.equal(lockedWorkMode({ id: 'run', taskId: 'task', executionMode: 'direct' } as any,
+        { ...segment, executionMode: 'isolated' }).mode, undefined);
+    assert.equal(lockedWorkMode({ id: 'run', taskId: 'task' } as any, segment).mode, undefined);
+    assert.equal(lockedWorkMode({ id: 'run', taskId: 'task', executionMode: 'direct' } as any,
+        { runId: 'run', taskId: 'task' } as any).mode, 'direct');
+});
 
 test('terminal Work review enables on typed text and blocks pending or unselected sends', () => {
     assert.equal(workSegmentReviewEnabled('  next step  ', false, false, false, false), true);
@@ -43,7 +59,7 @@ test('dockable Work panel owns the conversation, history navigation and theme-sa
     assert.match(frontend, /await widget\.selectWorkLauncher\(\{ kind: 'run', id: runId \}\)/);
     assert.doesNotMatch(frontend, /AGENT_TRANSCRIPT_ID|AgentTranscriptWidget|openAgentTranscript/);
     assert.match(widget, /renderWorkConversation\(this\.markdown, controller\.transcript/);
-    assert.match(widget, /this\.content\.append\(region\);\s*if \(runSteerComposer\) this\.content\.append\(runSteerComposer\);\s*if \(conversationComposer\) this\.content\.append\(conversationComposer\);\s*if \(runDetailsControl\)/);
+    assert.match(widget, /this\.content\.append\(region\);\s*if \(runSteerComposer\) this\.content\.append\(runSteerComposer\);\s*if \(followUpReview\) this\.content\.append\(followUpReview\);\s*if \(conversationComposer\) this\.content\.append\(conversationComposer\);\s*if \(runDetailsControl\)/);
     assert.match(widget, /prompt\.placeholder = 'Continue this Work conversation…'/);
     assert.match(widget, /if \(!session\) runSteerComposer = steer/);
     assert.match(widget, /controller\.openFollowUp\(\)/);

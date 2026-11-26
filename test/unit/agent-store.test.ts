@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createHash } from 'node:crypto';
+import { spawn } from 'node:child_process';
 import { cp, mkdtemp, mkdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { hostname, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { AgentStore, AGENT_EVENT_LIMIT, AGENT_EVENT_PAGE_LIMIT } from '../../packages/agent-core/lib/node/agent-store.js';
 import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/authority.js';
+import { parseWorkSession } from '../../packages/agent-core/lib/work-session.js';
 import { AgentRuntimeBackend } from '../../packages/theia-extension/lib/node/agent-runtime-backend.js';
 
 const at = '2026-10-05T12:00:00Z';
@@ -27,23 +29,76 @@ async function folders(work: (a: string, b: string) => Promise<void>) {
     try { await mkdir(a); await mkdir(b); await work(a, b); } finally { await rm(base, { recursive: true, force: true }); }
 }
 
-test('Work session messages survive store restart and cannot be acknowledged or replayed out of order',
-    async () => folders(async a => {
-        const store = new AgentStore();
-        await store.createTask(a, task());
-        await store.createRun(a, run());
-        const running = { ...run(), status: 'running', startedAt: later,
+test('new Work segments seal the task/run mode; legacy reads remain unchanged', async () => folders(async a => {
+    const store = new AgentStore();
+    for (const mode of ['direct', 'isolated']) {
+        const taskId = `${mode}-task`, runId = `${mode}-run`, grantId = `${mode}-grant`;
+        const chosenTask = { ...task(taskId), executionMode: mode };
+        await store.createTask(a, chosenTask as any);
+        const pending: any = { ...run(runId, taskId), createdAt: later, grantId, executionMode: mode,
+            ...(mode === 'direct' ? { directJournal: { id: `${mode}-journal`,
+                path: `.dope/agent/direct-journals/${mode}-journal.json` }, directApplied: [] } : {}) };
+        await store.createRun(a, pending);
+        const running = { ...pending, status: 'running', startedAt: later,
             basis: { head: 'a'.repeat(40), clean: true },
             provenance: { version: 1, connectionId: 'local', modelId: 'fixture',
                 providerId: 'local', runtimeKind: 'local', adapterId: 'pi-local-work' } };
-        await store.updateRun(a, run(), running);
+        await store.updateRun(a, pending, running);
+        const segment = { runId, taskId, grantId, grantRevision: 0, basisHead: 'a'.repeat(40),
+            startedAt: later, executionMode: mode };
+        const session: any = { version: 1, id: runId, taskId, runId, createdAt: later,
+            grantId, grantRevision: 0, connectionId: 'local', modelId: 'fixture',
+            toolSelectionHash: 'a'.repeat(64), sandboxHash: 'b'.repeat(64),
+            permissionCeiling: createDefaultExecutionGrant({ id: grantId, revision: 0,
+                taskId, acceptedAt: later }).permissions,
+            status: 'running', revision: 0, messages: [], segments: [segment] };
+        assert.throws(() => parseWorkSession({ ...session,
+            segments: [{ ...segment, executionMode: 'forged' }] }), /executionMode|Expected|Invalid/);
+        await assert.rejects(store.createWorkSession(a, { ...session,
+            segments: [{ ...segment, executionMode: mode === 'direct' ? 'isolated' : 'direct' }] }),
+        /does not match active run/);
+        await assert.rejects(store.createWorkSession(a, { ...session,
+            segments: [{ ...segment, taskId: 'forged-task' }] }), /segment order|active run/);
+        await assert.rejects(store.createWorkSession(a, { ...session,
+            segments: [{ ...segment, executionMode: undefined }] }), /does not match active run/);
+        await store.createWorkSession(a, session);
+        assert.equal((await store.readWorkSession(a, runId))?.segments[0].executionMode, mode);
+        await assert.rejects(store.updateRun(a, running, { ...running,
+            executionMode: mode === 'direct' ? 'isolated' : 'direct' }),
+        /Direct journal|Agent run|direct|Invalid|Immutable/);
+        await assert.rejects(store.updateWorkSession(a, session, { ...session, revision: 1,
+            segments: [{ ...segment, executionMode: mode === 'direct' ? 'isolated' : 'direct' }] }),
+        /segment transition/);
+        const legacy = { ...session, segments: [{ ...segment }] };
+        delete legacy.segments[0].executionMode;
+        await writeFile(join(a, '.dope/agent/work-sessions', runId, 'session.json'), JSON.stringify(legacy));
+        const read = await store.readWorkSession(a, runId);
+        assert.equal(read?.segments[0].executionMode, undefined);
+        assert.deepEqual(read?.segments[0], legacy.segments[0]);
+        await assert.rejects(store.updateWorkSession(a, read!, { ...read, revision: 1,
+            segments: [segment] }), /segment transition/);
+    }
+}));
+
+test('Work session messages survive store restart and cannot be acknowledged or replayed out of order',
+    async () => folders(async a => {
+        const store = new AgentStore();
+        await store.createTask(a, { ...task(), executionMode: 'isolated' });
+        const initial = { ...run(), executionMode: 'isolated', createdAt: later };
+        await store.createRun(a, initial);
+        const running = { ...initial, status: 'running', startedAt: later,
+            basis: { head: 'a'.repeat(40), clean: true },
+            provenance: { version: 1, connectionId: 'local', modelId: 'fixture',
+                providerId: 'local', runtimeKind: 'local', adapterId: 'pi-local-work' } };
+        await store.updateRun(a, initial, running);
         const session = { version: 1, id: 'run-1', taskId: 'task-1', runId: 'run-1', createdAt: later,
             grantId: 'grant-1', grantRevision: 0, connectionId: 'local', modelId: 'fixture',
             toolSelectionHash: 'a'.repeat(64), sandboxHash: 'b'.repeat(64),
             permissionCeiling: createDefaultExecutionGrant({ id: 'grant-1', revision: 0,
                 taskId: 'task-1', acceptedAt: later }).permissions,
             status: 'running', revision: 0, messages: [], segments: [{ runId: 'run-1', taskId: 'task-1',
-                grantId: 'grant-1', grantRevision: 0, basisHead: 'a'.repeat(40), startedAt: later }] };
+                grantId: 'grant-1', grantRevision: 0, basisHead: 'a'.repeat(40), startedAt: later,
+                executionMode: 'isolated' }] };
         await store.createWorkSession(a, session as any);
         await assert.rejects(store.updateWorkSession(a, session as any, { ...session, revision: 1,
             messages: [{ id: 'forged', text: 'Forged receipt', queuedAt: later,
@@ -220,6 +275,30 @@ test('JSONL bounds, sequence order, concurrent writer exclusion and corruption',
     await writeFile(file, full);
     await assert.rejects(left.appendEvent(a, event(AGENT_EVENT_LIMIT + 1)), /limit/);
     assert.equal(await readFile(file, 'utf8'), full);
+}));
+
+test('a killed writer lock is recovered; a live writer and an ownerless legacy lock stay excluded', async () => folders(async a => {
+    const store = new AgentStore();
+    await store.createTask(a, task());
+    await store.createRun(a, run());
+    const lock = join(a, '.dope/agent/runs/run-1/.write.lock');
+    const owner = (pid: number) => JSON.stringify({ version: 1, pid, host: hostname() });
+    await writeFile(lock, owner(process.pid));
+    await assert.rejects(store.appendEvent(a, event(1)), /locked/);
+    await rm(lock);
+    await writeFile(lock, '');
+    await assert.rejects(store.appendEvent(a, event(1)), /locked/);
+    await rm(lock);
+    const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+    assert.ok(child.pid);
+    await writeFile(lock, owner(child.pid));
+    child.kill('SIGKILL');
+    await new Promise<void>(resolve => child.once('exit', () => resolve()));
+    await writeFile(`${lock}.recovery`, owner(child.pid));
+    await store.appendEvent(a, event(1));
+    assert.deepEqual((await store.readEvents(a, 'run-1', 0, 10)).events.map(item => item.sequence), [1]);
+    await assert.rejects(readFile(lock), { code: 'ENOENT' });
+    await assert.rejects(readFile(`${lock}.recovery`), { code: 'ENOENT' });
 }));
 
 test('path traversal, symlink escape and secret-shaped input never persist', async () => folders(async (a, b) => {

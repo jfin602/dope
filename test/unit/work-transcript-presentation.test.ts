@@ -157,6 +157,7 @@ test('Work tool calls show validated arguments and withhold unavailable values',
     assert.equal(workToolStatus('recoverable'), 'Invalid arguments');
     assert.equal(workToolStatus('denied'), 'Authority denied');
     assert.equal(workToolStatus('cancelled'), 'Cancelled');
+    assert.equal(workToolStatus('interrupted'), 'Interrupted');
     assert.equal(workToolCall([{ ...base, phase: 'recoverable', code: 'INVALID_ARGUMENTS' }]), 'read_file()');
     assert.equal(workToolFeedback({ ...base, phase: 'recoverable', code: 'INVALID_ENTRY_LIMIT',
         detail: '{"feedback":"INVALID_ENTRY_LIMIT: maxEntries must be an integer from 1 to 100."}' }),

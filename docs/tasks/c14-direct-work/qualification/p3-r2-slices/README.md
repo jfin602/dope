@@ -1,0 +1,19 @@
+# P3-R2 remaining qualification — short evidence sessions
+
+Use these **short evidence prompts** for the **one-off New Work workflow**: a fresh one-off task, its Direct or explicitly selected Isolated run, and its linked follow-up or recovery where applicable. Each session targets about ten minutes of active work and **one live case**. The prompts are reusable; model latency, setup, retries and builds vary. If a case is unfinished, save the attempt and resume from that exact point. Never stop in the middle of an unsafe write or leave an active run unaccounted for just to meet a timer.
+
+The [original P3-R2 prompt](../../P3-R2-remaining-live-qualification.txt) is preserved as historical broad scope. **The owner removed Prompt Stack/phase-stack, WorkItem entry, and linked Roadmap qualification from the technical P3 GREEN requirements for this pass on 2026-11-26.** These paths remain unproven but do not block technical GREEN under the amended scope. The [paused checkpoint](../2026-11-26-p3-r2-paused-checkpoint.md) and [shared contract](00-shared-contract.md) supply the source and evidence boundary. Each session writes a new dated result under `results/`, with raw artifacts under `docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/`. Repeated sessions never overwrite an earlier result.
+
+| Prompt | Cases to take in order, one per session |
+| --- | --- |
+| [01 Direct ownership and recovery](01-direct-ownership-and-recovery.txt) | Mixed selective revert; visible stale-review reason; strict first-of-two Stop; restart/uncertain call |
+| [02 Broker authority](02-broker-authority.txt) | Protected/outside paths; delete/rename and tool selection; command write boundary; stale/concurrent owner source |
+| [03 Isolated regression](03-isolated-regression.txt) | **Already run:** valid candidate Reject PASS; Accept remains open on this source |
+| [04 One-off Work and provider](04-work-entry-and-provider.txt) | Fresh New Work; linked follow-up/recovery; provider unavailable/reverified |
+| [04a One-off mode-seal repair](04a-oneoff-mode-seal-repair.txt) | Targeted repair of the fresh New Work PARTIAL result, then one rebuilt-source live replay |
+| [04b Remaining cases to 05 ready](04b-remaining-cases-to-05-ready.txt) | Reusable one-case sessions for every remaining applicable slice case; ends with an explicit 05 readiness decision |
+| [05 Final compilation](05-final-compilation.txt) | Exact final-source checks, independent review, scoped case matrix and owner handoff |
+
+The checkpoint already has live Direct editor/preview evidence, a corrected linked follow-up, a single-file owner conflict, `.dope/history-focus.json` repair, and passing checks on its paused source. Slice 01 mixed selective Revert also has a PASS; slice 02 protected/outside-root has parser-level live denials and T2 broker proof, with strict live broker dispatch still open. [Slice 03's saved result](results/2026-11-26-isolated-reject.md) proves a valid Isolated candidate stayed separate and was rejected. **Do not rerun that Reject case.** Its Accept case remains unproven on the current source and must be reported as open unless later run. Cite all records by path/hash; recheck affected cases if product source changes.
+
+Each result marks its case PASS, PARTIAL, FAIL, BLOCKED or T2-only and names the next unattempted case. A model refusal before a broker call is an unproven negative, not a denial PASS. The fresh New Work mode-seal replay is PASS for its case. Other numbered one-off, ownership, broker and Isolated cases remain open as recorded; those actual gaps, final-source checks and independent review determine technical P3 GREEN under the amended scope. Deferred entry paths do not count as failures or blockers. Native Electron availability and the missing `0.14.0` release baseline remain separate.

@@ -1,0 +1,32 @@
+{
+  "at": "2026-11-26T19:33:57.182405+00:00",
+  "productHead": "328043fe18274514f68cd49bdf3a10dfec3b3241",
+  "productDiffSha256": "b98cf7641ab9b797c054fb2acd28a655bbbe2230e0744e7acb697affbdd4b5a8",
+  "frontendSha256": "82e2754895e88b1c012391cfe7bbf1d40d0a121c1f80b9131a6a7837b61379f3",
+  "backendSha256": "36bb3f10136a2b6f7d15a4893ee5493ce62dc8fac378e2824767cf5d3b59e63c",
+  "fixtureHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+  "fixtureStatus": "",
+  "mainSha256": "b23ea54a6afd3b5c745b63858721b1375c781dc30f6222c73bc597c7b9ec3d21",
+  "styleSha256": "766703e507b752deea2114dc3eec1190e3a22c43594a25e199bc40e48603a3b1",
+  "previewSha256": "42301cca93745f2a4ad62f15882e8939510fe4ca0cbaa398f38f4efafff3f4b8",
+  "previewText": "<!doctype html><title>Isolated fixture</title><h1>Owner Indigo</h1>",
+  "artifacts": {
+    "transcript.jsonl": "04c4a43eaea20fd92b08a23b697e185bd16972f41df80d859b3b93764cb3996a",
+    "events.jsonl": "1f97724da11299c744d824dd6bca5241cf9bfa03c5295c42daab54cba00f7421",
+    "review.png": "0748f30639ac654008103d703e22aeb5a289af0703fcd5c4aff2e2ce07fb0215",
+    "active-candidate.json": "67226a0c60cb9f7c2d0d347db57368107f72299fe9f0dd2daead7e5be408c969",
+    "active-editor.png": "8528e460d93d395faa3975427c618a7932f2e010f33f388ce223b7ea103265ad",
+    "review-diff.png": "ad95a39cf30b7b7da4014bc88cef9cfb36e297899a64d22363b88a39a69bd43a",
+    "run.json": "64b78fe4eb713a8d06a3209326cd8ea9d50846fa7b7f93bc554b93b07e17b069",
+    "preview-before.png": "0d66f8be7226d964c7a14cb0f19ec0bcc28d34041aadfa531220e093cb3172de",
+    "prepare.png": "0fd599dd3cbc646dbba732200b4006e4698dc5644f70fdc2755e8fee72b90e2c",
+    "setup-attempt-before.json": "695234baa494a6297498b2d28cd046ff79d4cb74bf30a3f8f382fb3271456547",
+    "before.json": "2b11e5bc1709bd4bdb8fe9e913414e7e00c63ce918a869869654d512967eae57",
+    "active-after-edit.json": "6d5a2a13fe50852766e494f3fbbdff53ac460f4778a780ddc813302e61c3edc4",
+    "active-preview.png": "6f9e96216473f060047f3efac53eaca85d295978ba440e7842f471eb93a91bd1",
+    "task.json": "7f5cc5784bc291c961e7c427459d0bf5b40139b22773ca239a2834ef941a1d35",
+    "session.json": "72166b0294d5d71dcf1e168d1abf41e099aa57403e910617edce225d9de5e24c",
+    "rejected.png": "fcecd2a6c346cfde40d29ffc3eecf2a616a2d625c57bfff0c8bbfaa72338c604",
+    "history.png": "39509f5bd3e047c22ccef771071764c3046b2ddcf5f4f95d26e65d1fd2072513"
+  }
+}

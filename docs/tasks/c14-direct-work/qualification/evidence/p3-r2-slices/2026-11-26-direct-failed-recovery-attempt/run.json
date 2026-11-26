@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "id": "dfd4a6a7-3089-427e-83d1-fff54d7c3d9a",
+  "taskId": "df1b20d9-08a1-4570-ac25-80cb1d856349",
+  "status": "failed",
+  "grantId": "de507d78-a596-4527-928c-2390af14e4f6",
+  "grantRevision": 1,
+  "executionMode": "direct",
+  "requestedPolicy": {
+    "kind": "exact",
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b"
+  },
+  "projectRoot": ".",
+  "toolSelection": {
+    "catalogRevision": 2,
+    "projectUri": "file:///tmp/dope-p3-r2-mode-seal-IfFazm",
+    "taskId": "df1b20d9-08a1-4570-ac25-80cb1d856349",
+    "grantRevision": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b",
+    "tools": [
+      {
+        "id": "read_file",
+        "schemaRevision": 1
+      },
+      {
+        "id": "list_files",
+        "schemaRevision": 1
+      },
+      {
+        "id": "edit_file",
+        "schemaRevision": 1
+      }
+    ]
+  },
+  "taskContract": {
+    "taskId": "df1b20d9-08a1-4570-ac25-80cb1d856349",
+    "taskHash": "1435aca830932c9dc0285edae4d73caa9783dd76aa28ce26d5a5a730264fccd9",
+    "objective": "In this disposable Git fixture, change only src/main.ts so its single exported headline is 'Oneoff Coral'. Keep the exact one-line export format. Use the selected Dope tools to inspect and edit the file, then briefly report the change. Do not touch any other file or run commands.",
+    "instructionsHash": "81aa5e6185323feb0b488bb2e7126a5ce203e8927c58001eafb7c59830545fce",
+    "acceptance": "unknown",
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "planning": "unknown",
+    "roadmap": "unknown",
+    "grant": {
+      "id": "de507d78-a596-4527-928c-2390af14e4f6",
+      "revision": 1,
+      "acceptedAt": "2026-11-26T20:53:08.490Z",
+      "permissionsHash": "40db5e1a0b10f1da4b906bf7339c74135b8b648ba89f52d548974f6d4ac4afa9"
+    },
+    "sourceHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4"
+  },
+  "createdAt": "2026-11-26T20:53:09.114Z",
+  "startedAt": "2026-11-26T20:53:09.114Z",
+  "endedAt": "2026-11-26T20:53:22.681Z",
+  "executionWorkspace": {
+    "id": "fabb8685-3cf2-43cc-873a-eeac02cafaf4",
+    "basisHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4"
+  },
+  "directJournal": {
+    "id": "10be42f7-8359-4626-99d0-fe0a60ca70f8",
+    "path": ".dope/agent/direct-journals/10be42f7-8359-4626-99d0-fe0a60ca70f8.json"
+  },
+  "directApplied": [],
+  "provenance": {
+    "version": 1,
+    "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+    "modelId": "openai/gpt-oss-20b",
+    "providerId": "local",
+    "runtimeKind": "local",
+    "adapterId": "pi-local-work"
+  },
+  "basis": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "clean": false,
+    "metadataChanged": false
+  },
+  "acceptedDirty": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "paths": [
+      {
+        "path": "src/main.ts",
+        "code": " M",
+        "hash": "5c28c9b185ab6c51aa1837983b28b28b58a1aa94664bd8cead96a658d8d6918f",
+        "size": 40,
+        "mode": 436
+      }
+    ]
+  },
+  "changedFiles": [
+    "src/main.ts"
+  ],
+  "validationResults": [
+    {
+      "version": 1,
+      "kind": "test",
+      "label": "Required validation",
+      "status": "not-started",
+      "owner": "dope",
+      "command": "node --test test/fixture.test.mjs",
+      "reason": "Provider or candidate did not reach validation"
+    }
+  ],
+  "finalGit": {
+    "head": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+    "clean": false,
+    "headChanged": false,
+    "metadataChanged": false,
+    "statuses": [
+      {
+        "code": " M",
+        "path": "src/main.ts"
+      }
+    ],
+    "truncated": false
+  },
+  "changeSummary": {
+    "version": 1,
+    "filesChanged": 1,
+    "insertions": 1,
+    "deletions": 1,
+    "summary": "1 task files changed; 1 bounded text insertions, 1 deletions; 0 untracked bytes",
+    "truncated": false
+  },
+  "validationBasis": "direct-applied-snapshot",
+  "candidateDelta": {
+    "version": 1,
+    "effects": []
+  },
+  "candidateFingerprint": "dd09921c16d3dfd5c4e969dfd8e678dab44730b8e81d753df969412536feb607",
+  "authorityDecision": {
+    "allowed": true,
+    "blocked": []
+  },
+  "appliedFiles": [],
+  "outcome": {
+    "code": "provider-error",
+    "summary": "Agent execution failed"
+  }
+}

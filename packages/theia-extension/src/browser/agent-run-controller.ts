@@ -183,11 +183,14 @@ export class AgentRunController {
         this.busy = true; this.message = ''; this.changed();
         try {
             const review = await this.runtime.previewWorktree(this.handle);
-            if (!review.clean && (!continueDirty || review.fingerprint !== this.worktreeReview?.fingerprint)) {
+            if (continueDirty && review.fingerprint !== this.worktreeReview?.fingerprint) {
+                this.worktreeReview = review;
+                this.message = 'Project source changed since review. Review the current files and choose Start again.';
+                return;
+            }
+            if (!review.clean && !continueDirty) {
                 this.worktreeReview = review; return;
             }
-            if (this.executionMode === 'direct' && !review.clean)
-                throw new Error('Direct Work requires a clean project; save or resolve existing changes first.');
             if (this.executionMode === 'direct' && !this.validationCommand.trim())
                 throw new Error('Direct Work requires a Dope validation command.');
             this.worktreeReview = undefined;

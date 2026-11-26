@@ -1,0 +1,16 @@
+8ef5ab8b594509134f0d1d9ba502ae90c482e65a742e000063e6a6975a7b3e8d  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-lock-repair-replay/build-browser-final.log
+32f349cf68fd6df57714e363b05ecf9bab1016a56a491ed95d28e7d01cbbdc69  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-lock-repair-replay/events-after-restart.jsonl
+588c26b6b4b70383a435580063c494b6bfda4565d29d9ca7825dd365945d3693  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-lock-repair-replay/events.jsonl
+933d441be1f7e30b811be82e5655aa182648e2c899ea3ecd1041c440652d5e05  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-lock-repair-replay/focused-tests-final.log
+8c6aa086a35eea845b6c9985508d349cff70a4b2bba571252fcd155ef52409df  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-lock-repair-replay/intermediate-test-failure.txt
+5e3da7676e4d230f3b6658b55fc82c1e8a4d9ce233d1a21d0fe62cc8a1a04a34  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-lock-repair-replay/journal-after-restart.json
+126e80b7e0db32497a3c7631f8f56b391086c9e784f56852d9ebc747bdf1cb3f  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-lock-repair-replay/journal-prepared.json
+90ed8b2747a8f2c64d3cea6ac98c283e025b48cfdbd9317a69be13bdbcf3091e  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-lock-repair-replay/kill-boundary.json
+d2f711691c77eaf06f5dd1f7e221ab173f31f9399f0bcc7ce4d5cc0d67fe15d8  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-lock-repair-replay/lock-before-restart
+de94646a113f59af19109fd9eebd8384ae9d306ea52f3fcae1533018c1eac240  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-lock-repair-replay/run-after-restart.json
+d79e5dd0259b44c7c35ed403cfd327916d311f09aecee81af2b769f49d4479cd  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-lock-repair-replay/run.json
+12558c946069b52f45b1110daa51c9d338f50dcdc5a714aba901128d175e1645  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-lock-repair-replay/session-after-restart.json
+8e7e47666ae64af4cb059492dd963fb525cc3bdadb2ec67bb2beb16e8e9e5c80  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-lock-repair-replay/task.json
+e9d28f23f0936bdd065336649929963083c06fb4c611ef3c9d7b6e8fecfe2027  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-lock-repair-replay/transcript-after-restart.jsonl
+4c27c8a1eb07ea59ebb38a213525929c33ed775378a0f0c88e1e239a71e76a42  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-lock-repair-replay/transcript.jsonl
+dad1741b30a04c3399afaf67a1983fb1a0b20b3b047b4ca763b05eff845b243f  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-lock-repair-replay/ui-observations.txt

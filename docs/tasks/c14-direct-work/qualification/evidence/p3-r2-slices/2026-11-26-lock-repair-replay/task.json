@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "id": "d73ccb18-f9c4-415d-9c1b-beda6753e7d2",
+  "createdAt": "2026-11-26T21:40:59.348Z",
+  "objective": "Inspect src/main.ts, then use edit_file to change only the displayed owner headline from Owner Indigo to Owner Copper. Do not change any other file. Stop after the edit.",
+  "instructions": "Inspect src/main.ts, then use edit_file to change only the displayed owner headline from Owner Indigo to Owner Copper. Do not change any other file. Stop after the edit.",
+  "projectRoot": ".",
+  "modelPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "controls": {},
+  "authority": {
+    "profile": "phase-8b-project"
+  },
+  "executionMode": "direct",
+  "completion": {
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "requireValidationPass": true
+  },
+  "origin": {
+    "kind": "direct"
+  },
+  "reviewPolicy": {
+    "kind": "required"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "id": "a4e91f3a-ee23-4bd3-8fb0-ab4401c86b6a",
+  "createdAt": "2026-11-26T20:46:17.784Z",
+  "objective": "In this disposable Git fixture, change only src/main.ts from 'Owner Indigo' to 'Oneoff Coral'. Keep exactly one line: export const headline = 'Oneoff Coral'; followed by a final newline. Use only the selected Dope read/list/edit tools. Do not touch any other file or run commands. Confirm the final newline before reporting completion.",
+  "instructions": "In this disposable Git fixture, change only src/main.ts from 'Owner Indigo' to 'Oneoff Coral'. Keep exactly one line: export const headline = 'Oneoff Coral'; followed by a final newline. Use only the selected Dope read/list/edit tools. Do not touch any other file or run commands. Confirm the final newline before reporting completion.",
+  "projectRoot": ".",
+  "modelPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "controls": {},
+  "authority": {
+    "profile": "phase-8b-project"
+  },
+  "executionMode": "direct",
+  "completion": {
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --test test/fixture.test.mjs"
+      }
+    ],
+    "requireValidationPass": true
+  },
+  "origin": {
+    "kind": "direct"
+  },
+  "reviewPolicy": {
+    "kind": "required"
+  }
+}

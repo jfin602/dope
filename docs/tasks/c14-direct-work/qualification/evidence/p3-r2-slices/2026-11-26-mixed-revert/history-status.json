@@ -1,0 +1,68 @@
+{
+  "attempt-1": {
+    "runId": "fd102e03-1a4a-42e9-8da9-a995a54d6247",
+    "status": {
+      "kind": "agent-run",
+      "state": "completed",
+      "validation": "passed",
+      "executionMode": "direct",
+      "appliedFiles": 2,
+      "revertedFiles": 1,
+      "revertConflicts": 0,
+      "sourceHead": "3cd72f80b047ae9e1f0812870c70cc828d6c992b",
+      "validationFingerprint": "b635a34c3ffce9439ba092d02a49cb685869e1e03491322822ebd7b43381d3c8",
+      "review": "none",
+      "provenance": {
+        "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+        "modelId": "openai/gpt-oss-20b",
+        "adapterId": "pi-local-work",
+        "runtimeKind": "local"
+      },
+      "promotion": "applied"
+    }
+  },
+  "replay-failed": {
+    "runId": "ef1c8dc1-d320-4cc6-ad87-da005c9839a5",
+    "status": {
+      "kind": "agent-run",
+      "state": "failed",
+      "validation": "not-started",
+      "executionMode": "direct",
+      "appliedFiles": 1,
+      "revertedFiles": 1,
+      "revertConflicts": 0,
+      "sourceHead": "3cd72f80b047ae9e1f0812870c70cc828d6c992b",
+      "validationFingerprint": "ce7ac9e543f9bc7784b13cae7071710c5582fe63cb1e10e3cb51b56899052eeb",
+      "review": "none",
+      "provenance": {
+        "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+        "modelId": "openai/gpt-oss-20b",
+        "adapterId": "pi-local-work",
+        "runtimeKind": "local"
+      },
+      "promotion": "applied"
+    }
+  },
+  "replay-pass": {
+    "runId": "8b39be1d-9193-4790-b467-2b50ee10588d",
+    "status": {
+      "kind": "agent-run",
+      "state": "completed",
+      "validation": "passed",
+      "executionMode": "direct",
+      "appliedFiles": 2,
+      "revertedFiles": 1,
+      "revertConflicts": 1,
+      "sourceHead": "3cd72f80b047ae9e1f0812870c70cc828d6c992b",
+      "validationFingerprint": "b635a34c3ffce9439ba092d02a49cb685869e1e03491322822ebd7b43381d3c8",
+      "review": "none",
+      "provenance": {
+        "connectionId": "21d03643-2aca-407e-b090-af59979b6c2f",
+        "modelId": "openai/gpt-oss-20b",
+        "adapterId": "pi-local-work",
+        "runtimeKind": "local"
+      },
+      "promotion": "applied"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+Connected Codex in-app browser: http://127.0.0.1:3002/#/tmp/dope-p3-r2-mode-seal-IfFazm
+AI Center: LM Studio ready; openai/gpt-oss-20b loaded, context 16384; explicit Refresh Models then Verify Coding Agent tools produced agentExecution: yes (adapter-known).
+Prepare Work: Direct Work — Default selected; immediate open-project edit/review/revert explanation visible. Exact LM Studio/openai/gpt-oss-20b selected. Effective tools read_file, list_files, edit_file; Commands and MCP unselected. Required validation node --test test/fixture.test.mjs. One Start Work action.
+Active locked configuration: Mode: direct; Direct Work — brokered edits apply to the open project immediately; review and safe revert are available. Sandbox binding 8570396c6847. Grant f0ff96f8-bdf7-4a85-8e69-b54a5d845842 revision 1. No mode selector while active.
+Before Finish: Theia canonical editor src/main.ts showed export const headline = 'Oneoff Coral'; while Work was awaiting input. Browser screenshot was displayed in the connected browser tool, but it did not provide a local PNG export path; no screenshot file/hash is claimed.
+After Finish: Review Changes showed src/main.ts · applied and Required validation applies to the current source. Run Details showed Required validation: passed · 1 changed files. New Work segment composer was visible below the saved Work transcript but was not used.
+Refreshed History: Direct Work: completed · 1 applied · 0 reverted · 0 revert conflicts · validation passed. Agent task and running/completed run transitions were also visible. The Git working-tree entry was a current snapshot, not an application receipt.
+Native Electron UI was not observed. No second Work case was started.

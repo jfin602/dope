@@ -1,0 +1,12 @@
+{
+  "at": "2026-11-26T19:32:17.480966+00:00",
+  "fixtureHead": "c887c3c0d791b1e49a3117bc551bdc3c544cbcd4",
+  "fixtureStatus": "",
+  "mainSha256": "b23ea54a6afd3b5c745b63858721b1375c781dc30f6222c73bc597c7b9ec3d21",
+  "styleSha256": "766703e507b752deea2114dc3eec1190e3a22c43594a25e199bc40e48603a3b1",
+  "previewSha256": "42301cca93745f2a4ad62f15882e8939510fe4ca0cbaa398f38f4efafff3f4b8",
+  "candidatePath": "/tmp/dope-execution-ZtchVK/work",
+  "candidateMainSha256": "fa9a6a68e164ba01dbf01546b946c0b646b28aa1675acb9827886c45e3d1c976",
+  "candidateStatus": "M src/main.ts",
+  "candidateDiff": "diff --git a/src/main.ts b/src/main.ts\nindex f39f4f2..c9f1120 100644\n--- a/src/main.ts\n+++ b/src/main.ts\n@@ -1 +1 @@\n-export const headline = 'Owner Indigo';\n+export const headline = 'Silver Arc';"
+}

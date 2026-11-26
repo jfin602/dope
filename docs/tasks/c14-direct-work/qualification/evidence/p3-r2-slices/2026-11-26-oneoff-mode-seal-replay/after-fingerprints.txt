@@ -1,0 +1,13 @@
+c887c3c0d791b1e49a3117bc551bdc3c544cbcd4
+ M src/main.ts
+554bda9cc9bdca7587c3bfc5af9bc426dfe46520b5519641e67ba1f6eb74c4f9  /tmp/dope-p3-r2-mode-seal-IfFazm/src/main.ts
+766703e507b752deea2114dc3eec1190e3a22c43594a25e199bc40e48603a3b1  /tmp/dope-p3-r2-mode-seal-IfFazm/src/style.css
+f900dfd5192eb1ab8fbcc41bed5d8cdf21127f73c5c8414f1b4dfcc2ed7dabb3  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-oneoff-mode-seal-replay/journal.json
+63c4bdd68f9729239462dca7918bc7b6aacb859d02fd0101e58ebb4bf7d35492  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-oneoff-mode-seal-replay/run.json
+aa65adb1dd411d80c97b240c774232114dc6c13f9d989af07b48886baef1163d  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-oneoff-mode-seal-replay/session.json
+a424aa856e5f22f1e9a492fe4b749e666112e59fbba3d805aa2f921706567997  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-oneoff-mode-seal-replay/task.json
+74d2ce3fe67885f5854bbf81aa4143183b52badb4704710e55302355558deb2b  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-oneoff-mode-seal-replay/validation-snapshot.json
+3b51d4834dda6c00374509d33fc38d7f97a13bcac16c3cf3bf73007a1774f2e5  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-oneoff-mode-seal-replay/events.jsonl
+dbe07e10ae5da7691ca489e9e96e287ac2a1be3548d7cd0dc9286722aeeee418  docs/tasks/c14-direct-work/qualification/evidence/p3-r2-slices/2026-11-26-oneoff-mode-seal-replay/transcript.jsonl
+17cb3dfd97d348278ffb35c6a836401c67e79d698b980098271a9bb0f811200c  packages/agent-core/lib/node/agent-store.js
+129fbf00ce8f7ddf3f1771dd016a9c795e045e7ee6636ecf2221618f1a2005dc  packages/theia-extension/lib/node/agent-execution-runtime.js
