@@ -124,7 +124,7 @@ export class MCPStdioDiscovery {
                 !/^[a-f0-9]{64}$/u.test(identity.projectKey)) throw new Error('Invalid MCP discovery identity');
             this.statusValue = { ...this.statusValue, ...identity };
             const initialized = await this.request('initialize', { protocolVersion: PROTOCOL_VERSION,
-                capabilities: {}, clientInfo: { name: 'dope', version: '0.13.11' } }, signal);
+                capabilities: {}, clientInfo: { name: 'dope', version: '0.14.0' } }, signal);
             if (!record(initialized) || initialized.protocolVersion !== PROTOCOL_VERSION ||
                 !record(initialized.capabilities) || !record(initialized.serverInfo) ||
                 !boundedString(initialized.serverInfo.name, 120) ||
