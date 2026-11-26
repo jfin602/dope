@@ -1,3 +1,5 @@
+> **2026-11-25 FORWARD MODE EXCEPTION — ADR 0059:** [Direct Work](0059-direct-and-isolated-work-execution-modes.md) applies broker-authorized file edits to the canonical project during the run; Dope-owned validation must use a frozen, hash-verified snapshot of those already-applied bytes and recheck source applicability. A failed Direct validation blocks qualification but **does not roll back the edited files**. All frozen-candidate validation/promotion requirements below remain mandatory for **Isolated Work**. Documentation change only; no code/qualification change.
+
 # ADR 0029 — Dope-owned candidate validation boundary
 
 Status: Accepted

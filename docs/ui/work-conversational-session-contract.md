@@ -1,3 +1,5 @@
+> **2026-11-25 FORWARD MODE AMENDMENT:** [ADR 0059](../decisions/0059-direct-and-isolated-work-execution-modes.md) makes **Direct Work** the default choice in **Prepare Work** for newly created eligible segments. The alternative **Isolated Work** preserves the 2026-11-24 Finish → frozen CandidateDelta → review → Accept/Reject path. In Direct, the agent's broker-authorized file edits occur in the canonical open project during execution; Finish runs Dope-owned validation and shows **Review Changes** / source-safe **Revert Agent Changes** instead of a pretend pending candidate. Stop/failure leaves verified applied edits in place. Every segment stores its sealed mode; switch/recovery requires fresh review. This is **owner-approved documentation only**, not current product behavior or a retroactive change to c14 evidence.
+
 # Work conversational session contract — approved 2026-11-24
 
 Status: owner-approved forward design, amended by [c14 P1-R2 scope decision](../tasks/c14-work-redesign/scope-amendment-2026-11-24.md) and the [P2-R1 local Pi boundary](../tasks/c14-work-redesign/scope-amendment-2026-11-24-p2-r1.md); not product qualification.

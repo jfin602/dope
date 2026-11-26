@@ -1,3 +1,5 @@
+> **2026-11-25 FORWARD EXCEPTION — ADR 0059:** [Direct and Isolated Work modes](0059-direct-and-isolated-work-execution-modes.md) supersedes the **universal** isolated-only requirement below for separately authorized and independently qualified **Direct Work**. In that mode only Dope's trusted per-file broker may mutate authoritative project files under a write-ahead journal and source checks; provider-controlled processes remain unable to write the canonical project directly. Isolated Work retains every CandidateDelta/ToolExecutor promotion requirement below. Historical qualification, fixed denials and pre-implementation product behavior are unchanged.
+
 # ADR 0028 — Isolated agent execution and authoritative mutation boundary
 
 Status: Accepted

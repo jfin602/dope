@@ -1,3 +1,5 @@
+> **2026-11-25 FORWARD AMENDMENT — MODE-SPECIFIC REVIEW:** [ADR 0059](0059-direct-and-isolated-work-execution-modes.md) makes Direct Work the future default of eligible WorkItem/Prepare Work setups. The existing held candidate Accept/Reject policy below remains for Isolated Work. Direct Work instead reports **already-applied** per-file changes with verified Review/Revert, and still enforces HUMAN/SHARED delegation, required validation, source applicability and evidence authority. A new direct write mode must be qualified before exposure; historical 8D status is unchanged.
+
 # ADR 0031 — Phase 8D General Scoped Delegation and Developer Review
 
 Status: **Accepted design / Phase 8D GREEN at `0.8.33` source `8748cb4` through c8-fix P6; original P13 Not Green retained**

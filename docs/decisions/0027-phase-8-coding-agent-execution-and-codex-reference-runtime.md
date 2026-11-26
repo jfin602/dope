@@ -1,3 +1,5 @@
+> **2026-11-25 FORWARD AMENDMENT — WORK EXECUTION MODES:** [ADR 0059](0059-direct-and-isolated-work-execution-modes.md) introduces future **Direct Work** as default for new eligible Prepare Work and **Isolated Work** as alternative. One Start Work approval binds selected tools **and mode**; Direct canonical file create/modify is only through a strictly enforced Dope tool broker, never direct provider sandbox write. This supersedes universal-isolation assumptions while preserving internal ExecutionGrant and fixed denied effects. Documentation only; historical Phase 8 qualification is unchanged.
+
 # ADR 0027 — Phase 8 coding-agent execution and Codex reference runtime
 
 Status: Accepted
