@@ -94,7 +94,8 @@ export default new ContainerModule(bind => {
         let runtime!: AgentExecutionRuntime;
         const local = new PiWorkExecutionAdapter(context.container.get(PiModelBridge),
             context.container.get(PiRuntimeFactory), request => runtime.localWorkspace(request),
-            request => runtime.localCommands(request), context.container.get(WorkMCPObservationAuthority));
+            request => runtime.localCommands(request), context.container.get(WorkMCPObservationAuthority),
+            request => runtime.localDirect(request));
         runtime = new AgentExecutionRuntime(context.container.get(AgentStore),
             context.container.get(AIRoleRoutingService), inventory,
             new Map<string, AgentExecutionAdapter>([

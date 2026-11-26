@@ -89,6 +89,14 @@ export function parseExecutionGrant(value: unknown): ExecutionGrant {
             toolName, connectionId: id(scope.connectionId), modelId: modelKey(scope.modelId),
             maxCalls: 1, expiresAt };
     }
+    const externalSelected = toolSelection?.tools.some(tool => tool.id === 'mcp_godot_server_info');
+    if (externalSelected && (!mcpObservation || mcpObservation.serverId !== 'godot' ||
+        mcpObservation.toolName !== 'godot_get_server_info' ||
+        toolSelection?.connectionId !== mcpObservation.connectionId ||
+        toolSelection.modelId !== mcpObservation.modelId))
+        throw new Error('External Work selection has no matching reviewed scope');
+    if (mcpObservation && toolSelection?.catalogRevision === 2 && !externalSelected)
+        throw new Error('External Work scope was not selected');
     return freeze({ version: AGENT_SCHEMA_VERSION, id: id(x.id), revision: integer(x.revision),
         taskId: id(x.taskId), projectRoot: '.', acceptedAt,
         acceptedBy: 'developer', permissions: parsed, ...(mcpObservation ? { mcpObservation } : {}),

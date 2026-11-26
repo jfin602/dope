@@ -65,6 +65,13 @@ export function workToolLabel(entry: WorkToolEntry, history: WorkToolEntry[] = [
     return `${entry.toolName}${concise ? ` · ${concise}` : ''} · ${workToolStatus(entry.phase)}`;
 }
 
+export function workToolFeedback(entry: WorkToolEntry): string | undefined {
+    if (entry.phase !== 'recoverable' || !entry.code || !/^[A-Z_]{3,40}$/u.test(entry.code)) return undefined;
+    const feedback = metadata(entry.detail).feedback;
+    return typeof feedback === 'string' && feedback.startsWith(`${entry.code}:`) &&
+        feedback.length <= 240 && !/[\u0000-\u001f\u007f]/u.test(feedback) ? feedback : entry.code;
+}
+
 /** Reconstruct a CLI-style call from the saved, bounded metadata; raw arguments are intentionally not recorded. */
 export function workToolCall(entries: WorkToolEntry[]): string {
     const latest = entries.at(-1);

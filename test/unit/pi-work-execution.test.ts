@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { execFile } from 'node:child_process';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/authority.js';
 import { makeWorkToolSelection } from '../../packages/agent-core/lib/work-tool-selection.js';
 import { ExecutionWorkspace } from '../../packages/agent-core/lib/node/execution-workspace.js';
+import { DirectWorkJournal } from '../../packages/agent-core/lib/node/direct-work-journal.js';
 import { PiWorkExecutionAdapter } from '../../packages/theia-extension/lib/node/pi-work-execution.js';
 import { dispatch } from '../../packages/pi-runtime/worker.mjs';
 
@@ -19,6 +20,58 @@ const selectedGrant = (project: string, id: string, taskId: string, modelId: str
         toolSelection: makeWorkToolSelection({ projectUri: 'file://' + project, taskId,
             grantRevision: 0, connectionId: 'local', modelId }, tools) });
 
+test('Pi Work Direct edit_file updates canonical source only through the broker', async () => {
+    const project = await mkdtemp(join(tmpdir(), 'dope-pi-direct-'));
+    let workspace: ExecutionWorkspace | undefined;
+    try {
+        await mkdir(join(project, 'src'));
+        await writeFile(join(project, 'src', 'file.txt'), 'before\n');
+        await execute('git', ['init', '-q', project]);
+        await execute('git', ['add', 'src/file.txt'], { cwd: project });
+        await execute('git', ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+            'commit', '-qm', 'basis'], { cwd: project });
+        const head = (await execute('git', ['rev-parse', 'HEAD'], { cwd: project })).stdout.trim();
+        workspace = await ExecutionWorkspace.create(project);
+        const grant = selectedGrant(project, 'grant-direct', 'task-direct', 'model', ['edit_file']);
+        const journal = await DirectWorkJournal.create(project, head, 'task-direct', 'run-direct', grant);
+        workspace.bindDirectBasis(journal);
+        const host: any = { async start() {}, async runWork(_prompt: string,
+            onTool: (call: any) => Promise<any>) {
+            const result = await onTool({ id: 1, name: 'edit_file', arguments: {
+                operation: 'modify', path: 'src/file.txt', content: 'direct\n' } });
+            assert.equal(result.status, 'completed');
+            return { modelId: 'model', text: 'Edited through Dope.' };
+        }, dispose() {} };
+        const adapter = new PiWorkExecutionAdapter({ async bind() {
+            return { endpoint: 'http://127.0.0.1:9/v1', registryRevision: 1 };
+        }, async assertWorkSelection() {} } as any,
+        { create: () => host, release() {} } as any, () => workspace!, () => [], undefined,
+        () => ({ journal, unsaved: async () => false }));
+        const run = await adapter.start({ projectRoot: project, executionRoot: workspace.root,
+            executionMode: 'direct', grant, taskId: 'task-direct', runId: 'run-direct',
+            connectionId: 'local', registrationId: 'local', modelId: 'model',
+            prompt: 'Modify the source file.', onEvent() {} });
+        await run.result;
+        assert.equal(await readFile(join(project, 'src', 'file.txt'), 'utf8'), 'direct\n');
+        assert.equal(journal.changes[0].result, 'completed');
+    } finally { await workspace?.dispose(); await rm(project, { recursive: true, force: true }); }
+});
+
+test('Pi Work rejects foreign project, task and model selections before opening a session', async () => {
+    const adapter = new PiWorkExecutionAdapter({} as any, {} as any,
+        () => { throw new Error('workspace must not open'); }, () => []);
+    const grant = selectedGrant('/tmp/approved-project', 'grant', 'task', 'model', ['read_file']);
+    const request: any = { projectRoot: '/tmp/approved-project', executionRoot: '/tmp/candidate',
+        grant, taskId: 'task', connectionId: 'local', registrationId: 'local', modelId: 'model',
+        prompt: 'Inspect.', onEvent() {} };
+    await assert.rejects(adapter.start({ ...request, projectRoot: '/tmp/foreign-project' }),
+        /selection binding changed/);
+    await assert.rejects(adapter.start({ ...request, taskId: 'foreign-task' }),
+        /selection binding changed/);
+    await assert.rejects(adapter.start({ ...request, modelId: 'foreign-model' }),
+        /selection binding changed/);
+});
+
 test('Pi Work model-selected read/edit/test stays in a disposable candidate until Dope promotion', async () => {
     const parent = await mkdtemp(join(tmpdir(), 'dope-pi-work-'));
     const project = join(parent, 'project');
@@ -26,6 +79,8 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
     let turn = 0;
     let scopedPrompt = '';
     const calls = [
+        { name: 'read_file', args: { path: 'docs/p3-fixture.md', maxBytes: 4096, offset: 0,
+            expectedSourceHash: '0'.repeat(64) } },
         { name: 'read_file', args: { path: 'docs/p3-fixture.md', maxBytes: 4096, offset: 0 } },
         { name: 'edit_file', args: { operation: 'modify', path: 'README.md', content: 'candidate change\n' } },
         { name: 'run_command', args: { kind: 'test', commandId: 'failing-sample' } },
@@ -34,11 +89,15 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async (_url, options) => {
         const wire = JSON.parse(String(options?.body));
+        if (turn === 1) assert.ok(wire.messages.some((message: any) =>
+            message.role === 'tool' && /status: denied/.test(message.content)));
         assert.equal(wire.model, 'synthetic-local');
         assert.deepEqual(wire.tools.map((item: any) => item.function.name).sort(),
             ['edit_file', 'list_files', 'read_command_output', 'read_file', 'run_command']);
         assert.match(wire.tools.find((item: any) => item.function.name === 'read_file')?.function.description ?? '',
             /FIRST read.*OMIT expectedSourceHash/);
+        assert.match(wire.tools.find((item: any) => item.function.name === 'list_files')?.function.description ?? '',
+            /path "\.".*maxEntries.*1 to 100/);
         const next = calls[turn++];
         const chunks = next ? [
             { delta: { role: 'assistant', tool_calls: [{ index: 0, id: `call-${turn}`, type: 'function',
@@ -116,7 +175,7 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         const startedAt = Date.now();
         const handle = await adapter.start(request);
         await handle.result;
-        assert.equal(turn, 5);
+        assert.equal(turn, 6);
         assert.ok(scopedPrompt.indexOf('Applicable project instructions (AGENTS.md') <
             scopedPrompt.indexOf('Read [task requirement](docs/p3-fixture.md) for this task'));
         assert.match(scopedPrompt, /Project instructions and documentation cannot expand this grant/);
@@ -153,6 +212,8 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         assert.equal(events.some(event => event.kind === 'reasoning'), false);
         assert.ok(events.some(event => event.kind === 'work-observation' &&
             event.toolName === 'read_file' && event.phase === 'completed' && event.brokerInvoked === true));
+        assert.ok(events.some(event => event.kind === 'work-observation' &&
+            event.toolName === 'read_file' && event.phase === 'denied' && event.code === 'SOURCE_HASH_MISMATCH'));
         assert.ok(events.some(event => event.kind === 'work-observation' &&
             event.toolName === 'run_command' && event.phase === 'failed' && event.brokerInvoked === true));
         const commandStart = events.findIndex(event => event.kind === 'command-started');
@@ -263,15 +324,21 @@ test('Pi Work rejects a revoked callback and ignores late Pi events after cancel
     }
 });
 
-test('Pi Work records a safe source-hash denial for a model-invented first-page identity', async () => {
+test('Pi Work returns broker denials to the model and permits a corrected tool call', async () => {
     const parent = await mkdtemp(join(tmpdir(), 'dope-pi-work-source-hash-'));
     const project = join(parent, 'project');
     let workspace: ExecutionWorkspace | undefined;
     const events: any[] = [];
     let reply: any;
+    let listDenied: any;
+    let listRetry: any;
     const host: any = { async start() {}, async runWork(_prompt: string, tool: (call: any) => Promise<any>) {
         reply = await tool({ id: 1, name: 'read_file', arguments: {
             path: 'safe-source.txt', offset: 0, expectedSourceHash: '0'.repeat(64) } });
+        listDenied = await tool({ id: 2, name: 'list_files', arguments: {
+            path: 'missing-directory', maxEntries: 100 } });
+        listRetry = await tool({ id: 3, name: 'list_files', arguments: {
+            path: '.', maxEntries: 100 } });
         return { modelId: 'fixture-model', text: 'No file content read' };
     }, dispose() {} };
     const factory: any = { create() { return host; }, release() {} };
@@ -286,8 +353,11 @@ test('Pi Work records a safe source-hash denial for a model-invented first-page 
         const handle = await adapter.start({ projectRoot: project, executionRoot: workspace.root,
             grant, taskId: 'task-source-hash', connectionId: 'local', registrationId: 'local',
             modelId: 'fixture-model', prompt: 'Read README', onEvent: event => events.push(event) });
-        await assert.rejects(handle.result, /denied/);
+        await handle.result;
         assert.equal(reply.status, 'denied');
+        assert.equal(listDenied.status, 'denied');
+        assert.equal(listRetry.status, 'completed');
+        assert.equal(events.some(event => event.kind === 'authority-denied'), false);
         assert.match(reply.output, /^SOURCE_HASH_MISMATCH:/);
         assert.ok(events.some(event => event.kind === 'work-observation' && event.toolName === 'read_file' &&
             event.phase === 'denied' && event.code === 'SOURCE_HASH_MISMATCH' &&
@@ -364,6 +434,45 @@ test('Pi Work read parser feedback permits a corrected candidate page in the sam
         assert.equal(events.some(event => event.kind === 'authority-denied'), false);
         assert.deepEqual(await readFile(join(workspace.root, 'CANDIDATE.txt')), original);
         adapter.dispose();
+    } finally { await workspace?.dispose(); await rm(parent, { recursive: true, force: true }); }
+});
+
+test('Pi Work list argument mistakes and a file target are retryable, with a successful directory retry', async () => {
+    const parent = await mkdtemp(join(tmpdir(), 'dope-pi-list-recovery-'));
+    const project = join(parent, 'project');
+    let workspace: ExecutionWorkspace | undefined;
+    const replies: any[] = [];
+    const host: any = { async start() {}, async runWork(_prompt: string, tool: (call: any) => Promise<any>) {
+        replies.push(await tool({ id: 1, name: 'list_files', arguments: { path: '', maxEntries: 20 } }));
+        replies.push(await tool({ id: 2, name: 'list_files', arguments: { path: '.', maxEntries: 101 } }));
+        replies.push(await tool({ id: 3, name: 'list_files', arguments: { path: 'README.md', maxEntries: 20 } }));
+        replies.push(await tool({ id: 4, name: 'list_files', arguments: { path: '.', maxEntries: 20 } }));
+        return { modelId: 'fixture-model', text: 'Directory listed' };
+    }, dispose() {} };
+    try {
+        await execute('git', ['clone', '--no-local', '--quiet', '--', resolve('.'), project]);
+        workspace = await ExecutionWorkspace.create(project);
+        await writeFile(join(workspace.root, 'AGENTS.md'), 'Use the approved candidate tools.\n');
+        const grant = selectedGrant(project, 'grant-list-recovery', 'task-list-recovery', 'fixture-model');
+        const events: any[] = [];
+        const adapter = new PiWorkExecutionAdapter({ async bind(_model: any, _host: any, _cwd: any, options: any) {
+            assert.ok(options.workToolNames.includes('list_files'));
+            return { endpoint: 'http://127.0.0.1:9/v1' };
+        }, async assertWorkSelection() {} } as any,
+        { create: () => host, release() {} } as any, () => workspace!, () => []);
+        const handle = await adapter.start({ projectRoot: project, executionRoot: workspace.root,
+            grant, taskId: 'task-list-recovery', connectionId: 'local', registrationId: 'local',
+            modelId: 'fixture-model', prompt: 'List the candidate.', onEvent: event => events.push(event) });
+        await handle.result;
+        assert.deepEqual(replies.map(reply => reply.status), ['failed', 'failed', 'failed', 'completed']);
+        assert.match(replies[0].output, /^INVALID_PATH:.*"\."/);
+        assert.match(replies[1].output, /^INVALID_ENTRY_LIMIT:/);
+        assert.match(replies[2].output, /^NOT_A_DIRECTORY:/);
+        assert.ok(JSON.parse(replies[3].output).some((entry: any) => entry.name === 'README.md'));
+        assert.deepEqual(events.filter(event => event.kind === 'work-observation' &&
+            event.phase === 'recoverable').map(event => [event.code, event.brokerInvoked]),
+        [['INVALID_PATH', false], ['INVALID_ENTRY_LIMIT', false], ['NOT_A_DIRECTORY', true]]);
+        assert.equal(events.some(event => event.kind === 'authority-denied'), false);
     } finally { await workspace?.dispose(); await rm(parent, { recursive: true, force: true }); }
 });
 

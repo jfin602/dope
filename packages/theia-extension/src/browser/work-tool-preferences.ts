@@ -9,9 +9,35 @@ const blank = (): Saved => ({ revision: 1, groups: [], defaults: {}, drafts: {} 
 const validChoice = (value: unknown): value is WorkToolChoice => !!value && typeof value === 'object' &&
     ['groups', 'allow', 'deny'].every(field => Array.isArray((value as Record<string, unknown>)[field]) &&
         ((value as Record<string, unknown>)[field] as unknown[]).every(item => typeof item === 'string'));
-export const hasApprovedWorkCommand = (command?: string): boolean => {
+export const hasApprovedWorkCommand = (command?: string, kind: 'test' | 'build' | 'typecheck' = 'test'): boolean => {
+    if (kind === 'typecheck') return false;
     const words = command?.split(' ');
-    return !!words && words[0] === 'node' && words.length >= 2 && words.every(Boolean);
+    if (!words || words[0] !== 'node' || words.length < 2 || words.length > 4 ||
+        words.some(word => !word || /[;&|`$<>*?{}()[\]\\\s\u0000-\u001f]/u.test(word) ||
+            new TextEncoder().encode(word).length > 512)) return false;
+    const privatePart = (part: string) => {
+        const p = part.toLowerCase();
+        return ['.git', '.dope', '.codex', '.agents', '.ssh', '.aws', '.config', '.gnupg', '.kube',
+            '.docker', '.azure', '.npmrc', '.yarnrc', '.yarnrc.yml', '.netrc', '.pypirc',
+            '.gitconfig', '.git-credentials', 'id_rsa', 'id_ed25519', 'credentials.json',
+            'secrets', 'secret', 'credentials', 'private', 'node_modules'].includes(p) ||
+            p === '.env' || p.startsWith('.env.') ||
+            ['.pem', '.key', '.p12', '.pfx'].some(suffix => p.endsWith(suffix)) ||
+            ['secret.', 'token.', 'credential.'].some(prefix => p.startsWith(prefix));
+    };
+    const path = (value: string, extension: 'js' | 'json') =>
+        /^(?:[A-Za-z0-9_.-]+\/)*[A-Za-z0-9_.-]+$/u.test(value) &&
+        value.split('/').every(part => part !== '.' && part !== '..' && !privatePart(part)) &&
+        (extension === 'json' ? value.endsWith('.json') : /\.(?:c|m)?js$/u.test(value));
+    const args = words.slice(1);
+    if (kind === 'test') {
+        const testArgs = args[0] === '--experimental-strip-types' ? args.slice(1) : args;
+        return testArgs.length === 2 && testArgs[0] === '--test' &&
+            path(testArgs[1], 'js') && /\.test\.(?:c|m)?js$/u.test(testArgs[1]);
+    }
+    return args.length === 1 && path(args[0], 'js') ||
+        args.length === 3 && args[0] === 'node_modules/typescript/bin/tsc' &&
+        args[1] === '-p' && path(args[2], 'json');
 };
 export class WorkToolPreferences {
     constructor(private readonly storage: Pick<Storage, 'getItem' | 'setItem'>) {}
@@ -54,16 +80,17 @@ export class WorkToolPreferences {
         const saved = this.read(); saved.groups = saved.groups.filter(group => group.id !== id);
         this.write(saved);
     }
-    resolve(project: string, task: string, commandsAvailable: boolean) {
+    resolve(project: string, task: string, commandsAvailable: boolean, externalAvailable = false) {
         const choice = this.choice(project, task);
         const available = commandsAvailable ? choice : { ...choice,
             groups: choice.groups.filter(group => group !== 'Commands'),
             allow: choice.allow.filter(id => id !== 'run_command' && id !== 'read_command_output') };
-        return resolveWorkTools(available, this.groups(), commandsAvailable);
+        return resolveWorkTools(available, this.groups(), commandsAvailable, externalAvailable);
     }
     snapshot(project: string, task: string, taskId: string, grantRevision: number,
-        target: { connectionId: string; modelId: string }, commandsAvailable: boolean) {
-        const resolved = this.resolve(project, task, commandsAvailable);
+        target: { connectionId: string; modelId: string }, commandsAvailable: boolean,
+        externalAvailable = false) {
+        const resolved = this.resolve(project, task, commandsAvailable, externalAvailable);
         if (resolved.unavailable.length) throw new Error(`Review unavailable Work tools: ${resolved.unavailable.join('; ')}`);
         return makeWorkToolSelection({ projectUri: project, taskId, grantRevision,
             connectionId: target.connectionId, modelId: target.modelId }, resolved.tools);

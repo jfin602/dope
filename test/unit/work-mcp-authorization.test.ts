@@ -4,6 +4,7 @@ import { checkWorkMCPObservationApproval, createDefaultExecutionGrant,
     createMCPObservationExecutionGrant, parseExecutionGrant, reviseExecutionGrant } from
     '../../packages/agent-core/lib/authority.js';
 import { parseWorkMCPObservationReceipt } from '../../packages/agent-core/lib/authority.js';
+import { makeWorkToolSelection } from '../../packages/agent-core/lib/work-tool-selection.js';
 
 const acceptedAt = '2026-11-17T12:00:00.000Z';
 const now = '2026-11-17T12:02:00.000Z';
@@ -30,6 +31,24 @@ test('default Work grant has no external observation authority; one reviewed cal
     assert.equal(checkWorkMCPObservationApproval(grant, approval, current, 0,
         '2026-11-17T12:11:00.000Z'), false);
     assert.equal(reviseExecutionGrant(grant, '2026-11-17T12:03:00.000Z').mcpObservation, undefined);
+});
+
+test('current Work grants bind a selected external tool to the exact reviewed scope', () => {
+    const selection = makeWorkToolSelection({ projectUri: 'file:///project', taskId: 'task-1',
+        grantRevision: 1, connectionId: scope.connectionId, modelId: scope.modelId },
+    ['read_file', 'mcp_godot_server_info']);
+    const selected = createMCPObservationExecutionGrant({ id: 'grant-2', revision: 1,
+        taskId: 'task-1', acceptedAt, toolSelection: selection, mcpObservation: scope });
+    assert.deepEqual(selected.toolSelection?.tools.map(tool => tool.id), ['read_file', 'mcp_godot_server_info']);
+    assert.throws(() => parseExecutionGrant({ ...selected, mcpObservation: undefined }));
+    assert.throws(() => parseExecutionGrant({ ...selected, toolSelection: {
+        ...selection, tools: selection.tools.filter(tool => tool.id !== 'mcp_godot_server_info') } }));
+    assert.throws(() => parseExecutionGrant({ ...selected, mcpObservation: { ...scope, modelId: 'forged' } }));
+    const historical = parseExecutionGrant({ ...selected, toolSelection: {
+        ...selection, catalogRevision: 1,
+        tools: selection.tools.filter(tool => tool.id !== 'mcp_godot_server_info') } });
+    assert.equal(historical.toolSelection?.catalogRevision, 1);
+    assert.deepEqual(historical.mcpObservation, scope);
 });
 
 test('Work observation approval rejects project, task, model, server, method and candidate drift', () => {

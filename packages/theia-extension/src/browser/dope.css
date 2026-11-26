@@ -1138,6 +1138,7 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-content-work .dope-work-tool[data-status="recoverable"] { border-left-color: var(--theia-warningForeground); }
 .dope-chat-content-work .dope-work-tool > summary { overflow-wrap: anywhere; cursor: pointer; }
 .dope-chat-content-work .dope-work-tool-call { display: block; margin: 6px 0 2px 11px; font-family: var(--theia-code-font-family, monospace); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.dope-chat-content-work .dope-work-tool-feedback { margin: 4px 0 6px 11px; color: var(--theia-warningForeground); font-size: 12px; overflow-wrap: anywhere; }
 .dope-chat-content-work .dope-work-command-label { font-size: 12px; }
 .dope-chat-content-work .dope-work-final-divider { width: 100%; margin: 8px 0 14px; border: 0; border-top: 1px solid var(--theia-widget-border); }
 .dope-chat-content-work .dope-work-message > h3 { margin: 0 0 8px; font-size: 13px; }
@@ -1554,6 +1555,9 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-panel button.dope-chat-composer-more:hover:not(:disabled), .dope-chat-panel button.dope-chat-composer-submit:hover:not(:disabled) { background: transparent; color: var(--dope-primary, var(--theia-focusBorder)); }
 .dope-chat-panel .dope-chat-content-work button.dope-chat-composer-more:hover:not(:disabled) { border: 0; background: transparent; color: var(--dope-primary, var(--theia-focusBorder)); }
 .dope-chat-panel button.dope-chat-composer-submit { margin-left: auto; transition: color 240ms ease, opacity 240ms ease; }
+.dope-chat-panel .dope-chat-content-work button.dope-chat-composer-submit:not(.dope-work-primary),
+.dope-chat-panel .dope-chat-content-work button.dope-chat-composer-submit:not(.dope-work-primary):hover:not(:disabled) {
+    background: transparent; border-color: transparent; }
 .dope-chat-panel .dope-chat-content-work button.dope-work-prepare-submit:disabled { color: var(--theia-descriptionForeground); background: transparent; border: 0; opacity: 1; }
 .dope-chat-panel button.dope-chat-composer-submit:not(:disabled)[aria-label="Send"] { color: var(--dope-primary, var(--theia-focusBorder)); }
 @media (prefers-reduced-motion: reduce) { .dope-chat-panel button.dope-chat-composer-submit { transition: none; } }

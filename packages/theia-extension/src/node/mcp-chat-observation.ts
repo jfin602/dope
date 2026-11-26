@@ -2,12 +2,19 @@ import { mcpProjectKey, MCPProjectPreferencesStore } from './mcp-project-prefere
 import { MCPServerRegistryStore } from './mcp-server-registry-store';
 import { MCPProjectActivationBackend } from './mcp-project-activation-backend';
 import { MCPStdioDiscovery, type MCPDiscovery } from './mcp-stdio-discovery';
+import { WORK_TOOL_CATALOG } from '@dope/agent-core/lib/work-tool-selection';
 
 export interface MCPChatDescriptor { name: string; description: string;
     parameters: { type: 'object'; properties: Record<string, never>; additionalProperties: false } }
 
 /** Reviewed adapter profile. Its server implementation was inspected in P1; metadata cannot add tools. */
-const reviewed = new Map([['godot', new Map([['godot_get_server_info', 'mcp_godot_server_info']])]]);
+const reviewed = new Map<string, Map<string, string>>();
+for (const tool of WORK_TOOL_CATALOG) {
+    if (!('serverId' in tool)) continue;
+    const methods = reviewed.get(tool.serverId) ?? new Map<string, string>();
+    methods.set(tool.toolName, tool.id);
+    reviewed.set(tool.serverId, methods);
+}
 /** Dope reviewed policy, independent of any external tool annotation or description. */
 export function reviewedMCPObservation(serverId: string, toolName: string): string | undefined {
     return reviewed.get(serverId)?.get(toolName);

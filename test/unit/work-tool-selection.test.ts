@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createDefaultExecutionGrant, parseExecutionGrant } from '../../packages/agent-core/lib/authority.js';
-import { makeWorkToolSelection, parseWorkToolSelection, resolveWorkTools } from
+import { makeWorkToolSelection, parseWorkToolSelection, resolveWorkTools, workToolCatalogFor } from
     '../../packages/agent-core/lib/work-tool-selection.js';
-import { WorkToolPreferences } from '../../packages/theia-extension/lib/browser/work-tool-preferences.js';
+import { WorkToolPreferences, hasApprovedWorkCommand } from '../../packages/theia-extension/lib/browser/work-tool-preferences.js';
 
 const target = { connectionId: 'local', modelId: 'model-1' };
 const project = 'file:///tmp/dope-a';
@@ -12,6 +12,16 @@ const memory = () => {
     return { getItem(key: string) { return values.get(key) ?? null; },
         setItem(key: string, value: string) { values.set(key, value); } };
 };
+
+test('command tools require a validation shape accepted by the sandbox broker', () => {
+    assert.equal(hasApprovedWorkCommand('node --test check.test.js'), true);
+    assert.equal(hasApprovedWorkCommand('node check.js'), false);
+    assert.equal(hasApprovedWorkCommand('node check.js', 'build'), true);
+    assert.equal(hasApprovedWorkCommand('node --test ../outside.test.js'), false);
+    assert.equal(hasApprovedWorkCommand('node --test check.js'), false);
+    assert.equal(hasApprovedWorkCommand('node --test secret.test.js'), false);
+    assert.equal(hasApprovedWorkCommand('node --test check.test.js;rm'), false);
+});
 
 test('groups, individual overrides and command dependency resolve with denial precedence', () => {
     const groups = [{ id: 'small', name: 'Small', tools: ['read_file', 'edit_file'] }];
@@ -23,6 +33,26 @@ test('groups, individual overrides and command dependency resolve with denial pr
     assert.deepEqual(resolveWorkTools({ groups: ['Commands'], allow: [], deny: [] }, [], false),
         { tools: [], unavailable: ['run_command: no approved task command',
             'read_command_output: no approved task command'] });
+});
+
+test('trusted Work catalog includes the reviewed MCP observation with project and consent reasons', () => {
+    const unavailable = workToolCatalogFor({ locality: 'local', commandsAvailable: false,
+        externalOffered: false, externalConsent: false });
+    assert.equal(unavailable.length, 6);
+    assert.equal(unavailable.find(tool => tool.id === 'mcp_godot_server_info')?.available, false);
+    assert.match(unavailable.find(tool => tool.id === 'mcp_godot_server_info')?.unavailableReason ?? '',
+        /inactive for this project/);
+    assert.match(unavailable.find(tool => tool.id === 'run_command')?.unavailableReason ?? '', /approved task command/);
+    const offered = workToolCatalogFor({ locality: 'local', commandsAvailable: true,
+        externalOffered: true, externalConsent: true });
+    assert.equal(offered.find(tool => tool.id === 'mcp_godot_server_info')?.available, true);
+    assert.deepEqual(resolveWorkTools({ groups: ['Inspect'], allow: ['mcp_godot_server_info'], deny: [] },
+        [], true, true).tools, ['read_file', 'list_files', 'mcp_godot_server_info']);
+    assert.match(resolveWorkTools({ groups: [], allow: ['mcp_godot_server_info'], deny: [] },
+        [], true, false).unavailable[0], /observation consent missing/);
+    assert.deepEqual(resolveWorkTools({ groups: ['external'], allow: [], deny: ['mcp_godot_server_info'] },
+        [{ id: 'external', name: 'External', tools: ['mcp_godot_server_info'] }], true, false),
+    { tools: [], unavailable: [] }, 'an explicit denial keeps an unavailable group tool out of Work');
 });
 
 test('custom groups persist across instances while task and default choices stay project scoped', () => {
@@ -61,6 +91,10 @@ test('saved approval freezes identities and rejects stale catalog, unknown tools
     assert.throws(() => parseExecutionGrant({ ...grant, revision: 2 }));
     assert.throws(() => parseWorkToolSelection({ ...frozen, tools: [
         { id: 'read_command_output', schemaRevision: 1 }] }));
+    assert.deepEqual(parseWorkToolSelection({ ...frozen, catalogRevision: 1 }).tools,
+        frozen.tools, 'historical built-in selections remain readable');
+    assert.throws(() => parseWorkToolSelection({ ...frozen, catalogRevision: 1,
+        tools: [{ id: 'mcp_godot_server_info', schemaRevision: 1 }] }));
 });
 
 test('a removed group cannot silently expand a draft or produce an approved run', () => {

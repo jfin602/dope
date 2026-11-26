@@ -1,7 +1,7 @@
 import type { AgentRun, AgentRunEvent, AgentSteeringState, AgentTranscriptEntry, WorkSession } from '@dope/agent-core';
 import type { MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
-import { workCommandLabel, workCommandOutput, workToolCall, workToolLabel,
+import { workCommandLabel, workCommandOutput, workToolCall, workToolFeedback, workToolLabel,
     type WorkToolEntry } from './work-transcript-presentation';
 import { formatRunElapsedCompact } from './run-elapsed';
 import { copyChatText } from './chat-copy-text';
@@ -23,7 +23,7 @@ export function workConversationTimeline(entries: readonly AgentTranscriptEntry[
     ].sort((a, b) => a.at.localeCompare(b.at));
 }
 
-/** Render only persisted Work evidence. All untrusted strings cross a text or safe-Markdown boundary. */
+/** Render Work conversation evidence, including a just-submitted prompt awaiting its run. */
 export function renderWorkConversation(markdown: MarkdownRenderer, entries: readonly AgentTranscriptEntry[],
     session?: WorkSession, initialPrompt?: string, steering?: AgentSteeringState,
     runs: readonly AgentRun[] = [], selectedRun?: AgentRun): HTMLElement {
@@ -111,7 +111,8 @@ export function renderWorkConversation(markdown: MarkdownRenderer, entries: read
     const firstPrompt = initialPrompt ?? initialSegment?.prompt;
     if (firstPrompt?.trim()) userMessage(firstPrompt, 'Work request',
         initialSegment?.startedAt ?? initialRun?.createdAt);
-    const tools = new Map<string, { history: WorkToolEntry[]; node: HTMLDetailsElement; summary: HTMLElement; call: HTMLElement }>();
+    const tools = new Map<string, { history: WorkToolEntry[]; node: HTMLDetailsElement; summary: HTMLElement;
+        call: HTMLElement; feedback: HTMLElement }>();
     let reasoningGroup: { runId: string; body: HTMLElement } | undefined;
     let previousRunId = initialSegment?.runId ?? entries[0]?.runId ?? initialRun?.id;
     const activities = new Map<string, HTMLElement>();
@@ -217,8 +218,9 @@ export function renderWorkConversation(markdown: MarkdownRenderer, entries: read
                 node.className = 'dope-work-tool dope-work-command';
                 const summary = document.createElement('summary');
                 const call = document.createElement('code'); call.className = 'dope-work-tool-call';
-                node.append(summary, call); activity.append(node);
-                tool = { history: [], node, summary, call };
+                const feedback = document.createElement('p'); feedback.className = 'dope-work-tool-feedback';
+                node.append(summary, call, feedback); activity.append(node);
+                tool = { history: [], node, summary, call, feedback };
                 tools.set(toolKey, tool);
             }
             tool.history.push(entry);
@@ -227,6 +229,8 @@ export function renderWorkConversation(markdown: MarkdownRenderer, entries: read
             tool.summary.textContent = `⚙ ${label}`;
             tool.summary.setAttribute('aria-label', `Tool ${label}`);
             tool.call.textContent = workToolCall(tool.history);
+            tool.feedback.textContent = workToolFeedback(entry) ?? '';
+            tool.feedback.hidden = !tool.feedback.textContent;
         } else if (entry.kind === 'command') {
             reasoningGroup = undefined;
             const command = document.createElement('div');
@@ -255,7 +259,8 @@ export function renderWorkConversation(markdown: MarkdownRenderer, entries: read
             finishRun(segment.runId);
         }
     }
-    if (!timeline.length) note(session ? 'No transcript entries have been recorded yet.' :
-        'Transcript not recorded for this historical run.');
+    if (!timeline.length && (session || runs.length || selectedRun))
+        note(session ? 'No transcript entries have been recorded yet.' :
+            'Transcript not recorded for this historical run.');
     return root;
 }

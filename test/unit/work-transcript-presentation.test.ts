@@ -3,7 +3,8 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { WorkSelectionController, workManualGateReady, workRunOverview } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
 import { restoreWorkScroll, workCommandLabel,
-    workCommandOutput, workToolStatus, workToolCall, workToolLabel } from '../../packages/theia-extension/lib/browser/work-transcript-presentation.js';
+    workCommandOutput, workToolStatus, workToolCall, workToolFeedback,
+    workToolLabel } from '../../packages/theia-extension/lib/browser/work-transcript-presentation.js';
 import { ChatScrollFollow } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
 import type { AgentRuntimeService } from '../../packages/contracts/src/agent-runtime-service.ts';
@@ -157,6 +158,10 @@ test('Work tool calls show validated arguments and withhold unavailable values',
     assert.equal(workToolStatus('denied'), 'Authority denied');
     assert.equal(workToolStatus('cancelled'), 'Cancelled');
     assert.equal(workToolCall([{ ...base, phase: 'recoverable', code: 'INVALID_ARGUMENTS' }]), 'read_file()');
+    assert.equal(workToolFeedback({ ...base, phase: 'recoverable', code: 'INVALID_ENTRY_LIMIT',
+        detail: '{"feedback":"INVALID_ENTRY_LIMIT: maxEntries must be an integer from 1 to 100."}' }),
+    'INVALID_ENTRY_LIMIT: maxEntries must be an integer from 1 to 100.');
+    assert.equal(workToolFeedback({ ...base, phase: 'denied', code: 'AUTHORITY_DENIED' }), undefined);
 });
 
 test('dockable Work conversation uses safe Markdown, correlated cards and paged saved evidence', async () => {
@@ -168,7 +173,7 @@ test('dockable Work conversation uses safe Markdown, correlated cards and paged 
     assert.match(controller, /readTranscript\(handle, runId, cursor, 100\)/u);
     assert.match(widget, /entry\.kind === 'message'/u);
     assert.match(widget, /renderUntrustedMessageMarkdown\(markdown, entry\.text\)/u);
-    assert.match(widget, /body\.textContent = item\.message\.text/u);
+    assert.match(widget, /userMessage\(item\.message\.text, 'Your Work message'/u);
     assert.match(css, /prefers-reduced-motion: reduce/u);
     const follow = new ChatScrollFollow();
     follow.select('run:one');

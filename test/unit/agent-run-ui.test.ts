@@ -7,8 +7,9 @@ import type { AgentRun } from '../../packages/agent-core/src/contracts.ts';
 import type { AgentRuntimeService } from '../../packages/contracts/src/agent-runtime-service.ts';
 import type { AIRegistryService } from '../../packages/contracts/src/ai-registry-service.ts';
 import type { AIRolePolicyService } from '../../packages/contracts/src/ai-role-policy-service.ts';
+import { WorkToolPreferences } from '../../packages/theia-extension/lib/browser/work-tool-preferences.js';
 
-function harness() {
+function harness(tools?: WorkToolPreferences) {
     const now = new Date().toISOString();
     const model = { version: 1, connectionId: 'codex', providerModelKey: 'gpt', label: 'GPT', locality: 'hosted',
         enabled: true, state: 'ready', capabilities: { conversationalText: { value: true, source: 'adapter-known' },
@@ -53,7 +54,7 @@ function harness() {
         async readEvents() { return { events: [], nextSequence: 0, hasMore: false }; } };
     const controller = new AgentRunController(runtime as unknown as AgentRuntimeService,
         { inventory: async () => inventory } as unknown as AIRegistryService,
-        { list: async () => policy } as unknown as AIRolePolicyService, () => {});
+        { list: async () => policy } as unknown as AIRolePolicyService, () => {}, tools);
     return { controller, runtime, inventory, policy, get task() { return task; }, get grant() { return grant; },
         get authorized() { return authorized; }, get stopped() { return stopped; },
         get oneShotStarts() { return oneShotStarts - sessionStarts; }, get sessionStarts() { return sessionStarts; },
@@ -67,7 +68,7 @@ function harness() {
             changeSummary: { version: 1, filesChanged: 1, insertions: 2, deletions: 1, summary: 'Updated source', truncated: false } }; } };
 }
 
-test('direct task displays eligible target and requires explicit grant before starting; Stop requests backend cancellation', async () => {
+test('direct task requires explicit Start and hosted consent, then creates a bounded internal grant', async () => {
     const h = harness();
     h.inventory.registry.models[0].limits.contextWindowTokens = { source: 'unknown' } as typeof h.inventory.registry.models[0]['limits']['contextWindowTokens'];
     await h.controller.attach('file:///project');
@@ -77,9 +78,11 @@ test('direct task displays eligible target and requires explicit grant before st
     await h.controller.resolveTarget(); assert.match(h.controller.targetMessage, /Coding · GPT/);
     h.controller.setPolicy({ kind: 'follow-coding-agent' }); await h.controller.resolveTarget();
     h.controller.edit('Objective', 'Instructions'); assert.equal(h.controller.canStart, false);
-    h.controller.acceptGrant(true); assert.equal(h.controller.canStart, false);
+    assert.equal(h.controller.canStart, false);
     h.controller.authorizeHostedProjectData(true); assert.equal(h.controller.canStart, true);
+    assert.equal(h.oneShotStarts, 0);
     await h.controller.start(); assert.equal((h.task as { completion: { validation: unknown[] } }).completion.validation.length, 0);
+    assert.equal((h.grant as { acceptedBy: string }).acceptedBy, 'developer');
     assert.equal(h.oneShotStarts, 1); assert.equal(h.sessionStarts, 0);
     h.finish('completed');
     await h.controller.attach('file:///project');
@@ -272,7 +275,12 @@ test('Local exact and role targets require observed readiness and never grant ho
 });
 
 test('direct Local Work requires separate MCP grant acceptance and decides only a pending call', async () => {
-    const h = harness();
+    const stored = new Map<string, string>();
+    const tools = new WorkToolPreferences({ getItem: key => stored.get(key) ?? null,
+        setItem: (key, value) => { stored.set(key, value); } });
+    tools.saveChoice('file:///project', 'direct', { groups: ['Inspect'],
+        allow: ['mcp_godot_server_info'], deny: [] });
+    const h = harness(tools);
     const local = { ...h.inventory.registry.models[0], connectionId: 'local', providerModelKey: 'qwen',
         label: 'Qwen', locality: 'local', capabilities: { ...h.inventory.registry.models[0].capabilities,
             toolCalling: { source: 'adapter-known', value: true } } };
@@ -292,8 +300,6 @@ test('direct Local Work requires separate MCP grant acceptance and decides only 
     h.controller.edit('Observe', 'Use only the reviewed observation');
     h.controller.setValidation('npm test');
     h.controller.acceptMCPObservation(true);
-    assert.equal(h.controller.canStart, false);
-    h.controller.acceptGrant(true);
     assert.equal(h.controller.canStart, true);
     await h.controller.start();
     assert.deepEqual((h.grant as any).mcpObservation, offer);

@@ -44,7 +44,7 @@ test('Prompt Stack discovery preserves folder refresh, invalid warnings, and sto
 });
 
 test('Work controls and critical blockers remain visible; verbose evidence is disclosed', () => {
-    for (const control of ['Start', 'Resume', 'Stop', 'View Work conversation', 'Queue message',
+    for (const control of ['Start Work', 'Resume Work', 'Stop', 'View Work conversation', 'Queue message',
         'Finish Work', 'Verify manual gate',
         'Verify checkpoint', 'Reconcile repository', 'Continue with dirty worktree']) {
         assert.ok(widget.includes(`'${control}'`) || widget.includes(`? '${control}'`), control);
@@ -54,7 +54,10 @@ test('Work controls and critical blockers remain visible; verbose evidence is di
     assert.match(widget, /files\.className = 'dope-work-diagnostics'/);
     assert.match(widget, /phase\.run\.authorityDecision && !phase\.run\.authorityDecision\.allowed \? 'dope-work-warning'/);
     assert.match(widget, /sequence\.gateMessage\) detail\(sequence\.gateMessage, 'dope-work-warning'\)/);
-    assert.match(widget, /acceptLabel\.append\(accept, ' Accept project execution grant'\)/);
+    assert.doesNotMatch(widget, /Review (?:fixed )?project execution grant|Accept project execution grant/);
+    assert.doesNotMatch(widget, /dope-work-grant-accept|Accept this model, selected tools, sandbox permissions/);
+    assert.match(widget, /heading\.textContent = 'Tools for this Work'/);
+    assert.match(widget, /effective\.textContent = `Effective tools:/);
     assert.match(widget, /start\.disabled = !controller\.canStart/);
     assert.match(widget, /start\.disabled = !phase\.canStart/);
     assert.match(css, /\.dope-chat-composer textarea \{[^}]*resize: none/);
@@ -62,7 +65,7 @@ test('Work controls and critical blockers remain visible; verbose evidence is di
 });
 
 test('Prepare Work keeps editable settings above a fixed Chat-style composer', () => {
-    assert.match(widget, /this\.composingWork && !this\.panel\.work \? 'PREPARE WORK'/);
+    assert.match(widget, /this\.composingWork && !this\.panel\.work && !this\.workStartingPrompt \? 'PREPARE WORK'/);
     assert.match(widget, /settings\.className = 'dope-work-prepare-settings'/);
     assert.match(widget, /composer\.className = 'dope-chat-composer dope-work-prepare-composer'/);
     assert.match(widget, /form\.append\(settings, composer\)/);
@@ -80,6 +83,14 @@ test('Prepare Work keeps editable settings above a fixed Chat-style composer', (
     assert.match(css, /\.dope-chat-content-work \.dope-work-prepare-readiness button:not\(\.dope-work-primary\) \{[^}]*background: var\(--theia-errorForeground/);
     assert.match(css, /button\.dope-chat-composer-more:not\(\.dope-work-primary\) \{ border: 0; background: transparent; \}/);
     assert.match(css, /button\.dope-work-prepare-submit:disabled \{[^}]*background: transparent; border: 0/);
+});
+
+test('sending Work enters the full conversation layout without a separate starting page', () => {
+    assert.match(widget, /if \(!work && this\.workStartingPrompt\) \{[\s\S]*?renderWorkConversation\(this\.markdown, \[\], undefined,\s*this\.workStartingPrompt\)/);
+    assert.match(widget, /activity\.className = 'dope-chat-stream-activity dope-work-run-activity'/);
+    assert.match(widget, /composer\.className = 'dope-work-conversation-composer dope-chat-composer'/);
+    assert.doesNotMatch(widget, /region\.setAttribute\('aria-label', 'Starting Work'\)/);
+    assert.match(css, /button\.dope-chat-composer-submit:not\(\.dope-work-primary\):hover:not\(:disabled\) \{\s*background: transparent; border-color: transparent;/);
 });
 
 test('Work detail uses the P1 projection and preserves guarded controller callbacks', () => {

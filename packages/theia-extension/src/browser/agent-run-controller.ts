@@ -31,6 +31,7 @@ export class AgentRunController {
     instructions = '';
     forkedFromRunId?: string;
     validationCommand = '';
+    executionMode: 'isolated' | 'direct' = 'isolated';
     worktreeReview?: WorktreeReview;
     commitMessage = 'Checkpoint before Work';
     policy: AgentModelPolicy = { kind: 'follow-coding-agent' };
@@ -47,7 +48,8 @@ export class AgentRunController {
         this.project = project; this.handle = undefined; this.runs = []; this.sequences = []; this.selected = undefined;
         this.task = undefined; this.events = []; this.sequence = 0; this.accepted = false; this.hostedProjectDataAuthorized = false;
         this.mcpOffer = undefined; this.mcpAccepted = false; this.pendingMCP = [];
-        this.objective = ''; this.instructions = ''; this.validationCommand = ''; this.worktreeReview = undefined;
+        this.objective = ''; this.instructions = ''; this.validationCommand = ''; this.executionMode = 'isolated';
+        this.worktreeReview = undefined;
         this.forkedFromRunId = undefined;
         this.changed();
         if (!project) return;
@@ -139,6 +141,9 @@ export class AgentRunController {
         this.accepted = false; this.worktreeReview = undefined; }
     setValidation(command: string, notify = true): void { this.validationCommand = command; this.accepted = false;
         this.worktreeReview = undefined; if (notify) this.changed(); }
+    setExecutionMode(mode: 'isolated' | 'direct'): void {
+        this.executionMode = mode; this.worktreeReview = undefined; this.changed();
+    }
     cancelWorktreeReview(): void { this.worktreeReview = undefined; this.message = ''; this.changed(); }
     async commitWorktree(): Promise<AgentRun | undefined> {
         if (!this.handle || !this.worktreeReview || this.busy) return;
@@ -163,27 +168,41 @@ export class AgentRunController {
         await this.refresh(); this.changed();
     }
     authorizeHostedProjectData(authorized: boolean): void { this.hostedProjectDataAuthorized = authorized; this.changed(); }
-    get canStart(): boolean { return Boolean((this.resolved?.locality !== 'hosted' || this.hostedProjectDataAuthorized) && this.handle && this.project && this.resolved && (this.tools || this.accepted) &&
+    get canStart(): boolean { return Boolean((this.executionMode !== 'direct' ||
+        this.resolved?.locality === 'local' && this.validationCommand.trim()) &&
+        (this.resolved?.locality !== 'hosted' || this.hostedProjectDataAuthorized) && this.handle && this.project && this.resolved &&
         (this.resolved?.locality !== 'local' || !this.tools ||
-            !this.tools.resolve(this.project ?? '', 'direct', hasApprovedWorkCommand(this.validationCommand)).unavailable.length) &&
+            !this.tools.resolve(this.project ?? '', 'direct', hasApprovedWorkCommand(this.validationCommand),
+                this.mcpAccepted).unavailable.length) &&
         this.objective.trim() && this.instructions.trim() && !this.busy && !this.runs.some(run =>
             ['pending', 'running', 'blocked', 'cancelling'].includes(run.status))); }
     async start(continueDirty = false): Promise<AgentRun | undefined> {
         if (!this.canStart || !this.handle || !this.project) return;
+        const toolChoice = this.tools && JSON.stringify(this.tools.choice(this.project, 'direct'));
+        const approvedDraft = JSON.stringify([this.objective, this.instructions, this.validationCommand, this.policy, this.executionMode]);
         this.busy = true; this.message = ''; this.changed();
         try {
             const review = await this.runtime.previewWorktree(this.handle);
             if (!review.clean && (!continueDirty || review.fingerprint !== this.worktreeReview?.fingerprint)) {
                 this.worktreeReview = review; return;
             }
+            if (this.executionMode === 'direct' && !review.clean)
+                throw new Error('Direct Work requires a clean project; save or resolve existing changes first.');
+            if (this.executionMode === 'direct' && !this.validationCommand.trim())
+                throw new Error('Direct Work requires a Dope validation command.');
             this.worktreeReview = undefined;
             const shown = this.resolved!;
             const fresh = (await this.resolvePolicyTarget(this.policy)).target;
             if (!fresh || fresh.connectionId !== shown.connectionId || fresh.modelId !== shown.modelId ||
                 fresh.locality !== shown.locality || (fresh.locality === 'hosted' && !this.hostedProjectDataAuthorized))
                 throw new Error('Coding Agent selection changed. Review the target and approve again.');
+            if (this.tools && toolChoice !== JSON.stringify(this.tools.choice(this.project, 'direct')))
+                throw new Error('Work tool selection changed. Review the tools and start again.');
+            if (approvedDraft !== JSON.stringify([this.objective, this.instructions, this.validationCommand, this.policy, this.executionMode]))
+                throw new Error('Work task changed. Review the task and start again.');
             let mcpScope: WorkMCPObservationScope | undefined;
-            if (this.mcpAccepted) {
+            if (this.mcpAccepted && this.tools?.resolve(this.project, 'direct',
+                hasApprovedWorkCommand(this.validationCommand), true).tools.includes('mcp_godot_server_info')) {
                 if (!this.mcpOffer || fresh.locality !== 'local') throw new Error('Work MCP observation offer changed');
                 const offered = await this.runtime.workMCPObservationOffer(this.handle,
                     fresh.connectionId, fresh.modelId);
@@ -199,16 +218,19 @@ export class AgentRunController {
             const task = parseAgentTask({ version: AGENT_SCHEMA_VERSION, id: crypto.randomUUID(), createdAt: new Date().toISOString(),
                 objective: this.objective.trim(), instructions: this.instructions.trim(), projectRoot: '.',
                 modelPolicy: this.policy, controls: {}, authority: { profile: 'phase-8b-project' },
+                executionMode: this.executionMode,
                 completion: { validation: this.validationCommand.trim() ?
                     [{ kind: 'test', label: 'Required validation', command: this.validationCommand.trim() }] : [],
                     requireValidationPass: !!this.validationCommand.trim() }, origin: { kind: 'direct' },
                 ...(this.forkedFromRunId ? { forkedFromRunId: this.forkedFromRunId } : {}),
                 reviewPolicy: { kind: 'required' as const } });
             this.task = await this.runtime.createTask(this.handle, task);
+            if (this.tools && toolChoice !== JSON.stringify(this.tools.choice(this.project, 'direct')))
+                throw new Error('Work tool selection changed. Review the tools and start again.');
             const grantInput = { id: crypto.randomUUID(), revision: 1, taskId: task.id,
                 acceptedAt: new Date().toISOString(), ...(fresh.locality === 'local' && this.tools ?
                     { toolSelection: this.tools.snapshot(this.project, 'direct', task.id, 1, fresh,
-                        hasApprovedWorkCommand(this.validationCommand)) } : {}) };
+                        hasApprovedWorkCommand(this.validationCommand), !!mcpScope) } : {}) };
             const grant = mcpScope ? createMCPObservationExecutionGrant({ ...grantInput,
                 mcpObservation: mcpScope }) : createDefaultExecutionGrant(grantInput);
             const start = fresh.locality === 'local' ? this.runtime.startWorkSession.bind(this.runtime) :
@@ -220,7 +242,7 @@ export class AgentRunController {
             await this.refresh();
             return run;
         } catch (error) { this.message = error instanceof Error ? error.message :
-            'Agent Run could not start. Review the project, target and grant, then retry.'; }
+            'Agent Run could not start. Review the project, target and tools, then retry.'; }
         finally { this.busy = false; this.changed(); }
     }
     async stop(): Promise<void> {

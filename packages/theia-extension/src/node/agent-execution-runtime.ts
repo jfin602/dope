@@ -6,6 +6,7 @@ import type { AgentExecutionAdapter, AgentExecutionEvent, AgentExecutionHandle, 
 import { AgentStore } from '@dope/agent-core/lib/node/agent-store';
 import { captureGitBasis, captureGitFinal } from '@dope/agent-core/lib/node/git-evidence';
 import { ExecutionWorkspace, PromotionFailure } from '@dope/agent-core/lib/node/execution-workspace';
+import { DirectWorkJournal } from '@dope/agent-core/lib/node/direct-work-journal';
 import { preflightLocalToolSandbox } from '@dope/agent-core/lib/node/local-tool-sandbox';
 import type { LocalSandboxPreflight } from '@dope/agent-core/lib/node/local-tool-sandbox';
 import type { LocalProcessCommand } from '@dope/agent-core/lib/node/local-tool-broker';
@@ -22,6 +23,7 @@ import { verifyRecoveryReads, workRecoveryContext } from './work-recovery';
 import type { PlanningStore } from '@dope/visual-planning/lib/node/planning-store';
 import type { RoadmapStore } from '@dope/project-intelligence/lib/node/roadmap-store';
 import { createHash } from 'node:crypto';
+import { join } from 'node:path';
 
 interface Active {
     root: string; run?: AgentRun; task?: AgentTask; handle?: AgentExecutionHandle; workspace?: ExecutionWorkspace; grant?: ExecutionGrant;
@@ -36,6 +38,7 @@ interface Active {
     commands: Map<string, { command: string; started: number }>;
     transcriptCommands: Set<string>; lastMessage?: string; transcriptAt?: string; transcriptIncomplete?: boolean;
     workSessionId?: string;
+    directJournal?: DirectWorkJournal;
 }
 
 /** Codex reports the shell invocation, not only its argument. Keep the match exact so a
@@ -95,6 +98,7 @@ function phaseStackReviewScope(instructions: string): { delegablePaths: string[]
 export class AgentExecutionRuntime {
     private readonly active = new Map<string, Active>();
     private readonly reviewDecisions = new Set<string>();
+    private readonly editorGuards = new Map<string, Set<(path: string) => Promise<boolean>>>();
     private disposed = false;
 
     constructor(private readonly store: AgentStore,
@@ -107,6 +111,28 @@ export class AgentExecutionRuntime {
         private readonly localSandboxPreflight: () => Promise<LocalSandboxPreflight> = preflightLocalToolSandbox,
         private readonly planning?: Pick<PlanningStore, 'read'>,
         private readonly roadmap?: Pick<RoadmapStore, 'read'>) {}
+
+    registerEditorGuard(root: string, guard: (path: string) => Promise<boolean>): () => void {
+        const guards = this.editorGuards.get(root) ?? new Set();
+        guards.add(guard); this.editorGuards.set(root, guards);
+        return () => { guards.delete(guard); if (!guards.size) this.editorGuards.delete(root); };
+    }
+
+    localDirect(request: AgentExecutionRequest): { journal: DirectWorkJournal;
+        unsaved(path: string): Promise<boolean> } {
+        const active = this.active.get(request.projectRoot);
+        if (request.executionMode !== 'direct' || !active?.directJournal ||
+            active.run?.id !== request.runId || active.run?.executionMode !== 'direct' ||
+            active.task?.id !== request.taskId || !this.editorGuards.get(request.projectRoot)?.size)
+            throw new Error('Direct Work editor conflict enforcement unavailable');
+        return { journal: active.directJournal,
+            unsaved: async path => {
+                const guards = this.editorGuards.get(request.projectRoot);
+                if (!guards?.size) throw new Error('Direct Work editor guard disconnected');
+                const states = await Promise.all([...guards].map(guard => guard(path)));
+                return states.some(Boolean);
+            } };
+    }
 
     localWorkspace(request: AgentExecutionRequest): ExecutionWorkspace {
         const active = this.active.get(request.projectRoot);
@@ -598,6 +624,7 @@ export class AgentExecutionRuntime {
         const unavailable = (reason: string) => ({ eligible: false, reason, sourceRunId: runId });
         const run = await this.store.readRun(root, runId);
         if (!run || !['failed', 'cancelled', 'interrupted'].includes(run.status) ||
+            run.executionMode === 'direct' ||
             this.active.has(root) && this.active.get(root)?.run?.id === runId || run.candidateReview || run.reviewDecision ||
             run.authorityDecision || run.appliedFiles?.length)
             return unavailable('Run is not a stopped, unpromoted candidate');
@@ -703,6 +730,7 @@ export class AgentExecutionRuntime {
                     JSON.stringify(task.authority) !== JSON.stringify(originalTask.authority) ||
                     JSON.stringify(task.completion) !== JSON.stringify(originalTask.completion) ||
                     JSON.stringify(task.reviewPolicy) !== JSON.stringify(originalTask.reviewPolicy) ||
+                    (task.executionMode ?? 'isolated') !== (originalTask.executionMode ?? 'isolated') ||
                     (sourceRun.candidateReview && !sourceRun.reviewDecision) ||
                     (sourceRun.status !== 'completed' && !!sourceRun.appliedFiles?.length) ||
                     (sourceRun.status === 'interrupted' && !followUp.discardUnverifiedCandidate) ||
@@ -728,6 +756,9 @@ export class AgentExecutionRuntime {
             }
             if (!task) throw new Error('Persisted AgentTask required');
             active.task = task;
+            const executionMode = task.executionMode ?? 'isolated';
+            if (executionMode === 'direct' && (sequence || resume || !this.editorGuards.get(root)?.size))
+                throw new Error('Direct Work requires an editor conflict guard and a fresh local run');
             if (!resume && task.origin.kind === 'work-item' && existing.some(run => run.taskId === task.id))
                 throw new Error('WorkItem AgentTask already has an AgentRun; launch a new task for another attempt');
             if (!(sequence ? task.origin.kind === 'phase-stack' :
@@ -754,6 +785,11 @@ export class AgentExecutionRuntime {
             const selected = await this.select(task.modelPolicy, hostedAuthorized);
             if (persistentWork && (selected.adapter.id !== 'pi-local-work' || sequence || resume))
                 throw new Error('Persistent Work requires an embedded local Pi session');
+            if (executionMode === 'direct' && selected.adapter.id !== 'pi-local-work')
+                throw new Error('Direct Work requires the brokered local Pi runtime');
+            if (executionMode === 'direct' && (!task.completion.requireValidationPass ||
+                !task.completion.validation.length || task.completion.validation.some(target => !target.command?.trim())))
+                throw new Error('Direct Work requires Dope-owned validation');
             if (followUp && selected.adapter.id !== 'pi-local-work')
                 throw new Error('A new Work segment requires an eligible local Pi model');
             if (selected.adapter.id === 'pi-local-work' && !grant.toolSelection)
@@ -799,6 +835,14 @@ export class AgentExecutionRuntime {
                     throw new Error('Original source HEAD changed');
                 await this.store.createTask(root, task);
             } else active.workspace = await ExecutionWorkspace.create(root, acceptedDirty);
+            const runId = randomUUID();
+            if (executionMode === 'direct') {
+                if (acceptedDirty) throw new Error('Direct Work requires a clean source basis');
+                active.directJournal = await DirectWorkJournal.create(root, basis.head, task.id, runId, grant,
+                    task.origin.kind === 'work-item' ? { authorizedPaths: task.origin.scope.delegablePaths,
+                        reservedPaths: task.origin.scope.humanReservedPaths } : undefined);
+                active.workspace.bindDirectBasis(active.directJournal);
+            }
             const checkedRecovery = workRecoveryContext(taskContract, resume ? sourceRun : undefined);
             if (resume && checkedRecovery.reads.length) {
                 await verifyRecoveryReads(active.workspace.root, grant, checkedRecovery.reads);
@@ -807,8 +851,11 @@ export class AgentExecutionRuntime {
             active.initialCandidateFingerprint = await active.workspace.fingerprint();
             active.grant = grant;
             const now = new Date().toISOString();
-            const pending: AgentRun = { version: AGENT_SCHEMA_VERSION, id: randomUUID(), taskId: task.id,
+            const pending: AgentRun = { version: AGENT_SCHEMA_VERSION, id: runId, taskId: task.id,
                 status: 'pending', grantId: grant.id, grantRevision: grant.revision,
+                executionMode,
+                ...(active.directJournal ? { directJournal: { id: active.directJournal.id,
+                    path: `.dope/agent/direct-journals/${active.directJournal.id}.json` } } : {}),
                 ...(grant.toolSelection ? { toolSelection: grant.toolSelection } : {}),
                 ...(acceptedDirty ? { acceptedDirty } : {}),
                 requestedPolicy: task.modelPolicy, projectRoot: '.', ...(task.projectId ? { projectId: task.projectId } : {}),
@@ -826,7 +873,7 @@ export class AgentExecutionRuntime {
                     grantRevision: grant.revision, basisHead: basis.head, startedAt: now,
                     connectionId: selected.provenance.connectionId, modelId: selected.provenance.modelId,
                     toolSelectionHash: digest(grant.toolSelection ?? null),
-                    sandboxHash: digest({ adapter: selected.adapter.id, sandbox: 'local-tool-sandbox' }),
+                    sandboxHash: digest({ adapter: selected.adapter.id, sandbox: 'local-tool-sandbox', executionMode }),
                     permissions: grant.permissions, prompt: task.instructions };
                 if (followUp && priorWorkSession) {
                     const abandonedAt = new Date().toISOString();
@@ -845,7 +892,7 @@ export class AgentExecutionRuntime {
                         runId: active.run.id, createdAt: now, grantId: grant.id, grantRevision: grant.revision,
                         connectionId: selected.provenance.connectionId, modelId: selected.provenance.modelId,
                         toolSelectionHash: digest(grant.toolSelection ?? null),
-                        sandboxHash: digest({ adapter: selected.adapter.id, sandbox: 'local-tool-sandbox' }),
+                        sandboxHash: digest({ adapter: selected.adapter.id, sandbox: 'local-tool-sandbox', executionMode }),
                         permissionCeiling: grant.permissions,
                         status: 'running', revision: 0, messages: [], segments: [segment] };
                     await this.store.createWorkSession(root, workSession);
@@ -885,9 +932,14 @@ export class AgentExecutionRuntime {
                 `No old tool request was replayed. Inspect restored files before editing; complete the original task ` +
                 `under this run's grant, required validation, and human review.` : '';
             const request: AgentExecutionRequest = { projectRoot: root, executionRoot: active.workspace.root,
+                executionMode,
                 grant, taskId: task.id, runId: active.run!.id,
                 workingPaths: task.origin.kind === 'work-item' ? task.origin.scope.workingSet :
                     task.origin.kind === 'phase-stack' ? phaseStackReviewScope(task.instructions)?.delegablePaths : undefined,
+                authorizedPaths: task.origin.kind === 'work-item' ? task.origin.scope.delegablePaths :
+                    task.origin.kind === 'phase-stack' ? phaseStackReviewScope(task.instructions)?.delegablePaths : undefined,
+                reservedPaths: task.origin.kind === 'work-item' ? task.origin.scope.humanReservedPaths :
+                    task.origin.kind === 'phase-stack' ? phaseStackReviewScope(task.instructions)?.humanReservedPaths : undefined,
                 ...(checkedRecovery.reads.length ? { priorDocumentReads: checkedRecovery.reads } : {}),
                 recoveryContext: checkedRecovery.text,
                 connectionId: selected.provenance.connectionId, registrationId: selected.registrationId,
@@ -1100,14 +1152,20 @@ export class AgentExecutionRuntime {
         let reviewHoldError = false;
         let reviewScopeDenied = false;
         let reviewStage = 'candidate-check';
-        const reviewRequired = task?.reviewPolicy?.kind === 'required' &&
+        const reviewRequired = !active.directJournal && task?.reviewPolicy?.kind === 'required' &&
             ['direct', 'work-item', 'phase-stack'].includes(task.origin.kind);
         if (active.workspace && active.run) {
             try {
                 const { delta, fingerprint } = await active.workspace.freezeCandidate();
                 await this.serial(active, () => this.update(active, run => ({ ...run,
                     validationBasis: 'execution-workspace', candidateDelta: delta, candidateFingerprint: fingerprint })));
-                if ((failed || active.stopping || active.denied) && delta.effects.length) {
+                if (active.directJournal) {
+                    const applied = [...new Set(active.directJournal.changes
+                        .filter(change => change.result === 'completed').map(change => change.path))].sort();
+                    await this.serial(active, () => this.update(active, run => ({ ...run,
+                        authorityDecision: { allowed: true, blocked: [] }, appliedFiles: applied })));
+                }
+                if (!active.directJournal && (failed || active.stopping || active.denied) && delta.effects.length) {
                     try {
                         await this.store.savePartialCandidate(active.root, active.run.id, active.workspace.root, delta);
                     } catch {
@@ -1179,15 +1237,29 @@ export class AgentExecutionRuntime {
                         active.releaseFinished();
                         return;
                     }
-                    const result = await active.workspace.promote(active.grant, delta);
-                    await this.serial(active, () => this.update(active, run => ({ ...run,
-                        authorityDecision: result.decision, appliedFiles: result.applied })));
-                    promotionBlocked = !result.decision.allowed;
-                    promotionSucceeded = result.decision.allowed;
-                    if (promotionBlocked) {
-                        await this.recordBlockedEffects(active, delta.effects.filter(effect =>
-                            result.decision.blocked.some(blocked => blocked.kind === effect.kind && blocked.path === effect.path)));
-                        await this.event(active, 'authority', 'Candidate changes blocked by execution grant');
+                    if (active.directJournal) {
+                        await active.directJournal.assertActive();
+                        const completed = active.directJournal.changes.filter(change => change.result === 'completed');
+                        const latest = new Map(completed.map(change => [change.path, change]));
+                        if (delta.effects.some(effect => !['create', 'modify'].includes(effect.kind) ||
+                            latest.get(effect.path)?.after !== effect.after) ||
+                            [...latest.keys()].some(path => !delta.effects.some(effect => effect.path === path)))
+                            throw new Error('Direct Work canonical and isolated view differ');
+                        await this.serial(active, () => this.update(active, run => ({ ...run,
+                            authorityDecision: { allowed: true, blocked: [] },
+                            appliedFiles: delta.effects.map(effect => effect.path) })));
+                        promotionSucceeded = true;
+                    } else {
+                        const result = await active.workspace.promote(active.grant, delta);
+                        await this.serial(active, () => this.update(active, run => ({ ...run,
+                            authorityDecision: result.decision, appliedFiles: result.applied })));
+                        promotionBlocked = !result.decision.allowed;
+                        promotionSucceeded = result.decision.allowed;
+                        if (promotionBlocked) {
+                            await this.recordBlockedEffects(active, delta.effects.filter(effect =>
+                                result.decision.blocked.some(blocked => blocked.kind === effect.kind && blocked.path === effect.path)));
+                            await this.event(active, 'authority', 'Candidate changes blocked by execution grant');
+                        }
                     }
                 }
             } catch (error) {
@@ -1206,7 +1278,7 @@ export class AgentExecutionRuntime {
                     'Candidate classification or promotion failed');
             }
         }
-        const status = active.denied || validationMissing || promotionBlocked ? 'failed' : promotionSucceeded ? 'completed' : active.stopping ?
+        const status = active.denied || validationMissing || promotionBlocked || active.directJournal && failed ? 'failed' : promotionSucceeded ? 'completed' : active.stopping ?
             active.interruptionFailed ? 'interrupted' : 'cancelled' : failed ? 'failed' : 'completed';
         const code = active.denied || reviewScopeDenied ? 'authority-denied' : candidateChanged || validationMissing ? 'validation-failed' : promotionError ? 'other' : promotionBlocked ? 'authority-denied' : promotionSucceeded ? undefined : active.stopping ?
             active.interruptionFailed ? 'interrupted' : 'cancelled' : capacityExhausted ? 'capacity-exhausted' : failed ? 'provider-error' : undefined;
@@ -1312,6 +1384,13 @@ export class AgentExecutionRuntime {
                     { ...session, status: 'recovery-required', revision: session.revision + 1 });
         }
         for (const run of await this.store.listRuns(root)) {
+            let directUncertain = false;
+            if (run.executionMode === 'direct' && run.directJournal) {
+                try {
+                    const changes = await DirectWorkJournal.reconcile(root, join(root, run.directJournal.path));
+                    directUncertain = changes.some(change => change.result === 'uncertain');
+                } catch { directUncertain = true; }
+            }
             if (run.status === 'pending') {
                 const endedAt = new Date().toISOString();
                 await this.store.updateRun(root, run, { ...run, status: 'interrupted', endedAt,
@@ -1330,8 +1409,10 @@ export class AgentExecutionRuntime {
                 endedAt: reconciledAt < run.startedAt! ? run.startedAt : reconciledAt,
                 ...(evidence ? { finalGit: evidence.final, changedFiles: evidence.changedFiles,
                     changeSummary: evidence.changeSummary } : {}),
-                outcome: { code: 'interrupted', summary: evidence?.final.headChanged ?
-                    'Execution abandoned; Git HEAD changed' : 'Execution abandoned after backend restart' } });
+                outcome: { code: 'interrupted', summary: directUncertain ?
+                    'Direct Work journal has uncertain canonical effects; inspect source before another run' :
+                    evidence?.final.headChanged ? 'Execution abandoned; Git HEAD changed' :
+                        'Execution abandoned after backend restart' } });
             let cursor = 0;
             let lastAt = run.startedAt ?? run.createdAt;
             for (;;) {

@@ -6,6 +6,11 @@ export function bindSharedAgentRuntime(bind: interfaces.Bind,
     create: (container: interfaces.Container, client: AgentRuntimeClient) => AgentRuntimeService,
     notify: (container: interfaces.Container, change: AgentStoreChange) => void): void {
     bind(AgentRuntimeService).toDynamicValue(context => create(context.container, {
-        notifyAgentStateChanged: change => notify(context.container, change)
+        notifyAgentStateChanged: change => notify(context.container, change),
+        hasUnsavedEditor: async fileUri => {
+            const { EditorManager } = await import('@theia/editor/lib/browser/editor-manager');
+            const editors = context.container.get(EditorManager);
+            return editors.all.some(widget => widget.getResourceUri()?.toString() === fileUri && widget.saveable.dirty);
+        }
     })).inSingletonScope();
 }

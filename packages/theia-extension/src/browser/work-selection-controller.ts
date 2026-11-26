@@ -553,8 +553,10 @@ export class WorkSelectionController {
     async continueSession(acceptDirty = false): Promise<AgentRun | undefined> {
         const handle = this.handle, project = this.project, shown = this.selectedRun;
         const session = this.session, task = this.selectedTask;
+        const selectedToolIds = [...this.followUpToolIds];
+        const approvedInstructions = this.followUpInstructions.trim();
         if (!handle || !project || !shown || !session || !task || this.followUpBusy ||
-            !this.followUpOpen || !this.followUpAccepted || !this.followUpInstructions.trim() ||
+            !this.followUpOpen || !approvedInstructions ||
             !['completed', 'stopped', 'recovery-required'].includes(session.status) ||
             session.segments.at(-1)?.runId !== shown.id || task.id !== shown.taskId) return;
         this.followUpBusy = true; this.followUpError = ''; this.changed();
@@ -571,9 +573,9 @@ export class WorkSelectionController {
                 JSON.stringify(freshSession) !== JSON.stringify(session) ||
                 JSON.stringify(freshRun) !== JSON.stringify(shown) ||
                 JSON.stringify(freshTask) !== JSON.stringify(task) ||
-                !shown.toolSelection || !target?.target || target.target.locality !== 'local' ||
+                !freshSession || !shown.toolSelection || !target?.target || target.target.locality !== 'local' ||
                 target.target.connectionId !== this.followUpTarget?.connectionId ||
-                target.target.modelId !== this.followUpTarget?.modelId || !this.followUpPermissions)
+                target.target.modelId !== this.followUpTarget?.modelId)
                 throw new Error('Saved Work or selected local model changed. Review the segment again.');
             if (shown.candidateReview && !shown.reviewDecision)
                 throw new Error('Resolve the pending candidate review before another Work segment.');
@@ -589,21 +591,26 @@ export class WorkSelectionController {
             }
             if (review.clean && acceptDirty) throw new Error('Project changed since Work review');
             if (!review.head) throw new Error('Current source HEAD unavailable for new segment');
-            if (this.followUpToolIds.some(id => !WORK_TOOL_CATALOG.some(tool => tool.id === id)) ||
-                this.followUpToolIds.includes('read_command_output') && !this.followUpToolIds.includes('run_command') ||
-                this.followUpToolIds.includes('run_command') &&
-                    !task.completion.validation.some(item => hasApprovedWorkCommand(item.command)))
+            if (approvedInstructions !== this.followUpInstructions.trim() ||
+                JSON.stringify(selectedToolIds) !== JSON.stringify(this.followUpToolIds) ||
+                selectedToolIds.includes('mcp_godot_server_info') ||
+                selectedToolIds.some(id => !WORK_TOOL_CATALOG.some(tool => tool.id === id)) ||
+                selectedToolIds.includes('read_command_output') && !selectedToolIds.includes('run_command') ||
+                selectedToolIds.includes('run_command') &&
+                    !task.completion.validation.some(item => hasApprovedWorkCommand(item.command, item.kind)))
                 throw new Error('Selected tools require a fresh valid review.');
             const newTask = parseAgentTask({ ...task, id: crypto.randomUUID(),
-                createdAt: new Date().toISOString(), instructions: this.followUpInstructions.trim(),
+                createdAt: new Date().toISOString(), instructions: approvedInstructions,
+                executionMode: task.executionMode ?? 'isolated',
                 modelPolicy: { kind: 'exact', connectionId: target.target.connectionId,
                     modelId: target.target.modelId } });
             const selection = makeWorkToolSelection({ projectUri: project, taskId: newTask.id,
                 grantRevision: 1, connectionId: target.target.connectionId, modelId: target.target.modelId },
-                this.followUpToolIds);
+                selectedToolIds);
             const base = createDefaultExecutionGrant({ id: crypto.randomUUID(), revision: 1,
                 taskId: newTask.id, acceptedAt: new Date().toISOString(), toolSelection: selection });
-            const grant = parseExecutionGrant({ ...base, permissions: this.followUpPermissions });
+            const priorPermissions = freshSession.segments.at(-1)?.permissions ?? freshSession.permissionCeiling;
+            const grant = parseExecutionGrant({ ...base, permissions: priorPermissions });
             await this.runtime.createTask(handle, newTask);
             const run = await this.runtime.continueWorkSession(handle, project, session.id, shown.id,
                 newTask.id, grant, false, review.head,
@@ -643,17 +650,20 @@ export class WorkSelectionController {
     private async selectInternal(selection: WorkSelection | undefined, navigationOnly = false): Promise<WorkSelection | undefined> {
         const handle = this.handle;
         const sameRun = selection?.kind === 'run' && this.selectedRun?.id === selection.id;
+        const keepVisible = sameRun && this.selectionState === 'attached';
         // Back during initial attachment clears presentation without cancelling
         // the project attach that the Select Work page still needs.
         const serial = !selection && !handle && this.attachState === 'loading' ? this.serial : ++this.serial;
-        this.selectionState = !selection ? 'idle' : handle ? 'loading' : 'unavailable';
+        if (!keepVisible) this.selectionState = !selection ? 'idle' : handle ? 'loading' : 'unavailable';
         this.selectedTaskId = selection?.kind === 'task' ? selection.id : undefined;
         this.acceptedStartGrant = false; this.hostedProjectDataAuthorized = false; this.startTarget = undefined;
         this.startWorktreeReview = undefined;
         this.startMCPOffer = undefined; this.startMCPAccepted = false;
-        this.selectedRun = undefined; this.selectedTask = undefined; this.session = undefined;
-        this.transcript = []; this.events = []; this.transcriptState = 'not-recorded'; this.transcriptIncomplete = false;
-        this.transcriptUnavailableSegments = [];
+        if (!keepVisible) {
+            this.selectedRun = undefined; this.selectedTask = undefined; this.session = undefined;
+            this.transcript = []; this.events = []; this.transcriptState = 'not-recorded'; this.transcriptIncomplete = false;
+            this.transcriptUnavailableSegments = [];
+        }
         this.sessionError = '';
         if (!sameRun) {
             this.followUpOpen = false; this.followUpInstructions = ''; this.followUpAccepted = false;
@@ -664,7 +674,7 @@ export class WorkSelectionController {
         this.steering = undefined; this.actions = []; this.mapImpact = undefined; this.steeringText = '';
         this.message = ''; this.phase.message = ''; this.phase.selected = undefined; this.phase.run = undefined;
         if (!selection && this.phase.handle) this.phase.cancelSelection();
-        this.changed();
+        if (!keepVisible) this.changed();
         if (!handle || !selection) return;
         if (selection.kind === 'sequence') {
             let sequence: AgentTaskSequence | undefined;
@@ -717,6 +727,12 @@ export class WorkSelectionController {
                 } catch { this.startTargetReason = 'Coding Agent target could not be resolved.'; }
             }
             if (run) {
+                // Keep the previous transcript mounted until the refreshed snapshot is ready.
+                const transcript: AgentTranscriptEntry[] = [];
+                const events: AgentRunEvent[] = [];
+                let transcriptState: 'recorded' | 'not-recorded' = 'not-recorded';
+                let transcriptIncomplete = false;
+                const transcriptUnavailableSegments: string[] = [];
                 const [steering, actions, impact] = await Promise.all([
                     this.runtime.readSteering(handle, run.id), this.runtime.listActions(handle, run.taskId),
                     this.runtime.readMapImpact(handle, run.id)
@@ -732,24 +748,27 @@ export class WorkSelectionController {
                     while (true) {
                         const result = await this.runtime.readTranscript(handle, runId, cursor, 100);
                         if (serial !== this.serial || handle !== this.handle) return;
-                        if (result.state === 'recorded') { this.transcriptState = 'recorded'; recorded = true; }
-                        this.transcriptIncomplete ||= result.incomplete;
-                        this.transcript.push(...result.entries);
+                        if (result.state === 'recorded') { transcriptState = 'recorded'; recorded = true; }
+                        transcriptIncomplete ||= result.incomplete;
+                        transcript.push(...result.entries);
                         if (!result.hasMore) break;
                         if (result.nextSequence <= cursor) throw new Error('Transcript pagination did not advance');
                         cursor = result.nextSequence;
                     }
-                    if (!recorded) this.transcriptUnavailableSegments.push(runId);
+                    if (!recorded) transcriptUnavailableSegments.push(runId);
                     cursor = 0;
                     while (true) {
                         const result = await this.runtime.readEvents(handle, runId, cursor, 100);
                         if (serial !== this.serial || handle !== this.handle) return;
-                        this.events.push(...result.events);
+                        events.push(...result.events);
                         if (!result.hasMore) break;
                         if (result.nextSequence <= cursor) throw new Error('Event pagination did not advance');
                         cursor = result.nextSequence;
                     }
                 }
+                this.transcript = transcript; this.events = events;
+                this.transcriptState = transcriptState; this.transcriptIncomplete = transcriptIncomplete;
+                this.transcriptUnavailableSegments = transcriptUnavailableSegments;
             }
             if (task && (selection.kind === 'task' || run?.taskId === task.id)) {
                 this.selectionState = 'attached'; this.changed(); return selection;
@@ -789,6 +808,8 @@ export class WorkSelectionController {
     async confirmResume(): Promise<AgentRun | undefined> {
         const handle = this.handle, project = this.project, run = this.selectedRun;
         const preview = this.resumePreview, task = preview?.task, target = this.resumeTarget;
+        const toolChoice = this.tools && project && run &&
+            JSON.stringify(this.tools.choice(project, `resume:${run.id}`));
         if (!handle || !project || !run || !preview?.eligible || !task || !target || !this.resumeOpen ||
             !(this.tools || this.resumeAccepted) || this.resumeBusy || target.locality === 'hosted' && !this.resumeHostedAuthorized) return;
         this.resumeBusy = true; this.resumeAccepted = false; this.changed();
@@ -797,12 +818,15 @@ export class WorkSelectionController {
             if (!fresh?.target || fresh.target.connectionId !== target.connectionId ||
                 fresh.target.modelId !== target.modelId || fresh.target.locality !== target.locality)
                 throw new Error('Selected model changed; review continuation again.');
-            const newTask = parseAgentTask({ ...task, id: crypto.randomUUID(), createdAt: new Date().toISOString() });
+            if (this.tools && toolChoice !== JSON.stringify(this.tools.choice(project, `resume:${run.id}`)))
+                throw new Error('Work tool selection changed; review continuation again.');
+            const newTask = parseAgentTask({ ...task, id: crypto.randomUUID(), createdAt: new Date().toISOString(),
+                executionMode: task.executionMode ?? 'isolated' });
             const grant = createDefaultExecutionGrant({ id: crypto.randomUUID(), revision: 1,
                 taskId: newTask.id, acceptedAt: new Date().toISOString(),
                 ...(target.locality === 'local' && this.tools ? { toolSelection: this.tools.snapshot(project,
                     `resume:${run.id}`, newTask.id, 1, target,
-                    newTask.completion.validation.some(item => hasApprovedWorkCommand(item.command))) } : {}) });
+                    newTask.completion.validation.some(item => hasApprovedWorkCommand(item.command, item.kind))) } : {}) });
             const newRun = await this.runtime.resumeCandidate(handle, project, run.id,
                 preview.candidateFingerprint!, newTask, grant,
                 target.locality === 'hosted' && this.resumeHostedAuthorized);
@@ -836,11 +860,10 @@ export class WorkSelectionController {
         if (!this.startTarget) return this.startTargetReason;
         if (this.startTarget.locality === 'local' && this.tools) {
             const unavailable = this.tools.resolve(this.project, `task:${task.id}`,
-                task.completion.validation.some(item => hasApprovedWorkCommand(item.command))).unavailable;
+                task.completion.validation.some(item => hasApprovedWorkCommand(item.command, item.kind)),
+                this.startMCPAccepted).unavailable;
             if (unavailable.length) return `Review unavailable Work tools: ${unavailable.join('; ')}`;
         }
-        if (!this.tools && !this.acceptedStartGrant)
-            return 'Review and accept the fixed project execution grant for this task.';
         if (this.startTarget?.locality === 'hosted' && !this.hostedProjectDataAuthorized)
             return 'Authorize sending this project data to the hosted Coding Agent for this start.';
         return '';
@@ -863,6 +886,7 @@ export class WorkSelectionController {
         const reason = this.startBlockReason;
         if (reason) { this.message = reason; this.changed(); return; }
         const handle = this.handle!, project = this.project!, shown = this.selectedTask!;
+        const toolChoice = this.tools && JSON.stringify(this.tools.choice(project, `task:${shown.id}`));
         const serial = this.serial, shownTarget = this.startTarget!;
         let review: WorktreeReview;
         try { review = await this.runtime.previewWorktree(handle); }
@@ -881,9 +905,11 @@ export class WorkSelectionController {
                 this.resolveTarget?.(shown.modelPolicy)
             ]);
             if (serial !== this.serial || handle !== this.handle || project !== this.project ||
-                this.selectedTaskId !== shown.id || !(this.tools || this.acceptedStartGrant) ||
+                this.selectedTaskId !== shown.id ||
                 (shownTarget.locality === 'hosted' && !this.hostedProjectDataAuthorized))
                 throw new Error('Selection or project changed. Review and accept Start again.');
+            if (this.tools && toolChoice !== JSON.stringify(this.tools.choice(project, `task:${shown.id}`)))
+                throw new Error('Work tool selection changed. Review the tools and start again.');
             if (!task || JSON.stringify(task) !== JSON.stringify(shown))
                 throw new Error('Saved task changed. Refresh Work and select the task again.');
             if (runs.some(run => run.taskId === task.id))
@@ -899,16 +925,14 @@ export class WorkSelectionController {
                 !task.completion.requireValidationPass || !task.completion.validation.length ||
                 task.completion.validation.some(target => !target.command?.trim()))
                 throw new Error('Saved WorkItem task lacks required Dope validation. Launch a new validated task from its Planning Map.');
-            const grantInput = { id: crypto.randomUUID(), revision: 1, taskId: task.id,
-                acceptedAt: new Date().toISOString(),
-                ...(shownTarget.locality === 'local' && this.tools ? { toolSelection: this.tools.snapshot(project,
-                    `task:${task.id}`, task.id, 1, shownTarget,
-                    task.completion.validation.some(item => hasApprovedWorkCommand(item.command))) } : {}) };
-            let grant = createDefaultExecutionGrant(grantInput);
-            if (this.startMCPAccepted) {
+            const selectedExternal = this.startMCPAccepted && this.tools?.resolve(project, `task:${task.id}`,
+                task.completion.validation.some(item => hasApprovedWorkCommand(item.command, item.kind)), true)
+                .tools.includes('mcp_godot_server_info');
+            let offered: WorkMCPObservationScope | undefined;
+            if (selectedExternal) {
                 if (!this.startMCPOffer || shownTarget.locality !== 'local')
                     throw new Error('Work MCP observation offer changed');
-                const offered = await this.runtime.workMCPObservationOffer(handle,
+                offered = await this.runtime.workMCPObservationOffer(handle,
                     shownTarget.connectionId, shownTarget.modelId);
                 if (!offered || offered.projectKey !== this.startMCPOffer.projectKey ||
                     offered.serverId !== this.startMCPOffer.serverId ||
@@ -916,9 +940,17 @@ export class WorkSelectionController {
                     offered.catalogRevision !== this.startMCPOffer.catalogRevision ||
                     offered.toolName !== this.startMCPOffer.toolName)
                     throw new Error('Work MCP observation offer changed');
-                grant = createMCPObservationExecutionGrant({ ...grantInput, mcpObservation: offered });
             }
-            // Consume acceptance before the RPC; a failed attempt requires a fresh review.
+            if (this.tools && toolChoice !== JSON.stringify(this.tools.choice(project, `task:${shown.id}`)))
+                throw new Error('Work tool selection changed. Review the tools and start again.');
+            const grantInput = { id: crypto.randomUUID(), revision: 1, taskId: task.id,
+                acceptedAt: new Date().toISOString(),
+                ...(shownTarget.locality === 'local' && this.tools ? { toolSelection: this.tools.snapshot(project,
+                    `task:${task.id}`, task.id, 1, shownTarget,
+                    task.completion.validation.some(item => hasApprovedWorkCommand(item.command, item.kind)), !!offered) } : {}) };
+            const grant = offered ? createMCPObservationExecutionGrant({ ...grantInput, mcpObservation: offered }) :
+                createDefaultExecutionGrant(grantInput);
+            // Consume separate hosted and MCP consent before the RPC.
             const hostedAuthorized = shownTarget.locality === 'hosted' && this.hostedProjectDataAuthorized;
             this.acceptedStartGrant = false; this.hostedProjectDataAuthorized = false; this.startMCPAccepted = false;
             const start = shownTarget.locality === 'local' ? this.runtime.startWorkSession.bind(this.runtime) :

@@ -11,7 +11,11 @@ export interface PendingWorkMCPObservation {
     id: string; runId: string; taskId: string; projectKey: string;
     serverId: string; toolName: string; expiresAt: string;
 }
-export interface AgentRuntimeClient { notifyAgentStateChanged(change: AgentStoreChange): void }
+export interface AgentRuntimeClient {
+    notifyAgentStateChanged(change: AgentStoreChange): void;
+    /** Checked immediately before a Direct Work canonical write. A disconnected editor fails closed. */
+    hasUnsavedEditor(fileUri: string): Promise<boolean>;
+}
 export interface DiscoveredTaskStack {
     folderName: string; path: string; mode: StackMode; phase: number;
     valid: boolean; error?: string; fingerprint?: string;
@@ -23,6 +27,7 @@ export interface WorkItemLaunchRequest {
     requestKey: string; expectedProjectRevision: number; expectedMapRevision: number;
     planningMapId: string; workItemId: string; delegablePaths: string[];
     modelPolicy: AgentModelPolicy; controls: ExecutionControls; completion: CompletionPolicy;
+    executionMode?: 'isolated' | 'direct';
     /** Set only after the developer explicitly approves the supplied validation commands. */
     validationApproved?: boolean;
 }

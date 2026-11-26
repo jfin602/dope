@@ -1,15 +1,39 @@
 /** Fixed Dope-owned Pi Work catalog. Bump a schema revision whenever the worker's
  * corresponding argument contract or effect changes. Saved approvals then fail closed. */
-export const WORK_TOOL_CATALOG_REVISION = 1;
+export const WORK_TOOL_CATALOG_REVISION = 2;
 export const WORK_TOOL_CATALOG = [
-    { id: 'read_file', group: 'Inspect', effect: 'workspace-read', schemaRevision: 1 },
-    { id: 'list_files', group: 'Inspect', effect: 'workspace-read', schemaRevision: 1 },
-    { id: 'edit_file', group: 'Edit', effect: 'workspace-write', schemaRevision: 1 },
-    { id: 'run_command', group: 'Commands', effect: 'workspace-process', schemaRevision: 1 },
-    { id: 'read_command_output', group: 'Commands', effect: 'workspace-process', schemaRevision: 1 }
+    { id: 'read_file', group: 'Inspect', name: 'Read file', description: 'Read a candidate file in the isolated Work workspace.', effect: 'workspace-read', schemaRevision: 1 },
+    { id: 'list_files', group: 'Inspect', name: 'List files', description: 'List a candidate directory in the isolated Work workspace.', effect: 'workspace-read', schemaRevision: 1 },
+    { id: 'edit_file', group: 'Edit', name: 'Edit file', description: 'Create or modify a file under the selected Work execution mode.', effect: 'workspace-write', schemaRevision: 1 },
+    { id: 'run_command', group: 'Commands', name: 'Run approved command', description: 'Run an approved test or build command in the isolated Work workspace.', effect: 'workspace-process', schemaRevision: 1 },
+    { id: 'read_command_output', group: 'Commands', name: 'Read command output', description: 'Read output from a completed approved command.', effect: 'workspace-process', schemaRevision: 1, requires: 'run_command' },
+    { id: 'mcp_godot_server_info', group: 'External', name: 'Godot server information', description: 'Observe the reviewed Godot server method after project activation and per-call approval.', effect: 'workspace-read', schemaRevision: 1, serverId: 'godot', toolName: 'godot_get_server_info' }
 ] as const;
 export type WorkToolId = typeof WORK_TOOL_CATALOG[number]['id'];
-export type WorkToolGroup = 'Inspect' | 'Edit' | 'Commands';
+export type WorkToolGroup = 'Inspect' | 'Edit' | 'Commands' | 'External';
+export interface WorkToolCatalogContext {
+    locality: 'local' | 'hosted' | undefined;
+    commandsAvailable: boolean;
+    externalOffered: boolean;
+    externalConsent: boolean;
+}
+/** Only registrations with an explicit Dope Work broker mapping appear here. */
+export function workToolCatalogFor(context: WorkToolCatalogContext) {
+    return WORK_TOOL_CATALOG.map(tool => {
+        const unavailableReason = context.locality !== 'local' ?
+            'Individual tools are enforceable only for the local Pi provider' :
+            tool.group === 'Commands' && !context.commandsAvailable ?
+                'No approved task command' :
+            tool.group === 'External' && !context.externalOffered ?
+                'Reviewed server is unavailable or inactive for this project and model' :
+            tool.group === 'External' && !context.externalConsent ?
+                'Project observation consent is required' : undefined;
+        return { ...tool, catalogRevision: WORK_TOOL_CATALOG_REVISION,
+            provider: 'local-pi' as const, projectScope: tool.group === 'External' ?
+                'activated-project' as const : 'isolated-candidate' as const,
+            available: unavailableReason === undefined, unavailableReason };
+    });
+}
 export interface WorkToolChoice { groups: string[]; allow: string[]; deny: string[] }
 export interface WorkToolCustomGroup { id: string; name: string; tools: string[] }
 export interface WorkToolSelection {
@@ -20,9 +44,9 @@ export interface WorkToolSelection {
 const ids = new Set<string>(WORK_TOOL_CATALOG.map(tool => tool.id));
 const unique = (items: readonly string[]) => [...new Set(items)];
 export function resolveWorkTools(choice: WorkToolChoice, customGroups: readonly WorkToolCustomGroup[],
-    commandsAvailable: boolean): { tools: WorkToolId[]; unavailable: string[] } {
+    commandsAvailable: boolean, externalAvailable = false): { tools: WorkToolId[]; unavailable: string[] } {
     const selected = new Set<string>(choice.allow);
-    const requested = new Set<string>([...choice.allow, ...choice.deny]);
+    const requested = new Set<string>(choice.allow);
     for (const group of choice.groups) {
         const members = ['Inspect', 'Edit', 'Commands'].includes(group) ?
             WORK_TOOL_CATALOG.filter(tool => tool.group === group).map(tool => tool.id) :
@@ -30,17 +54,20 @@ export function resolveWorkTools(choice: WorkToolChoice, customGroups: readonly 
         if (!members) { requested.add(group); continue; }
         for (const id of members) { selected.add(id); requested.add(id); }
     }
-    for (const id of choice.deny) selected.delete(id);
+    for (const id of choice.deny) { selected.delete(id); requested.delete(id); }
     const unavailable: string[] = [];
     for (const id of unique([...requested, ...selected])) {
         if (!ids.has(id)) unavailable.push(`${id}: unknown or changed tool`);
         else if (!commandsAvailable && (id === 'run_command' || id === 'read_command_output'))
             unavailable.push(`${id}: no approved task command`);
+        else if (id === 'mcp_godot_server_info' && !externalAvailable)
+            unavailable.push(`${id}: reviewed server unavailable or project observation consent missing`);
     }
     if (!selected.has('run_command') && selected.has('read_command_output'))
         unavailable.push('read_command_output: requires run_command');
     return { tools: WORK_TOOL_CATALOG.filter(tool => selected.has(tool.id) &&
         (commandsAvailable || tool.group !== 'Commands') &&
+        (externalAvailable || tool.group !== 'External') &&
         (tool.id !== 'read_command_output' || selected.has('run_command'))).map(tool => tool.id), unavailable };
 }
 export function makeWorkToolSelection(input: Omit<WorkToolSelection, 'catalogRevision' | 'tools'>,
@@ -54,7 +81,7 @@ export function parseWorkToolSelection(value: unknown): WorkToolSelection {
     const x = value as Record<string, unknown>;
     if (Object.keys(x).sort().join(',') !==
         'catalogRevision,connectionId,grantRevision,modelId,projectUri,taskId,tools' ||
-        x.catalogRevision !== WORK_TOOL_CATALOG_REVISION ||
+        ![1, WORK_TOOL_CATALOG_REVISION].includes(x.catalogRevision as number) ||
         typeof x.projectUri !== 'string' || !x.projectUri.startsWith('file:///') ||
         typeof x.taskId !== 'string' || !x.taskId ||
         !Number.isSafeInteger(x.grantRevision) || (x.grantRevision as number) < 0 ||
@@ -72,9 +99,11 @@ export function parseWorkToolSelection(value: unknown): WorkToolSelection {
             throw new Error('Unknown or changed Work tool');
         tools.push({ id: current.id, schemaRevision: current.schemaRevision });
     }
+    if (x.catalogRevision === 1 && tools.some(tool => tool.id === 'mcp_godot_server_info'))
+        throw new Error('External Work tool requires current catalog');
     if (tools.some(tool => tool.id === 'read_command_output') && !tools.some(tool => tool.id === 'run_command'))
         throw new Error('Work command output requires run_command');
-    return { catalogRevision: WORK_TOOL_CATALOG_REVISION, projectUri: x.projectUri,
+    return { catalogRevision: x.catalogRevision as number, projectUri: x.projectUri,
         taskId: x.taskId, grantRevision: x.grantRevision as number,
         connectionId: x.connectionId, modelId: x.modelId, tools };
 }

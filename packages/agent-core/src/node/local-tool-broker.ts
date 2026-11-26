@@ -117,7 +117,11 @@ try:
    print(json.dumps({'status':'completed','data':base64.b64encode(data[start:end]).decode('ascii'),'truncated':end<len(data),'fileBytes':len(data),'endOffset':end,'digest':hashlib.sha256(data).hexdigest()}))
  else:
   if parts:
-   current=os.open(parts[-1],os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW,dir_fd=current); fds.append(current)
+   current=os.open(parts[-1],os.O_RDONLY|os.O_NOFOLLOW|os.O_NONBLOCK,dir_fd=current); fds.append(current)
+   mode=os.fstat(current).st_mode
+   if stat.S_ISREG(mode):
+    print(json.dumps({'status':'not-directory'})); sys.exit(0)
+   if not stat.S_ISDIR(mode): denied()
   entries=[]; truncated=False
   with os.scandir(current) as scan:
    for entry in scan:
@@ -226,6 +230,8 @@ export async function brokerLocalRead(request: AgentExecutionRequest, untrusted:
         if (!response || typeof response !== 'object') return result(call, 'failed');
         const wire = response as Record<string, unknown>;
         if (wire.status === 'denied') return result(call, 'denied');
+        if (wire.status === 'not-directory' && call.name === 'list')
+            return result(call, 'failed', 'NOT_A_DIRECTORY: list_files expects a directory. Use read_file for a file.');
         if (wire.status === 'invalid-range' && call.name === 'read' && ranged) {
             if (!Number.isSafeInteger(wire.fileBytes) || (wire.fileBytes as number) < 0 ||
                 typeof wire.digest !== 'string' || !/^[a-f0-9]{64}$/u.test(wire.digest)) return result(call, 'denied');

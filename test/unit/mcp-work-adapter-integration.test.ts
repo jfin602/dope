@@ -97,7 +97,7 @@ for line in sys.stdin:
         assert.ok(scope);
         const toolSelection = makeWorkToolSelection({ projectUri: 'file://' + root,
             taskId: 'task', grantRevision: 1, connectionId: 'local', modelId: 'fixture-model' },
-            ['read_file', 'list_files', 'edit_file']);
+            ['read_file', 'list_files', 'edit_file', 'mcp_godot_server_info']);
         const grant = createMCPObservationExecutionGrant({ id: 'grant', revision: 1,
             taskId: 'task', acceptedAt: new Date().toISOString(), mcpObservation: scope, toolSelection });
         workspace = await ExecutionWorkspace.create(root);

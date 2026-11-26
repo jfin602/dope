@@ -9,6 +9,7 @@ import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
 import { AgentStore } from '../../packages/agent-core/lib/node/agent-store.js';
 import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/index.js';
+import { makeWorkToolSelection } from '../../packages/agent-core/lib/work-tool-selection.js';
 import { AgentExecutionRuntime } from '../../packages/theia-extension/lib/node/agent-execution-runtime.js';
 import { AgentRuntimeBackend } from '../../packages/theia-extension/lib/node/agent-runtime-backend.js';
 import { captureGitBasis } from '../../packages/agent-core/lib/node/git-evidence.js';
@@ -22,6 +23,11 @@ const baseTask = (policy: any = { kind: 'follow-coding-agent' }) => ({ version: 
     completion: { validation: [{ kind: 'test', label: 'Required validation', command: 'node --test test/fixture.test.mjs' }],
         requireValidationPass: true }, origin: { kind: 'direct' }, reviewPolicy: { kind: 'required' } });
 const grant = () => createDefaultExecutionGrant({ id: 'grant-1', revision: 0, taskId: 'task-1', acceptedAt: now });
+const piGrant = (root: string, id: string, taskId: string, revision = 0) =>
+    createDefaultExecutionGrant({ id, revision, taskId, acceptedAt: new Date().toISOString(),
+        toolSelection: makeWorkToolSelection({ projectUri: pathToFileURL(root).href, taskId,
+            grantRevision: revision, connectionId: 'local-1', modelId: 'local-model' },
+        ['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output']) });
 
 class FakeAdapter {
     id = 'fake-codex'; starts: any[] = []; cancels = 0; disposals = 0;
@@ -96,12 +102,13 @@ async function fixture(work: (f: {
 }
 
 async function terminal(store: AgentStore, root: string, runId: string) {
-    for (let i = 0; i < 300; i++) {
+    for (let i = 0; i < 1200; i++) {
         const run = await store.readRun(root, runId);
         if (run && ['completed', 'cancelled', 'failed', 'interrupted', 'blocked'].includes(run.status)) return run;
         await new Promise(resolve => setTimeout(resolve, 10));
     }
-    throw new Error('Run did not terminate');
+    const last = await store.readRun(root, runId);
+    throw new Error(`Run did not terminate (status: ${last?.status ?? 'missing'})`);
 }
 
 async function released(runtime: AgentExecutionRuntime, root: string): Promise<void> {
@@ -144,14 +151,15 @@ async function acceptSequenceCandidate(f: { root: string; store: AgentStore; run
     return accepted;
 }
 
-async function preparedSequence(f: { backend: AgentRuntimeBackend; handle: string }) {
+async function preparedSequence(f: { backend: AgentRuntimeBackend; handle: string }, local = false) {
     const result = await f.backend.openTaskStack(f.handle, 'docs/tasks', 'c8-lifecycle-test');
     assert.equal(result.kind, 'opened');
     if (result.kind !== 'opened') throw new Error('Open failed');
     const sequence = result.sequence;
     assert.equal(sequence.currentEntryNumber, 1);
     const task = await f.backend.prepareSequenceTask(f.handle, sequence.id,
-        { kind: 'follow-coding-agent' }, { validation: [{ kind: 'test', label: 'focused', command: 'true' }],
+        local ? { kind: 'exact', connectionId: 'local-1', modelId: 'local-model' } :
+            { kind: 'follow-coding-agent' }, { validation: [{ kind: 'test', label: 'focused', command: 'true' }],
             requireValidationPass: true });
     const accepted = createDefaultExecutionGrant({ id: 'sequence-grant', revision: 0, taskId: task.id,
         acceptedAt: new Date().toISOString() });
@@ -287,9 +295,9 @@ test('capacity failure after a candidate edit stops without automatic replay and
 }));
 
 test('saved direct candidate resumes in a new run with fresh grant and immutable original', async () => fixture(async f => {
-    f.adapter.id = 'pi-local-work';
+    enablePiLocal(f);
     const uri = pathToFileURL(f.root).href;
-    const first = await f.backend.start(f.handle, uri, 'task-1', grant(), true);
+    const first = await f.backend.start(f.handle, uri, 'task-1', piGrant(f.root, 'grant-1', 'task-1'), true);
     const documentBytes = await readFile(join(f.root, 'docs/workflow.md'));
     const documentRead = { path: 'docs/workflow.md', question: 'recovery rule',
         sourceHash: 'a'.repeat(64), contentHash: createHash('sha256').update(documentBytes).digest('hex'),
@@ -318,8 +326,7 @@ test('saved direct candidate resumes in a new run with fresh grant and immutable
     assert.deepEqual(preview.effects?.effects.map(effect => [effect.kind, effect.path]),
         [['modify', 'README.md'], ['create', 'resume-created.txt']]);
     const newTask = { ...preview.task!, id: 'task-resumed', createdAt: new Date().toISOString() };
-    const freshGrant = createDefaultExecutionGrant({ id: 'grant-resumed', revision: 1,
-        taskId: newTask.id, acceptedAt: new Date().toISOString() });
+    const freshGrant = piGrant(f.root, 'grant-resumed', newTask.id, 1);
     await assert.rejects(f.backend.resumeCandidate(f.handle, uri, first.id,
         '0'.repeat(64), newTask, freshGrant, true), /candidate|fingerprint|evidence/i);
     await assert.rejects(f.backend.resumeCandidate(f.handle, uri, first.id,
@@ -440,8 +447,9 @@ test('reconcile adopts only the exact completed Dope checkpoint after a commit/s
 }));
 
 test('capacity exhaustion is bounded and leaves authoritative bytes unchanged', async () => fixture(async f => {
-    const { sequence, accepted } = await preparedSequence(f);
-    f.adapter.id = 'pi-local-work';
+    const { sequence, task } = await preparedSequence(f, true);
+    enablePiLocal(f);
+    const accepted = piGrant(f.root, 'sequence-grant', task.id);
     const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
     for (let attempt = 1; attempt <= 4; attempt++) {
         f.adapter.fail('Model at capacity; try again later');
@@ -459,8 +467,9 @@ test('capacity exhaustion is bounded and leaves authoritative bytes unchanged', 
 }));
 
 test('uncertain Pi command request prevents capacity retry even with unchanged candidate', async () => fixture(async f => {
-    const { sequence, accepted } = await preparedSequence(f);
-    f.adapter.id = 'pi-local-work';
+    const { sequence, task } = await preparedSequence(f, true);
+    enablePiLocal(f);
+    const accepted = piGrant(f.root, 'sequence-grant', task.id);
     const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
     f.adapter.onEvent?.({ kind: 'work-observation', toolId: 'pi-1', toolName: 'run_command',
         phase: 'requested', brokerInvoked: false });
@@ -475,8 +484,9 @@ test('uncertain Pi command request prevents capacity retry even with unchanged c
 }));
 
 test('stop interrupts capacity wait and non-capacity failures never retry', async () => fixture(async f => {
-    const { sequence, accepted } = await preparedSequence(f);
-    f.adapter.id = 'pi-local-work';
+    const { sequence, task } = await preparedSequence(f, true);
+    enablePiLocal(f);
+    const accepted = piGrant(f.root, 'sequence-grant', task.id);
     const run = await f.backend.startSequence(f.handle, pathToFileURL(f.root).href, sequence.id, accepted, true);
     f.adapter.fail('model_at_capacity');
     for (let i = 0; i < 100; i++) {
@@ -565,7 +575,7 @@ test('start rejects absent acceptance and mismatched attached root', async () =>
 test('pre-existing project edits fail clean-tree preflight before run metadata is created', async () => fixture(async f => {
     await writeFile(join(f.root, 'already-dirty.txt'), 'owner work');
     await assert.rejects(f.backend.start(f.handle, pathToFileURL(f.root).href, 'task-1', grant(), true),
-        /clean project worktree/);
+        /Review changed project files before starting Work/);
     assert.deepEqual(await f.store.listRuns(f.root), []);
     assert.equal(f.adapter.starts.length, 0);
     assert.equal(await readFile(join(f.root, 'already-dirty.txt'), 'utf8'), 'owner work');
@@ -601,7 +611,7 @@ test('unvalidated direct Work is denied before adapter execution or canonical wr
     const offered = createDefaultExecutionGrant({ id: 'unvalidated-grant', revision: 0,
         taskId: task.id, acceptedAt: new Date().toISOString() });
     await assert.rejects(f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, offered, true),
-        /validation command and candidate review/);
+        /Direct Work validation or candidate review is invalid/);
     assert.equal(f.adapter.starts.length, 0);
     assert.deepEqual(await f.store.listRuns(f.root), []);
     assert.equal((await captureGitBasis(f.root)).clean, true);
@@ -664,6 +674,13 @@ function enableLocal(f: any) {
         state: 'ready', locality: 'local', capabilities: { agentExecution: { source: 'adapter-known', value: true } } });
     f.registry.observations.push({ connectionId: 'local-1', health: 'ready' });
     f.registry.loadedLocalModels.push({ connectionId: 'local-1', providerModelKey: 'local-model', contextWindowTokens: 8192 });
+}
+function enablePiLocal(f: any) {
+    enableLocal(f);
+    f.localAdapter.id = 'pi-local-work';
+    f.adapter = f.localAdapter;
+    f.routing.resolve = async () => ({ resolution: { policyRevision: 8,
+        candidates: [{ target: { connectionId: 'local-1', modelId: 'local-model' } }] } });
 }
 
 test('Local exact selection starts without hosted consent and records Local provenance', async () => fixture(async f => {

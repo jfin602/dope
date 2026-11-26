@@ -272,7 +272,7 @@ const WORK_TOOLS = {
   run_command: { kind: Type.Union([Type.Literal('test'), Type.Literal('build')]), commandId: Type.String() },
   read_command_output: { handle: Type.String(), offset: Type.Integer(), maxBytes: Type.Integer() }
 };
-const WORK_CATALOG_REVISION = 1;
+const WORK_CATALOG_REVISION = 2;
 const CHAT_TOOLS = {
   read_file: { path: Type.String(), offset: Type.Optional(Type.Integer()),
     maxBytes: Type.Optional(Type.Integer()), expectedSourceHash: Type.Optional(Type.String()) },
@@ -552,10 +552,10 @@ function workTools() {
     ...mcpChatTools.map(tool => [tool.name, {}])].map(([name, properties]) => ({
     name, label: name, description: mcpChatTools.find(tool => tool.name === name)?.description ?? (name === 'read_file' ?
       'Read an authorized candidate file. On the FIRST read of each file, send path and offset 0; OMIT expectedSourceHash entirely. The reply supplies sourceHash and nextOffset. Only for later pages, send that exact returned sourceHash as expectedSourceHash with nextOffset. A task, Git or candidate hash is NOT a file sourceHash. Path-only reads retain the legacy sanitized prefix.' :
-      name === 'list_files' ? 'List one directory in the authorized candidate workspace using a relative path and entry limit.' :
-      name === 'edit_file' ? 'Create or modify one file in the authorized candidate workspace. Canonical project files are not edited.' :
-      name === 'read_command_output' ? 'Read a retained page of a completed approved command result by handle and UTF-8 byte offset; does not rerun it.' :
-      'Run an approved test or build command by its granted commandId in the authorized candidate workspace.'),
+      name === 'list_files' ? 'List one directory in the authorized candidate workspace. Use path "." for the project root, or a relative directory path. maxEntries is required and must be an integer from 1 to 100. If a path is a file, use read_file.' :
+      name === 'edit_file' ? 'Create or modify one file using a relative project path and string content of at most 65536 UTF-8 bytes. operation must be create or modify. Dope applies the selected Work execution mode and checks every write.' :
+      name === 'read_command_output' ? 'Read a retained page of a completed approved command result by its returned handle. offset is a nonnegative UTF-8 byte offset; maxBytes is an integer from 1 to 4096. This does not rerun the command.' :
+      'Run an approved test or build command by its granted commandId in the authorized candidate workspace. kind must be test or build.'),
     parameters: Type.Object(properties, { additionalProperties: false }),
     async execute(_toolCallId, params, signal) {
       if (!workMode || signal?.aborted) throw new Error('Dope Work tool unavailable');
@@ -567,11 +567,12 @@ function workTools() {
       process.stdout.write(`${JSON.stringify({ id: workRequestId, tool: { id, name, arguments: params } })}\n`);
       try {
         const result = await answer;
-        // A failed approved test is feedback for the coding agent, not a provider
-        // failure. Denied/cancelled effects still stop at the Dope boundary.
-        if (result.status !== 'completed' && result.status !== 'failed')
+        // A brokered refusal is tool feedback. The broker has already prevented
+        // the effect; Pi can correct its request without ending the run.
+        if (!['completed', 'failed', 'denied'].includes(result.status))
           throw new Error(`Dope Work tool ${result.status}`);
-        return { content: [{ type: 'text', text: `status: ${result.status}\n${result.output || ''}` }] };
+        return { content: [{ type: 'text', text: `status: ${result.status}\n${result.output ||
+          (result.status === 'denied' ? 'The request was blocked by Work authority. Check the path and tool arguments, then choose an authorized next step.' : '')}` }] };
       } finally { signal?.removeEventListener('abort', onAbort); pendingTools.delete(id); }
     }
   }));

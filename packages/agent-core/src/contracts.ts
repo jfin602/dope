@@ -24,11 +24,14 @@ export type ReasoningEffort = 'low' | 'medium' | 'high' | 'xhigh';
 export interface ExecutionControls { reasoningEffort?: ReasoningEffort }
 export interface ValidationTarget { kind: 'test' | 'build' | 'typecheck'; label: string; command?: string }
 export interface CompletionPolicy { validation: ValidationTarget[]; requireValidationPass: boolean }
+export type ExecutionMode = 'isolated' | 'direct';
 export interface AgentTask {
     version: typeof AGENT_SCHEMA_VERSION; id: string; createdAt: string;
     objective: string; instructions: string; projectRoot: '.';
     projectId?: string; modelPolicy: AgentModelPolicy; controls: ExecutionControls;
     authority: { profile: 'phase-8b-project' }; completion: CompletionPolicy;
+    /** Frozen with the task. Missing historical fields are isolated. */
+    executionMode?: ExecutionMode;
     origin: AgentOrigin; planningMapId?: string; reviewPolicy?: { kind: 'required' };
     /** A new, separately reviewed direct task; no grant or candidate is inherited. */
     forkedFromRunId?: string;
@@ -77,9 +80,12 @@ export interface AcceptedDirtyBasis { head: string; paths: DirtyPath[] }
 export interface AgentRun {
     version: typeof AGENT_SCHEMA_VERSION; id: string; taskId: string; status: AgentRunStatus;
     grantId: string; grantRevision: number; requestedPolicy: AgentModelPolicy;
+    /** Frozen with the run. Missing historical fields are isolated. */
+    executionMode?: ExecutionMode;
     toolSelection?: WorkToolSelection;
     projectRoot: '.'; projectId?: string; createdAt: string; startedAt?: string; endedAt?: string;
     executionWorkspace?: { id: string; basisHead: string };
+    directJournal?: { id: string; path: string };
     provenance?: ExecutionProvenance; basis?: GitBasis; acceptedDirty?: AcceptedDirtyBasis;
     finalGit?: GitFinal; changedFiles: string[];
     commandEvidence?: CommandEvidence[];
@@ -201,7 +207,7 @@ export function parseAgentModelPolicy(value: unknown): AgentModelPolicy {
 export function parseAgentTask(value: unknown): AgentTask {
     const x = record(value, ['version', 'id', 'createdAt', 'objective', 'instructions', 'projectRoot',
         'projectId', 'modelPolicy', 'controls', 'authority', 'completion', 'origin', 'planningMapId',
-        'phaseStack', 'reviewPolicy', 'forkedFromRunId']);
+        'phaseStack', 'reviewPolicy', 'forkedFromRunId', 'executionMode']);
     const controls = record(x.controls, ['reasoningEffort']);
     const authority = record(x.authority, ['profile']);
     const completion = record(x.completion, ['validation', 'requireValidationPass']);
@@ -246,6 +252,7 @@ export function parseAgentTask(value: unknown): AgentTask {
         controls: { ...(controls.reasoningEffort === undefined ? {} :
             { reasoningEffort: select(controls.reasoningEffort, ['low', 'medium', 'high', 'xhigh'] as const) }) },
         authority: { profile: 'phase-8b-project' },
+        ...(x.executionMode === undefined ? {} : { executionMode: select(x.executionMode, ['isolated', 'direct'] as const) }),
         completion: { validation, requireValidationPass: bool(completion.requireValidationPass) },
         origin: parsedOrigin, ...(x.planningMapId === undefined ? {} : { planningMapId: id(x.planningMapId) }),
         ...(reviewPolicy ? { reviewPolicy: { kind: 'required' as const } } : {}),
@@ -426,7 +433,7 @@ export function parseAgentRun(value: unknown): AgentRun {
     const x = record(value, ['version', 'id', 'taskId', 'status', 'grantId', 'grantRevision', 'requestedPolicy',
         'projectRoot', 'projectId', 'toolSelection', 'createdAt', 'startedAt', 'endedAt', 'provenance', 'basis', 'acceptedDirty',
         'changedFiles', 'validationResults', 'changeSummary', 'finalGit', 'commandEvidence', 'recovery', 'outcome',
-        'validationBasis', 'candidateDelta', 'candidateFingerprint', 'resumedFrom', 'candidateReview', 'reviewDecision', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries', 'taskContract', 'documentReads', 'mcpObservations', 'contextCompactions']);
+        'validationBasis', 'candidateDelta', 'candidateFingerprint', 'resumedFrom', 'candidateReview', 'reviewDecision', 'authorityDecision', 'appliedFiles', 'executionWorkspace', 'capacityRetries', 'taskContract', 'documentReads', 'mcpObservations', 'contextCompactions', 'executionMode', 'directJournal']);
     if (projectPath(x.projectRoot, true) !== '.') throw new Error('Invalid project root');
     const status = parseAgentRunStatus(x.status);
     const basis = x.basis === undefined ? undefined : record(x.basis, ['head', 'clean', 'metadataChanged']);
@@ -460,6 +467,10 @@ export function parseAgentRun(value: unknown): AgentRun {
     const recovery = x.recovery === undefined ? undefined : record(x.recovery, ['adapterId', 'handle']);
     const outcome = x.outcome === undefined ? undefined : record(x.outcome, ['code', 'summary']);
     const executionWorkspace = x.executionWorkspace === undefined ? undefined : record(x.executionWorkspace, ['id', 'basisHead']);
+    const directJournal = x.directJournal === undefined ? undefined : record(x.directJournal, ['id', 'path']);
+    if (directJournal && (x.executionMode !== 'direct' ||
+        directJournal.path !== `.dope/agent/direct-journals/${directJournal.id}.json`))
+        throw new Error('Direct journal identity mismatch');
     if (executionWorkspace && (!basis || executionWorkspace.basisHead !== basis.head))
         throw new Error('Execution workspace basis does not match run');
     const changedFiles = array(x.changedFiles, 500, item => projectPath(item));
@@ -516,6 +527,7 @@ export function parseAgentRun(value: unknown): AgentRun {
         throw new Error('Invalid run timestamp order');
     return freeze({ version: version(x.version), id: id(x.id), taskId: id(x.taskId), status,
         grantId: id(x.grantId), grantRevision: integer(x.grantRevision),
+        ...(x.executionMode === undefined ? {} : { executionMode: select(x.executionMode, ['isolated', 'direct'] as const) }),
         requestedPolicy: parseAgentModelPolicy(x.requestedPolicy), projectRoot: '.',
         ...(x.projectId === undefined ? {} : { projectId: id(x.projectId) }),
         ...(toolSelection === undefined ? {} : { toolSelection }),
@@ -526,6 +538,8 @@ export function parseAgentRun(value: unknown): AgentRun {
         createdAt: timestamp(x.createdAt), ...(startedAt ? { startedAt } : {}), ...(endedAt ? { endedAt } : {}),
         ...(executionWorkspace === undefined ? {} : { executionWorkspace: {
             id: id(executionWorkspace.id), basisHead: id(executionWorkspace.basisHead) } }),
+        ...(directJournal === undefined ? {} : { directJournal: {
+            id: id(directJournal.id), path: projectPath(directJournal.path) } }),
         ...(x.provenance === undefined ? {} : { provenance: parseExecutionProvenance(x.provenance) }),
         ...(basis === undefined ? {} : { basis: { head: basis.head === null ? null : id(basis.head),
             clean: bool(basis.clean), ...(basis.metadataChanged === undefined ? {} :

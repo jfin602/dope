@@ -223,7 +223,7 @@ export class PhaseStackController {
         await this.perform(async () => {
             this.selected = await this.runtime.acceptSequenceDirtyBasis(this.handle!, id, fingerprint);
             this.dirtyPromptDismissed = false;
-            this.message = 'Dirty worktree basis accepted. Review the grant and validation command.';
+            this.message = 'Dirty worktree basis accepted. Review the tools and validation command.';
         });
     }
     get current() { return this.selected?.stack.entries[this.selected.currentEntryNumber - 1]; }
@@ -242,7 +242,6 @@ export class PhaseStackController {
         if (this.evidence && this.evidence.head !== (this.selected.checkpoints.at(-1)?.sha ?? this.selected.basis.head))
             return 'Repository HEAD changed. Reconcile the sequence before continuing.';
         if (this.needsDirtyAcceptance) return 'Worktree is dirty: continue?';
-        if (!this.tools && !this.acceptedGrant) return 'Accept the project execution grant to continue.';
         if (!this.validationCommand.trim()) return 'Enter a required validation command to continue.';
         if (this.validationCommand.trim().length > 160) return 'Validation command is too long.';
         if (this.resolveTarget && !this.resolvedTarget) return this.targetReason;
@@ -266,7 +265,7 @@ export class PhaseStackController {
             (this.evidence.clean || Boolean(s.acceptedDirty) && !this.needsDirtyAcceptance || acceptedBasisRetry) &&
             this.current?.execution === 'agent-task' &&
             (s.status === 'ready' || s.status === 'blocked' && retryable.includes(s.blockedReason ?? '')) &&
-            !this.needsDirtyAcceptance && (this.tools || this.acceptedGrant) &&
+            !this.needsDirtyAcceptance &&
             (!this.resolveTarget || !!this.resolvedTarget) &&
             (this.modelPolicy.kind === 'exact' || this.codingAgentReady) &&
             (this.resolvedTarget?.locality !== 'hosted' || this.hostedProjectDataAuthorized) &&
@@ -278,19 +277,27 @@ export class PhaseStackController {
     async start(): Promise<void> {
         if (!this.canStart || !this.handle || !this.project || !this.selected) return;
         const id = this.selected.id;
+        const toolChoice = this.tools && JSON.stringify(this.tools.choice(this.project, `sequence:${id}`));
+        const approvedCommand = this.validationCommand.trim();
         const policy = this.modelPolicy;
         await this.perform(async () => {
             const shown = this.resolvedTarget;
             const fresh = await this.resolveTarget?.(policy);
-            if (policy !== this.modelPolicy || !(this.tools || this.acceptedGrant) ||
+            if (policy !== this.modelPolicy ||
                 this.resolveTarget && (!shown || !fresh?.target ||
                 shown.connectionId !== fresh.target.connectionId || shown.modelId !== fresh.target.modelId ||
                 shown.locality !== fresh.target.locality ||
                 (shown.locality === 'hosted' && !this.hostedProjectDataAuthorized)))
                 throw new Error('Coding Agent selection changed. Review the target and approve again.');
-            const command = this.validationCommand.trim();
+            if (this.tools && toolChoice !== JSON.stringify(this.tools.choice(this.project!, `sequence:${id}`)))
+                throw new Error('Work tool selection changed. Review the tools and start again.');
+            if (approvedCommand !== this.validationCommand.trim())
+                throw new Error('Validation command changed. Review the command and start again.');
+            const command = approvedCommand;
             const task = await this.runtime.prepareSequenceTask(this.handle!, id, policy,
                 { validation: [{ kind: 'test', label: 'phase-stack', command }], requireValidationPass: true });
+            if (this.tools && toolChoice !== JSON.stringify(this.tools.choice(this.project!, `sequence:${id}`)))
+                throw new Error('Work tool selection changed. Review the tools and start again.');
             const grant = createDefaultExecutionGrant({ id: crypto.randomUUID(), revision: 1, taskId: task.id,
                 acceptedAt: new Date().toISOString(),
                 ...(shown?.locality === 'local' && this.tools ? { toolSelection: this.tools.snapshot(this.project!,

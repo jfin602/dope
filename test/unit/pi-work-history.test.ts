@@ -63,7 +63,8 @@ test('Work stores one factual MCP receipt without promoting the candidate or awa
         const grant = createMCPObservationExecutionGrant({ id: 'mcp-receipt-grant', revision: 1,
             taskId, acceptedAt: new Date().toISOString(), mcpObservation: scope,
             toolSelection: makeWorkToolSelection({ projectUri: 'file://' + root, taskId,
-                grantRevision: 1, connectionId: 'local', modelId: 'fixture-model' }, ['read_file']) });
+                grantRevision: 1, connectionId: 'local', modelId: 'fixture-model' },
+            ['read_file', 'mcp_godot_server_info']) });
         let runRuntime: AgentExecutionRuntime;
         const adapter = { id: 'pi-local-work', async start(request: any) {
             const result = Promise.resolve().then(async () => {

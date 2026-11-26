@@ -17,8 +17,7 @@ test('one existing Pi Work worker session offers the exact optional MCP observat
         globalThis.fetch = async (_url, options) => {
             const body = JSON.parse(String(options?.body));
             const names = body.tools.map((item: any) => item.function.name).sort();
-            assert.deepEqual(names, ['edit_file', 'list_files', 'mcp_godot_server_info',
-                'read_command_output', 'read_file']);
+            assert.deepEqual(names, ['edit_file', 'list_files', 'mcp_godot_server_info', 'read_file']);
             if (++turns === 2) assert.match(JSON.stringify(body.messages), /fixture observation/);
             const choices = turns === 1 ? [
                 { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: 'work-mcp-1',
@@ -48,7 +47,8 @@ test('one existing Pi Work worker session offers the exact optional MCP observat
             return originalWrite.call(this, chunk, ...args);
         } as typeof process.stdout.write;
         const opened = await dispatch({ type: 'open', mode: 'work', cwd: process.cwd(), model,
-            workProcessAvailable: false, mcpTools: [descriptor] });
+            workProcessAvailable: false, workToolNames: ['read_file', 'list_files', 'edit_file'],
+            mcpTools: [descriptor] });
         assert.ok(opened.tools.includes(descriptor.name));
         const answer = await dispatch({ type: 'work', id: 71, prompt: 'Observe server info.' });
         assert.match(answer.text, /Observed fixture/);

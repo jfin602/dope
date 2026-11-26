@@ -8,7 +8,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/authority.js';
 import { brokerLocalRead } from '../../packages/agent-core/lib/node/local-tool-broker.js';
-import { parseLocalToolRequests } from '../../packages/agent-core/lib/node/local-tool-contracts.js';
+import { parseLocalToolRequests, recoverableLocalWorkError } from '../../packages/agent-core/lib/node/local-tool-contracts.js';
 import { ExecutionWorkspace } from '../../packages/agent-core/lib/node/execution-workspace.js';
 
 const execute = promisify(execFile);
@@ -49,6 +49,9 @@ test('broker reads only candidate files under the fixed grant and isolated Linux
         assert.doesNotMatch(root.output, /"name":"(?:\.git|\.dope|\.env|escape|proc-fd|token\.key)"/);
         assert.deepEqual(JSON.parse((await run('list', 'src')).output),
             [{ name: 'main.ts', kind: 'file' }]);
+        const fileAsDirectory = await run('list', 'src/main.ts');
+        assert.equal(fileAsDirectory.status, 'failed');
+        assert.match(fileAsDirectory.output, /^NOT_A_DIRECTORY:.*read_file/);
         assert.deepEqual(await run('read', 'large.txt', 16), { id: 'call-1', name: 'read',
             status: 'completed', output: 'x'.repeat(16), truncated: true });
         const source = ('  const café = "😀";\n\treturn café;\n').repeat(650);
@@ -153,4 +156,22 @@ test('broker reads only candidate files under the fixed grant and isolated Linux
         await rm(work, { recursive: true, force: true });
         assert.equal((await run('read', 'src/main.ts')).status, 'denied');
     } finally { await workspace?.dispose(); await rm(parent, { recursive: true, force: true }); }
+});
+
+test('Work parser feedback corrects safe fields but leaves unsafe requests as denials', () => {
+    const invalid = (name: string, args: unknown) => {
+        try { parseLocalToolRequests(JSON.stringify([{ id: 'call-1', name,
+            arguments: args }])); assert.fail('expected invalid arguments'); }
+        catch (error) { return recoverableLocalWorkError({ read: 'read_file', list: 'list_files',
+            edit: 'edit_file', process: 'run_command', output: 'read_command_output' }[name]!, args, error); }
+    };
+    assert.match(invalid('list', { path: '', maxEntries: 20 })!, /^INVALID_PATH:.*"\."/);
+    assert.match(invalid('list', { path: '.', maxEntries: 101 })!, /^INVALID_ENTRY_LIMIT:.*1 to 100/);
+    assert.match(invalid('list', { path: '.', maxEntries: 'many' })!, /^INVALID_ENTRY_LIMIT:/);
+    assert.match(invalid('edit', { operation: 'modify', path: 'safe.txt', content: 1 })!, /^INVALID_CONTENT:/);
+    assert.match(invalid('process', { kind: 'test' })!, /^INVALID_COMMAND_ID:/);
+    assert.match(invalid('output', { handle: 'a'.repeat(32), offset: -1, maxBytes: 64 })!, /^INVALID_OFFSET:/);
+    assert.equal(invalid('list', { path: '../outside', maxEntries: 101 }), undefined);
+    assert.equal(invalid('list', { path: '.env', maxEntries: 101 }), undefined);
+    assert.equal(invalid('edit', { operation: 'delete', path: 'safe.txt', content: '' }), undefined);
 });

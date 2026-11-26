@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import { constants } from 'node:fs';
 import { open, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { AGENT_SCHEMA_VERSION, decideProposedAction, parseAgentTask, parseExecutionGrant, projectPath,
     phaseStackFolder, phaseStackTaskMetadata, sequenceNeedsDirtyAcceptance, importPhaseStack } from '@dope/agent-core';
@@ -38,8 +39,9 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
     private readonly unlistenMCP?: () => void;
     private readonly pendingStarts = new Map<string, Promise<AgentRun>>();
     private readonly sequenceObservers = new Map<string, Promise<void>>();
+    private releaseEditorGuard?: () => void;
 
-    constructor(private readonly store: AgentStore, client: AgentRuntimeClient,
+    constructor(private readonly store: AgentStore, private readonly client: AgentRuntimeClient,
         private readonly execution?: AgentExecutionRuntime, private readonly planning?: PlanningStore,
         private readonly mcp?: WorkMCPObservationAuthority) {
         this.unlisten = store.onChange((root, change) => {
@@ -63,12 +65,16 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         // A renderer has one channel, but its project can change. Retire the old
         // handle before attaching the next root so delayed calls cannot cross it.
         if (this.root) this.mcp?.revoke(this.root);
+        this.releaseEditorGuard?.();
+        this.releaseEditorGuard = undefined;
         this.root = undefined;
         this.handle = randomUUID();
         const handle = this.handle;
         const promise = (async () => {
             await this.execution?.reconcile(root);
             this.root = root;
+            this.releaseEditorGuard = this.execution?.registerEditorGuard(root, path =>
+                this.client.hasUnsavedEditor(pathToFileURL(join(root, path)).toString()));
             try {
                 for (const sequence of await this.store.listSequences(root)) await this.reconcileStoredSequence(root, sequence);
             } catch (error) {
@@ -165,6 +171,7 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
             !Number.isSafeInteger(request.expectedProjectRevision) || request.expectedProjectRevision < 1 ||
             !Number.isSafeInteger(request.expectedMapRevision) || request.expectedMapRevision < 0 ||
             typeof request.planningMapId !== 'string' || typeof request.workItemId !== 'string' ||
+            request.executionMode !== undefined && !['isolated', 'direct'].includes(request.executionMode) ||
             !Array.isArray(request.delegablePaths) || !request.delegablePaths.length || request.delegablePaths.length > 100)
             throw new Error('Invalid WorkItem launch request');
         const paths = request.delegablePaths.map(path => projectPath(path));
@@ -178,6 +185,7 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
             JSON.stringify(task.origin.scope.delegablePaths) === JSON.stringify(paths) &&
             JSON.stringify(task.modelPolicy) === JSON.stringify(request.modelPolicy) &&
             JSON.stringify(task.controls) === JSON.stringify(request.controls) &&
+            (task.executionMode ?? 'isolated') === (request.executionMode ?? 'isolated') &&
             JSON.stringify(task.completion) === JSON.stringify(request.completion);
         const existing = await this.store.readTask(root, id);
         if (existing) {
@@ -201,6 +209,7 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
                 validationTargets: work.validationTargets, transformationIds: work.transformationIds,
                 delegatedPaths: paths, humanReservedPaths: work.humanReservedPaths ?? [] }),
             projectRoot: '.', projectId: snapshot.projectId,
+            executionMode: request.executionMode ?? 'isolated',
             modelPolicy: request.modelPolicy, controls: request.controls,
             authority: { profile: 'phase-8b-project' }, completion: request.completion,
             planningMapId: map.id, reviewPolicy: { kind: 'required' },
@@ -576,13 +585,15 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         const controls = modelPolicy.kind === 'exact' ? {} : metadata.controls;
         const candidate = parseAgentTask({ version: AGENT_SCHEMA_VERSION, id: taskId, createdAt: sequence.createdAt,
             objective: metadata.objective, instructions: metadata.instructions, projectRoot: '.',
+            executionMode: 'isolated',
             modelPolicy, controls, authority: { profile: 'phase-8b-project' }, completion,
             reviewPolicy: { kind: 'required' },
             origin: metadata.origin, phaseStack: { stackFingerprint: metadata.stackFingerprint,
                 recommendedModel: metadata.recommendedModel, versionPolicy: metadata.versionPolicy } });
         const existing = await this.store.readTask(root, taskId);
         if (existing) {
-            if (JSON.stringify(existing) !== JSON.stringify(candidate)) throw new Error('Prepared sequence task differs from immutable snapshot');
+            if (JSON.stringify(parseAgentTask({ ...existing, executionMode: existing.executionMode ?? 'isolated' })) !==
+                JSON.stringify(candidate)) throw new Error('Prepared sequence task differs from immutable snapshot');
             if (!sequence.taskId) await this.setSequence(root, sequence, { taskId: existing.id });
             return existing;
         }
@@ -757,5 +768,6 @@ export class AgentRuntimeBackend implements AgentRuntimeService {
         return this.execution.stop(this.active(handle), runId);
     }
     dispose(): void { if (!this.disposed) { this.disposed = true; this.unlisten(); this.unlistenMCP?.();
+        this.releaseEditorGuard?.();
         if (this.root) this.mcp?.revoke(this.root); } }
 }

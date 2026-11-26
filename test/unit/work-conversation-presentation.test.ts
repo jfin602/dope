@@ -68,6 +68,53 @@ test('dockable Work panel owns the conversation, history navigation and theme-sa
     assert.match(widget, /latest\.setAttribute\('aria-label', 'Scroll to latest'\)/);
 });
 
+test('submitted Work opens in the normal transcript and then yields to saved evidence', async t => {
+    const browserPath = process.env.CHROME_BIN ?? '/usr/bin/google-chrome';
+    if (!existsSync(browserPath)) { t.skip('Chrome unavailable'); return; }
+    const bundle = await build({
+        entryPoints: ['packages/theia-extension/src/browser/work-conversation-presentation.ts'],
+        bundle: true, write: false, platform: 'browser', format: 'iife', globalName: 'DopeWork',
+        plugins: [{ name: 'presentation-link-policy', setup(plugin) {
+            plugin.onResolve({ filter: /chat-panel-presentation$/ }, () => ({ path: 'link-policy', namespace: 'test' }));
+            plugin.onLoad({ filter: /.*/, namespace: 'test' }, () => ({ contents: `export const safeChatLink = () => false;` }));
+        } }]
+    });
+    const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox'], executablePath: browserPath });
+    try {
+        const page = await browser.newPage();
+        await page.setContent('<main id="work"></main>');
+        await page.addScriptTag({ content: bundle.outputFiles[0].text });
+        const result = await page.evaluate(() => {
+            const host = document.querySelector('#work')!;
+            const prompt = '<script>My Work request</script>';
+            const pending = (window as any).DopeWork.renderWorkConversation(undefined, [], undefined, prompt);
+            host.replaceChildren(pending);
+            const before = { label: pending.getAttribute('aria-label'),
+                prompt: pending.querySelector('[aria-label="Work request"]')?.textContent,
+                status: pending.querySelector('.dope-work-system')?.textContent,
+                unsafeNodes: pending.querySelectorAll('script, img, [onerror]').length };
+            const saved = (window as any).DopeWork.renderWorkConversation(undefined, [
+                { runId: 'run', sequence: 1, at: '2026-11-25T00:00:01.000Z',
+                    kind: 'message', text: 'Started', truncated: false }
+            ], undefined, prompt, undefined, [{ id: 'run', status: 'running' }]);
+            host.replaceChildren(saved);
+            return { before, after: {
+                label: host.querySelector('section')?.getAttribute('aria-label'),
+                promptCount: host.querySelectorAll('[aria-label="Work request"]').length,
+                response: host.querySelector('[aria-label="Coding Agent"]')?.textContent,
+                startingNote: host.textContent?.includes('Starting Work…') } };
+        });
+        assert.deepEqual(result.before, {
+            label: 'Saved Work conversation', prompt: '<script>My Work request</script>',
+            unsafeNodes: 0
+        });
+        assert.equal(result.after.label, 'Saved Work conversation');
+        assert.equal(result.after.promptCount, 1);
+        assert.match(result.after.response ?? '', /Started/);
+        assert.equal(result.after.startingNote, false);
+    } finally { await browser.close(); }
+});
+
 test('saved Work renderer separates user and agent messages, condenses tools, and keeps debug events out of conversation', async t => {
     const browserPath = process.env.CHROME_BIN ?? '/usr/bin/google-chrome';
     if (!existsSync(browserPath)) { t.skip('Chrome unavailable'); return; }

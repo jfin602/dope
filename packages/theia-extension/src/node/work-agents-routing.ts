@@ -33,6 +33,15 @@ export class WorkAgentsRouting {
     }
 
     async route(path: string, context: string, signal: AbortSignal, directory = false): Promise<string> {
+        if (directory && path !== '.') {
+            // A file target has no nested AGENTS scope. Let the broker return its
+            // retryable not-a-directory result without treating ENOTDIR as a
+            // failure to inspect project instructions.
+            try {
+                const target = await lstat(join(this.request.executionRoot, path));
+                if (target.isFile() && !target.isSymbolicLink()) return '';
+            } catch { /* The broker owns missing, unsafe, and changed targets. */ }
+        }
         const additions: string[] = [];
         for (const file of this.scopes(path, directory)) {
             if (this.checked.has(file)) continue;

@@ -8,6 +8,7 @@ import { parseLocalToolRequests, parseLocalToolResult } from '@dope/agent-core/l
 import { brokerLocalRead, brokerLocalEdit, brokerLocalProcess } from '@dope/agent-core/lib/node/local-tool-broker';
 import type { LocalProcessCommand } from '@dope/agent-core/lib/node/local-tool-broker';
 import { ExecutionWorkspace } from '@dope/agent-core/lib/node/execution-workspace';
+import { DirectWorkJournal } from '@dope/agent-core/lib/node/direct-work-journal';
 import { LocalContextBudget } from './local-context-budget';
 import { LocalToolTurnTransport } from './local-tool-turn';
 import type { LocalTurnMessage, LocalToolTurnRequest } from './local-tool-turn';
@@ -41,15 +42,36 @@ export interface LocalTurnLoopBroker {
 
 /** Binds P3–P5's guarded broker to the same candidate workspace for the whole run. */
 export function localWorkspaceBroker(request: AgentExecutionRequest, workspace: ExecutionWorkspace,
-    commands: readonly LocalProcessCommand[]): LocalTurnLoopBroker {
+    commands: readonly LocalProcessCommand[], direct?: {
+        journal: DirectWorkJournal; unsaved(path: string): Promise<boolean> }): LocalTurnLoopBroker {
     if (!(workspace instanceof ExecutionWorkspace)) throw fail('Local execution workspace unavailable');
     return {
         assertActive: () => workspace.assertActiveBasis(request.projectRoot, request.executionRoot),
         execute: (call, signal) => call.name === 'read' || call.name === 'list' ?
             brokerLocalRead(request, call, signal, workspace) : call.name === 'edit' ?
-                brokerLocalEdit(request, workspace, call, signal) :
+                direct ? directEdit(call, signal) : brokerLocalEdit(request, workspace, call, signal) :
                 brokerLocalProcess(request, workspace, call, commands, signal)
     };
+    async function directEdit(call: LocalToolRequest, signal: AbortSignal): Promise<LocalToolResult> {
+        if (call.name !== 'edit') throw fail('Invalid Direct Work edit');
+        if (signal.aborted || request.executionMode !== 'direct' || !request.runId ||
+            direct!.journal.changes.some(change => change.runId !== request.runId) ||
+            !request.grant.toolSelection?.tools.some(tool => tool.id === 'edit_file') ||
+            request.authorizedPaths && !request.authorizedPaths.some(path =>
+                call.arguments.path === path || call.arguments.path.startsWith(`${path}/`)) ||
+            request.reservedPaths?.some(path => call.arguments.path === path ||
+                call.arguments.path.startsWith(`${path}/`) || path.startsWith(`${call.arguments.path}/`)))
+            return parseLocalToolResult({ id: call.id, name: call.name, status: 'denied', output: '', truncated: false });
+        try {
+            await direct!.journal.edit(call.arguments.operation, call.arguments.path,
+                call.arguments.content, direct!.unsaved);
+            const mirrored = await brokerLocalEdit(request, workspace, call, signal);
+            if (mirrored.status !== 'completed') throw new Error('Direct Work model view could not mirror canonical write');
+            return mirrored;
+        } catch {
+            return parseLocalToolResult({ id: call.id, name: call.name, status: 'denied', output: '', truncated: false });
+        }
+    }
 }
 
 /** Ephemeral adapter choreography. P9 owns adapter lifecycle and P11 owns runtime routing. */

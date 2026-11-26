@@ -3,6 +3,7 @@ import test from 'node:test';
 import { WorkSelectionController, selectWorkView, workRows, workTitle } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
 import type { AgentRuntimeService } from '../../packages/contracts/src/agent-runtime-service.ts';
 import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/authority.js';
+import { WorkToolPreferences } from '../../packages/theia-extension/lib/browser/work-tool-preferences.js';
 
 const head = 'a'.repeat(40);
 const entries = [{ number: 1, title: 'First implementation', execution: 'agent-task' },
@@ -176,6 +177,7 @@ test('Work discovers default Prompt Stacks and reopens completed history without
         async readSteering() { return undefined; }, async listActions() { return []; }, async readMapImpact() { return undefined; },
         async readTranscript() { return { state: 'recorded', entries: [{ kind: 'message', text: 'Done' }],
             nextSequence: 1, hasMore: false, incomplete: false }; },
+        async readEvents() { return { events: [], nextSequence: 0, hasMore: false }; },
         async sequenceEvidence() { return { head, packageVersion: '0.8.20', clean: true, worktreeFingerprint: 'basis' }; },
         async codingAgentReady() { return false; },
         async openTaskStack() { opens++; return { kind: 'opened', sequence }; },
@@ -210,6 +212,40 @@ test('Work discovers default Prompt Stacks and reopens completed history without
     assert.equal(scans, 2);
     assert.equal(opens, 0);
     assert.equal(creates, 0);
+});
+
+test('refreshing the selected run keeps its transcript visible until the new snapshot arrives', async () => {
+    let reads = 0;
+    let release!: (value: any) => void;
+    let changes = 0;
+    const runtime = {
+        async readRun() { return { id: 'live', taskId: 'task', status: 'running' }; },
+        async readTask() { return { id: 'task', objective: 'Build', origin: { kind: 'direct' } }; },
+        async readWorkSessionForRun() { return undefined; },
+        async readSteering() { return undefined; }, async listActions() { return []; },
+        async readMapImpact() { return undefined; },
+        readTranscript() {
+            reads++;
+            return reads === 1 ? Promise.resolve({ state: 'recorded',
+                entries: [{ kind: 'message', text: 'First' }], nextSequence: 1,
+                hasMore: false, incomplete: false }) : new Promise(resolve => { release = resolve; });
+        },
+        async readEvents() { return { events: [], nextSequence: 0, hasMore: false }; }
+    } as unknown as AgentRuntimeService;
+    const controller = new WorkSelectionController(runtime, () => { changes++; });
+    controller.project = 'file:///project'; controller.handle = 'handle';
+    await controller.select({ kind: 'run', id: 'live' });
+    const before = changes;
+    const pending = controller.select({ kind: 'run', id: 'live' });
+    while (reads < 2) await new Promise(resolve => setTimeout(resolve, 0));
+    assert.equal(controller.selectionState, 'attached');
+    assert.equal(controller.transcript[0]?.kind, 'message');
+    assert.equal(changes, before);
+    release({ state: 'recorded', entries: [{ kind: 'message', text: 'Second' }],
+        nextSequence: 1, hasMore: false, incomplete: false });
+    await pending;
+    assert.equal((controller.transcript[0] as any).text, 'Second');
+    assert.equal(changes, before + 1);
 });
 
 test('linked Work follow-up reopens the complete saved conversation in segment order', async () => {
@@ -296,7 +332,7 @@ test('completed local Work follow-up creates a new exact-model task and fresh ce
     await Promise.resolve();
     controller.followUpTarget = controller.followUpTargets.find(target => target.modelId === 'other-model');
     controller.followUpToolIds = ['read_file', 'list_files'];
-    controller.followUpAccepted = true;
+    controller.followUpPermissions = { ...permissions, network: true };
     const result = await controller.continueSession();
     assert.equal(result?.id, 'run-two');
     assert.equal(created.instructions, 'Next bounded turn');
@@ -306,6 +342,7 @@ test('completed local Work follow-up creates a new exact-model task and fresh ce
     assert.equal(continuation[4], created.id);
     assert.equal(continuation[5].taskId, created.id);
     assert.deepEqual(continuation[5].toolSelection.tools.map((tool: any) => tool.id), ['read_file', 'list_files']);
+    assert.equal(continuation[5].permissions.network, false, 'the new grant retains the saved ceiling');
     assert.equal(continuation[6], false);
     assert.equal(continuation[7], run.basis.head);
     session.status = 'recovery-required'; run.status = 'interrupted'; run.reviewDecision = undefined;
@@ -460,8 +497,6 @@ test('selected saved WorkItem task starts once with its exact ID, accepted grant
         target: { connectionId: 'codex', modelId: 'gpt', label: 'Coding · GPT', locality: 'hosted' }, reason: '' }));
     controller.project = 'file:///project'; controller.handle = 'handle'; controller.phase.codingAgentReady = true;
     await controller.select({ kind: 'task', id: saved.id });
-    assert.match(controller.startBlockReason, /accept the fixed project execution grant/);
-    controller.acceptStartGrant(true);
     assert.match(controller.startBlockReason, /Authorize sending/);
     controller.authorizeHostedProjectData(true);
     assert.equal(controller.startBlockReason, '');
@@ -532,7 +567,13 @@ test('saved WorkItem Local start uses its persisted task ID and separate grant w
         async readSteering() { return undefined; }, async listActions() { return []; }, async readMapImpact() { return undefined; },
         async readTranscript() { return { state: 'not-recorded', entries: [], nextSequence: 0, hasMore: false, incomplete: false }; }
     } as unknown as AgentRuntimeService;
-    const controller = new WorkSelectionController(runtime, () => {}, async () => ({ target, reason: '' }));
+    const savedChoices = new Map<string, string>();
+    const tools = new WorkToolPreferences({ getItem: key => savedChoices.get(key) ?? null,
+        setItem: (key, value) => { savedChoices.set(key, value); } });
+    tools.saveChoice('file:///project', `task:${saved.id}`, { groups: ['Inspect'],
+        allow: ['mcp_godot_server_info'], deny: [] });
+    const controller = new WorkSelectionController(runtime, () => {}, async () => ({ target, reason: '' }),
+        10000, tools);
     controller.project = 'file:///project'; controller.handle = 'handle'; controller.phase.codingAgentReady = true;
     await controller.select({ kind: 'task', id: saved.id });
     assert.deepEqual(controller.startMCPOffer, mcpScope);
@@ -544,6 +585,7 @@ test('saved WorkItem Local start uses its persisted task ID and separate grant w
     assert.equal(starts, 1); assert.equal(authorized, false);
     assert.deepEqual(acceptedGrant.mcpObservation, mcpScope);
     await controller.select({ kind: 'task', id: saved.id });
+    controller.acceptStartMCPObservation(true);
     controller.acceptStartGrant(true);
     target = { ...target, connectionId: 'codex', locality: 'hosted' as any };
     await controller.startSelectedWorkItemTask();

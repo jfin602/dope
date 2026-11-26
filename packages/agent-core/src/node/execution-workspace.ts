@@ -203,6 +203,7 @@ class AuthoritativeToolExecutor {
 
 /** The clone has independent Git objects and no worktree/control link to the developer project. */
 export class ExecutionWorkspace {
+    private directBasis?: { assertActive(): Promise<void> };
     private constructor(readonly projectRoot: string, readonly root: string,
         private readonly parent: string, private readonly basis: Map<string, FileState>, readonly head: string,
         readonly id: string, private readonly acceptedDirty?: AcceptedDirtyBasis) {}
@@ -213,10 +214,17 @@ export class ExecutionWorkspace {
             await realpath(this.projectRoot) !== this.projectRoot ||
             await realpath(this.root) !== this.root)
             throw new Error('Execution workspace identity changed');
+        if (this.directBasis) { await this.directBasis.assertActive(); return; }
         const current = await captureGitBasis(this.projectRoot);
         if (current.head !== this.head) throw new Error('Authoritative Git basis changed');
         if (this.acceptedDirty) await assertDirtyBasis(this.projectRoot, this.acceptedDirty);
         else if (!current.clean) throw new Error('Authoritative project changed during execution');
+    }
+
+    /** Direct mode retains this isolated model view while a separate Dope writer owns canonical effects. */
+    bindDirectBasis(basis: { assertActive(): Promise<void> }): void {
+        if (this.directBasis) throw new Error('Direct Work basis already bound');
+        this.directBasis = basis;
     }
 
     static async create(projectRoot: string, acceptedDirty?: AcceptedDirtyBasis): Promise<ExecutionWorkspace> {

@@ -21,6 +21,7 @@ export type AgentExecutionEvent =
 
 export interface AgentExecutionRequest {
     projectRoot: string; executionRoot: string; grant: ExecutionGrant; taskId: string;
+    executionMode?: 'isolated' | 'direct';
     /** Exact Dope run owning any pending one-call approval. */
     runId?: string;
     connectionId: string; registrationId: string; modelId: string;
@@ -28,6 +29,9 @@ export interface AgentExecutionRequest {
     selectedLoadedContextTokens?: number; selectedRegistryRevision?: number;
     /** Approved working paths from the task owner; advisory for instruction scope, never a grant. */
     workingPaths?: readonly string[];
+    /** Trusted delegated mutation scope; the model cannot supply this list. */
+    authorizedPaths?: readonly string[];
+    reservedPaths?: readonly string[];
     /** Prior broker-observed ranges. Adapter must verify current bytes before relying on them. */
     priorDocumentReads?: readonly WorkDocumentRead[];
     /** Checked owner snapshot to retain across native Pi compaction; never a grant. */

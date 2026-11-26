@@ -1773,7 +1773,7 @@ test('Pi Work registers only selected tools and rejects stale or dependent choic
     const opened = await dispatch({ type: 'open', mode: 'work', cwd, model,
       workToolNames: ['read_file', 'list_files'] });
     assert.deepEqual(opened.tools.slice().sort(), ['list_files', 'read_file']);
-    assert.equal(opened.workCatalogRevision, 1);
+    assert.equal(opened.workCatalogRevision, 2);
     await dispatch({ type: 'close' });
     await assert.rejects(dispatch({ type: 'open', mode: 'work', cwd, model,
       workToolNames: ['future_tool'] }), /Invalid Pi Work tool selection/);

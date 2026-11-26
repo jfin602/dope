@@ -26,7 +26,7 @@ function fixture() {
     const host = { async openNoToolSession(...args: any[]) { calls.push(args); return { version: '1.4.0', tools: [], resources: 'isolated' }; },
         async openWorkSession(...args: any[]) { calls.push(args); return { version: '1.4.0',
             tools: ['read_file', 'list_files', 'edit_file', 'read_command_output',
-                ...(args[4] === false ? [] : ['run_command'])], resources: 'isolated' }; },
+                ...(args[4] === false ? [] : ['run_command'])], resources: 'isolated', workCatalogRevision: 2 }; },
         async openChatToolsSession(...args: any[]) { calls.push(args); return { version: '1.4.0',
             tools: args[5] === true ? args[6] === true ? ['roadmap_phase'] :
                 ['roadmap_phase', 'roadmap_finish'] :
@@ -338,7 +338,7 @@ test('Pi Work binding attests exactly one optional MCP descriptor alongside fixe
     f.host.openWorkSession = async (...args: any[]) => {
         f.calls.push(args);
         return { version: '1.4.0', resources: 'isolated',
-            tools: ['edit_file', 'list_files', 'read_command_output', 'read_file',
+            workCatalogRevision: 2, tools: ['edit_file', 'list_files', 'read_command_output', 'read_file',
                 ...args[5].map((tool: any) => tool.name)] };
     };
     await f.bridge.bind({ connectionId: 'desk', modelId: 'exact-model' }, f.host as any, '/tmp',
@@ -347,7 +347,7 @@ test('Pi Work binding attests exactly one optional MCP descriptor alongside fixe
     await assert.rejects(f.bridge.bind({ connectionId: 'desk', modelId: 'exact-model' }, f.host as any, '/tmp',
         { tools: true, workProcessAvailable: false,
             mcpTools: [descriptor, { ...descriptor, name: 'mcp_godot_scene_write' }] }), /boundary/);
-    f.host.openWorkSession = async () => ({ version: '1.4.0', resources: 'isolated',
+    f.host.openWorkSession = async () => ({ version: '1.4.0', resources: 'isolated', workCatalogRevision: 2,
         tools: ['edit_file', 'list_files', 'read_command_output', 'read_file'] });
     await assert.rejects(f.bridge.bind({ connectionId: 'desk', modelId: 'exact-model' }, f.host as any, '/tmp',
         { tools: true, workProcessAvailable: false, mcpTools: [descriptor] }), /boundary/);

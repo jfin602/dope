@@ -846,7 +846,10 @@ export class AgentStore implements AgentTranscriptStorage {
             run.contextCompactions?.length || run.documentReads?.length && !run.resumedFrom)
             throw new Error('New agent run must be empty and pending');
         const task = await this.readTask(root, run.taskId);
-        if (!task || task.projectId !== run.projectId || !same(task.modelPolicy, run.requestedPolicy)) throw new Error('Agent run does not match task');
+        if (!task || task.projectId !== run.projectId || !same(task.modelPolicy, run.requestedPolicy) ||
+            (task.executionMode ?? 'isolated') !== (run.executionMode ?? 'isolated') ||
+            (run.executionMode === 'direct') !== Boolean(run.directJournal))
+            throw new Error('Agent run does not match task');
         const parent = (await this.collection(root, 'runs', true))!;
         await this.locked(parent, async () => {
             const dir = join(parent, run.id);
@@ -874,7 +877,7 @@ export class AgentStore implements AgentTranscriptStorage {
                 (!current.candidateReview || next.reviewDecision?.kind !==
                     (next.status === 'completed' ? 'accept' : 'reject')))
                 throw new Error('Blocked run requires an explicit candidate review decision');
-            for (const key of ['version', 'id', 'taskId', 'grantId', 'grantRevision', 'requestedPolicy', 'projectRoot', 'projectId', 'toolSelection', 'createdAt', 'executionWorkspace', 'resumedFrom', 'taskContract'] as const)
+            for (const key of ['version', 'id', 'taskId', 'grantId', 'grantRevision', 'requestedPolicy', 'projectRoot', 'projectId', 'toolSelection', 'createdAt', 'executionWorkspace', 'executionMode', 'directJournal', 'resumedFrom', 'taskContract'] as const)
                 if (!same(current[key], next[key])) throw new Error('Immutable AgentRun field changed');
             if (current.startedAt && current.startedAt !== next.startedAt || current.endedAt && current.endedAt !== next.endedAt ||
                 current.provenance && !same(current.provenance, next.provenance) || current.basis && !same(current.basis, next.basis) ||

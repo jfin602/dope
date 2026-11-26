@@ -36,6 +36,60 @@ export function recoverableLocalReadError(error: unknown): string | undefined {
     }
 }
 
+/** Only errors that cannot grant access to a path, command, or output handle are
+ * returned to Pi for correction. The original arguments and parser exception are
+ * deliberately not included in the feedback or saved transcript. */
+export function recoverableLocalWorkError(name: string, value: unknown, error: unknown): string | undefined {
+    if (!['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output'].includes(name) ||
+        !(error instanceof Error)) return undefined;
+    const args = value && typeof value === 'object' && !Array.isArray(value) ?
+        value as Record<string, unknown> : undefined;
+    if (!args) return 'INVALID_ARGUMENTS: Send an object with the fields in this tool schema.';
+    if (['read_file', 'list_files', 'edit_file'].includes(name)) {
+        if (args.path === undefined || args.path === '')
+            return name === 'list_files' ? 'INVALID_PATH: Use path "." for the project root, or a relative directory path.' :
+                'INVALID_PATH: Supply a nonempty relative file path.';
+        if (typeof args.path !== 'string') return 'INVALID_PATH: Supply a relative path as a string.';
+        try { relativePath(args.path, name === 'list_files'); }
+        catch { return undefined; } // Escape, private paths, and other unsafe path strings stop the run.
+    }
+    if (name === 'read_file') return recoverableLocalReadError(error);
+    if (name === 'list_files') {
+        if (!Number.isSafeInteger(args.maxEntries) || (args.maxEntries as number) < 1 ||
+            (args.maxEntries as number) > LOCAL_TOOL_LIMITS.listEntries)
+            return 'INVALID_ENTRY_LIMIT: maxEntries must be an integer from 1 to 100.';
+        return error.message === 'Invalid Local tool fields' ?
+            'INVALID_ARGUMENTS: Use only path and maxEntries.' : undefined;
+    }
+    if (name === 'edit_file') {
+        if (args.operation === undefined || typeof args.operation !== 'string')
+            return 'INVALID_OPERATION: operation must be "create" or "modify".';
+        if (args.operation !== 'create' && args.operation !== 'modify') return undefined;
+        if (typeof args.content !== 'string' || Buffer.byteLength(args.content, 'utf8') > LOCAL_TOOL_LIMITS.editBytes)
+            return 'INVALID_CONTENT: content must be a string of at most 65536 UTF-8 bytes.';
+        return error.message === 'Invalid Local tool fields' ?
+            'INVALID_ARGUMENTS: Use only operation, path and content.' : undefined;
+    }
+    if (name === 'run_command') {
+        if (args.kind === undefined || typeof args.kind !== 'string')
+            return 'INVALID_KIND: kind must be "test" or "build".';
+        if (args.kind !== 'test' && args.kind !== 'build') return undefined;
+        if (args.commandId === undefined || typeof args.commandId !== 'string')
+            return 'INVALID_COMMAND_ID: Supply an approved commandId string.';
+        return error.message === 'Invalid Local tool fields' ?
+            'INVALID_ARGUMENTS: Use only kind and commandId.' : undefined;
+    }
+    if (typeof args.handle !== 'string' || !/^[a-f0-9]{32}$/u.test(args.handle))
+        return 'INVALID_OUTPUT_HANDLE: Supply the handle returned by an approved command.';
+    if (!Number.isSafeInteger(args.offset) || (args.offset as number) < 0)
+        return 'INVALID_OFFSET: offset must be a nonnegative UTF-8 byte offset.';
+    if (!Number.isSafeInteger(args.maxBytes) || (args.maxBytes as number) < 1 ||
+        (args.maxBytes as number) > 4096)
+        return 'INVALID_PAGE_SIZE: maxBytes must be an integer from 1 to 4096.';
+    return error.message === 'Invalid Local tool fields' ?
+        'INVALID_ARGUMENTS: Use only handle, offset and maxBytes.' : undefined;
+}
+
 function object(value: unknown, fields: readonly string[], required = fields): Record<string, unknown> {
     if (value === null || typeof value !== 'object' || Array.isArray(value))
         throw new Error('Invalid Local tool object');
@@ -65,11 +119,19 @@ function relativePath(value: unknown, allowRoot = false): string {
     if (!path || path.startsWith('/') || path.startsWith('~') || path.includes('\\') ||
         path.includes(':') || /[\u0000-\u001f\u007f]/u.test(path) ||
         segments.some(part => !part || part === '.' || part === '..' ||
-            ['.git', '.dope', '.ssh', '.aws', '.config', '.npmrc', '.netrc', '.pypirc',
-                '.git-credentials', 'id_rsa', 'id_ed25519', 'credentials.json'].includes(part.toLowerCase()) ||
-            part.toLowerCase() === '.env' || part.toLowerCase().startsWith('.env.')))
+            privateLocalPathPart(part)))
         throw new Error('Invalid Local tool path');
     return path;
+}
+
+export function privateLocalPathPart(part: string): boolean {
+    const p = part.toLowerCase();
+    return ['.git', '.dope', '.codex', '.agents', '.ssh', '.aws', '.config', '.gnupg', '.kube',
+        '.docker', '.azure', '.npmrc', '.yarnrc', '.yarnrc.yml', '.netrc', '.pypirc', '.gitconfig',
+        '.git-credentials', 'id_rsa', 'id_ed25519', 'credentials.json', 'secrets', 'secret',
+        'credentials', 'private', 'node_modules'].includes(p) || p === '.env' ||
+        p.startsWith('.env.') || ['.pem', '.key', '.p12', '.pfx'].some(s => p.endsWith(s)) ||
+        ['secret.', 'token.', 'credential.'].some(s => p.startsWith(s));
 }
 
 function boundedInteger(value: unknown, max: number): number {
