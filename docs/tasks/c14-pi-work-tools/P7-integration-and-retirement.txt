@@ -1,0 +1,21 @@
+TASK: Correction 14 / P7 — Headless T2 security regression and old-wrapper retirement
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Runner-managed headless prompt; runner owns the checkpoint.
+
+VERSIONING
+- Required unchanged project version: `0.14.0`.
+- Do not change product version, dependency pins, manifests or lockfiles.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0060/0059, the Work tool-selection contract, this stack's README/assessment/plan and P1–P6 source-bound reports. Inspect actual HEAD, git status, product/Pi versions and owner dirty work. Preserve unrelated edits and historical failures; no reset, stash, clean, self-commit, unrelated Work Run, provider switch or version change. Previous critical safety/authority gate must be source-bound PASS before dependent implementation. This is runner-managed; do not manually invoke a later prompt. Report PASS/NOT GREEN/BLOCKED truthfully and return control to the runner.
+
+Make the new Pi-compatible Work registration the **only** path for new Pi Work runs. Remove obsolete model-facing `read_file`, `list_files`, `edit_file`, `run_command`, `read_command_output` wrapper exposure and dead duplicate parsing/description code where safe. Retain read-only compatibility for historical run/grant/transcript records and any deliberately documented bounded command adapter. Do not delete unrelated Pi Chat/Planning or MCP routing. Check all user-facing group labels, tool descriptions and recovery messages for old names/false Direct candidate language.
+
+Run headless integrated T2 against disposable Direct and Isolated projects: fresh missing `src/`; index create then overwrite; exact edit; list/read/search (only eligible safe tools); simulated saved/unsaved editor state and concurrent owner conflict; selected versus unselected/forged/stale/schema-changed call; protected/symlink/traversal/absolute path; OS/process/network/Git denial; command allowlist; cancellation/restart; journal partial/uncertain; Direct review/revert; Isolated candidate reject/accept; transcript/History receipts; WorkItem/Prompt Stack/retry/fork/resume. Real open-tab and preview behavior is reserved for P8. Verify no untrusted Pi process gets canonical write access. Preserve all historical NOT GREEN reports.
+
+Run focused changed-package tests, the applicable product aggregate check **once** on the integrated source, and `git diff --check`. If a check fails, repair only the demonstrated regression and rerun affected checks; never label an aggregate PASS from an earlier source. Write `docs/tasks/c14-pi-work-tools/qualification/P7-integrated.md` with an itemized PASS/FAIL/GAP matrix, exact source, commands, old-wrapper removal proof and P8 entry decision.
+
+EXIT: P7 PASS requires one new-run path and complete relevant headless T2 safety. Any security bypass or unverified high-risk effect is NOT GREEN. Return control to the runner; it stops before P8. P8 must be initiated manually only after an exact-source P7 PASS.

@@ -1,0 +1,21 @@
+TASK: Correction 14 / P3 — Whole-operation Direct journaled file effects
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Runner-managed headless prompt; runner owns the checkpoint.
+
+VERSIONING
+- Required unchanged project version: `0.14.0`.
+- Do not change product version, dependency pins, manifests or lockfiles.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0060/0059, the Work tool-selection contract, this stack's README/assessment/plan and P1–P2 source-bound reports. Inspect actual HEAD, git status, product/Pi versions and owner dirty work. Preserve unrelated edits and historical failures; no reset, stash, clean, self-commit, unrelated Work Run, provider switch or version change. Previous critical safety/authority gate must be source-bound PASS before dependent implementation. This is runner-managed; do not manually invoke a later prompt. Report PASS/NOT GREEN/BLOCKED truthfully and return control to the runner.
+
+Extend `DirectWorkJournal` and its existing broker path to implement a complete authorized write/create/overwrite and exact edit operation on the canonical project. Do not point the isolated writable mount or raw Pi tool at the project. Check exact selected tool, grant/effect ceiling, project/source basis, delegated scope, each path component, symlinks/hardlinks/protected/ignored paths, target previous state/hash/identity and unsaved editor buffer before changing anything. An open tab with no unsaved changes is not a denial. A real owner edit or stale identity is a conflict, never a generic permission error.
+
+Journal the intended parent-directory and file effect **before** the first mutation. Create parents with race-resistant no-follow traversal and attribute them precisely to this operation; on failure/crash reconcile completed, partial and uncertain states. Ensure a retry cannot replay an uncertain write. Revert only when after-state identity/hash still matches and never delete a pre-existing/owner-used directory. Preserve owner dirty/untracked bytes. Keep Direct review/validation scope and source hashes truthful.
+
+Exercise nested create, rewrite after a prior agent create, exact edit, rapid same-file calls, simulated saved/unsaved editor-buffer state, concurrent owner write, protected/symlink/race paths, mid-parent and mid-file fault injection, cancellation, restart reconciliation, selective revert and mixed safe/unsafe revert in disposable headless projects. A real open editor tab is P8 only. Run focused Direct journal/runtime tests, affected builds and `git diff --check`. Record source-bound results in `docs/tasks/c14-pi-work-tools/qualification/P3-direct.md`.
+
+EXIT: P3 PASS requires no unjournaled canonical mutation and safe verified recovery. Any unknown/unsafe partial effect is NOT GREEN and blocks model-facing registration; return control to the runner with a non-PASS verdict.

@@ -1,0 +1,23 @@
+TASK: Correction 14 / P6 — Actionable feedback, complete receipts and truthful Work outcomes
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Runner-managed headless prompt; runner owns the checkpoint.
+
+VERSIONING
+- Required unchanged project version: `0.14.0`.
+- Do not change product version, dependency pins, manifests or lockfiles.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0060/0059, the Work tool-selection contract, this stack's README/assessment/plan and P1–P5 source-bound reports. Inspect actual HEAD, git status, product/Pi versions and owner dirty work. Preserve unrelated edits and historical failures; no reset, stash, clean, self-commit, unrelated Work Run, provider switch or version change. Previous critical safety/authority gate must be source-bound PASS before dependent implementation. This is runner-managed; do not manually invoke a later prompt. Report PASS/NOT GREEN/BLOCKED truthfully and return control to the runner.
+
+Replace generic model-facing Work denials with bounded typed results for expected cases: missing file/directory, existing target, edit text mismatch or ambiguity, stale source, unsaved-buffer/concurrent edit, unavailable/unsupported command and genuine policy denial. Give a safe next action only when the model can recover; never reveal protected path/source contents, credentials, hidden approval details or raw exceptions. A true authority violation stays a denial; do not teach the model how to bypass it. Preserve Pi-compatible normal success and edit diff/result behavior where safe.
+
+Ensure **every** brokered call has exactly one terminal receipt in the originating assistant transcript and saved Chat/Work History, including failed parse, denial, retry, cancellation, late completion and uncertain effect. Correlate Pi tool IDs with broker IDs, maintain call order and reconcile late results before finalization. Test a call that completes in the journal just as the model/session stops; reasoning text alone is not a receipt.
+
+Fix Direct Work finalization so applied file changes, partial/uncertain changes, validation failures and review/revert are labeled accurately. No Direct path may say Candidate promotion failed, Accept Candidate or imply a held candidate. Preserve Isolated candidate validation and guarded Accept/Reject promotion; do not award Work/History/Roadmap Green from provider text. Verify failed and stopped runs retain truthful applied bytes and owner edits.
+
+Run focused headless result/transcript/runtime tests, affected builds and `git diff --check`. Save `docs/tasks/c14-pi-work-tools/qualification/P6-lifecycle.md` with example sanitized tool feedback, terminal call traces, Direct and Isolated outcomes and remaining gaps. Real-model behavior and browser rendering remain P8.
+
+EXIT: P6 PASS requires complete terminal receipts and mode-correct statuses. A missing/duplicated receipt, leaked data or false Direct promotion label is NOT GREEN; return control to the runner with a non-PASS verdict.

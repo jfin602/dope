@@ -1,0 +1,21 @@
+TASK: Correction 14 / P4 — Pi-maintained eligible tool definitions through Dope operations
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Runner-managed headless prompt; runner owns the checkpoint.
+
+VERSIONING
+- Required unchanged project version: `0.14.0`.
+- Do not change product version, dependency pins, manifests or lockfiles.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0060/0059, the Work tool-selection contract, this stack's README/assessment/plan and P1–P3 source-bound reports. Inspect actual HEAD, git status, product/Pi versions and owner dirty work. Preserve unrelated edits and historical failures; no reset, stash, clean, self-commit, unrelated Work Run, provider switch or version change. Previous critical safety/authority gate must be source-bound PASS before dependent implementation. This is runner-managed; do not manually invoke a later prompt. Report PASS/NOT GREEN/BLOCKED truthfully and return control to the runner.
+
+Replace new-run Work **file-tool exposure** in `packages/pi-runtime/worker.mjs` with Pi-maintained read/write/edit definitions and eligible discovery definitions where their public SDK APIs and Dope operation layer can preserve the complete effect. Keep `noTools: 'all'` or an equivalent explicit allow-only registration that proves no default raw file/shell/network/extension tool is active. Register only exact selected identities. Use Dope-controlled operations for reads and writes; preserve Pi's useful schema, description, normal result and prompt guidance while bounding output and redacting protected data.
+
+Pi write currently calls `mkdir` and `writeFile` separately; Pi edit calls access/read/write separately. A `mkdir` callback may be side-effect-free only if the eventual Dope write operation safely creates/journals parents. A `writeFile` callback must revalidate source and commit through P2/P3. If that composition cannot preserve whole-operation authority and Pi's response truth, use a minimal Pi-compatible adapter for that tool and document the exact deviation. Do not copy upstream Pi source wholesale. Do not trust Pi's absolute-path schema as authorization: reject out-of-scope values at the broker.
+
+Attest name/schema/revision/Pi package version at worker open and per call. Test headless direct and isolated selected read/write/edit, nested write, overwrite, exact-match conflicts, source race, cancellation, limits, unknown schema, and disabled raw built-ins. Inspect registered model-visible tool descriptions and successful results against the pinned Pi contract without a real-model/browser run; record any safe deviation. Run focused worker/bridge tests, affected builds and `git diff --check`; save `docs/tasks/c14-pi-work-tools/qualification/P4-pi-adapter.md`.
+
+EXIT: P4 PASS requires safe selected Pi-compatible file calls end to end. An unbrokered SDK callback or inactive safety check is NOT GREEN; return control to the runner with a non-PASS verdict before catalog migration.

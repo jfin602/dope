@@ -1,0 +1,21 @@
+TASK: Correction 14 / P8 — Independent real-model and GUI closeout
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: yes.
+- Independent manual T3 closeout; never run with --closeout.
+
+VERSIONING
+- Required unchanged project version: `0.14.0`.
+- Do not change product version, dependency pins, manifests or lockfiles.
+
+PREFLIGHT
+Read ADR 0060/0059, BOOT.md, AGENTS.md, docs/workflow.md, this stack's README/assessment/plan and P1–P7 source-bound reports. Inspect the runner-owned P7 checkpoint, exact HEAD, Git status, product/Pi versions and active model/settings. P7 must be PASS and its tested source must match the P8 checkout apart from its runner checkpoint commit. P8 is independent manual/browser-required qualification; do not use the phase runner, self-commit, rewrite historical evidence or award Roadmap/Phase/provider-wide Green.
+
+Use fresh **disposable** Git projects; never run against the owner's persistent `meteor-dodge-dope`. Build a small Vite/Meteor-like task with `index.html` and no `src/`, with the file open in the connected Dope editor. Record whether the editor buffer is saved. Use the reported `unsloth/gemma-4-26b-a4b-it-qat` if available; otherwise state the model substitution and label the exact reported-model comparison GAP. For the same task and exact available model/settings, run standalone pinned Pi in an isolated disposable environment, then Dope Direct Work with the tools needed. Record initial/final source, task completion and validation, model calls/tool calls and retries, tool-schema/prompt/context bytes, elapsed time and the model-facing conflict text. The standalone baseline has no permission to touch owner projects.
+
+Observe Direct nested `src/main.ts` creation, `index.html` overwrite/precise edit, editor/Explorer/preview update during the turn, terminal receipts, final applied-change review and validation. Repeat a controlled open-tab-only call and a separate unsaved-buffer or concurrent-owner-edit conflict; establish whether opening a tab alone affects authority. Exercise Stop after a verified edit and selective Revert while preserving a later owner change. Run a separate Isolated Work task to prove candidate remains held until Accept, Reject has no canonical effect, and command/validation results remain bounded. Test one real denied protected/unselected action without revealing protected data.
+
+Read saved Chat/Work History and compare each tool call with its live terminal receipt, including any cancellation/failure. Where available, perform owner-native Electron observation and record its exact scope; never infer native parity from browser. If the local model/server or GUI is unavailable, record BLOCKED/EVIDENCE GAP and stop rather than inventing a substitute PASS.
+
+Write `docs/tasks/c14-pi-work-tools/qualification/P8-final-closeout.md` with exact source/model/settings/fixtures, screenshots or trace references, per-case PASS/FAIL/GAP, standalone Pi versus Dope metrics, remaining limitations and explicit **GREEN FOR THIS CORRECTION** or **NOT GREEN**. Green requires complete safe file behavior, truthful receipts and outcomes, required validation, Isolated regression and same-model comparison. A passed unit suite or successful model text alone is insufficient. STOP; no automatic follow-on Run.

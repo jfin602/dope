@@ -1,0 +1,26 @@
+# Implementation plan — runner Pi Work tool replacement
+
+**Status:** plan only, revised 2026-11-27. Execute P1–P7 through the [README runner sequence](README.md) after source/dirty-tree review; P8 remains manual. Required unchanged product version is `0.14.0`; Pi `1.4.0` is the observed authoring dependency and must be checked at execution.
+
+## Sequence and dependencies
+
+1. **P1 / audit and headless baseline:** Identify every model-facing Work tool, Pi SDK definition/export, broker effect, saved-selection and finalization seam. Reproduce broker behavior in a disposable headless fixture and document the exact trace. Freeze an explicit per-tool strategy: Pi definition with guarded operations, thin Pi-compatible adapter, or unavailable with reason. Check installed Pi license/packaging; no dependency upgrade by assumption. Produce a tracked factual audit report as the runner checkpoint. Defer live model, open-tab and browser reproduction to P8.
+2. **P2 / Isolated operation layer:** Give authorized `read`/`write`/`edit` Pi-compatible behavior against the isolated workspace, including nested directory creation and safe complete rewrites. Keep OS-sandbox descriptor/path and effect checks, candidate evidence and source basis. No model-visible switch yet.
+3. **P3 / Direct operation layer:** Extend the existing Direct journal for one complete authorized file effect, including missing parents, overwrite and exact edit. Journal all attributable effects before mutation; guard races and unsaved buffers; reconcile partial/uncertain state. Keep selective restore safe.
+4. **P4 / Pi registration:** Bind Pi's maintained definitions for eligible read/write/edit and safe discovery tools to the Dope operation layer. Where the SDK splits an effect, use a minimal compatible adapter or safe callback composition with tests proving no unbrokered effect. Attest actual schema/name/result behavior. Do not enable all Pi defaults or unrestricted Bash.
+5. **P5 / selection and commands:** Replace the static new-run catalog with trusted broker-attested registration and exact selected-tool filtering at worker and broker. Migrate or explicitly re-review old saved group choices and grants; keep old runs readable. Maintain bounded approved command execution as a documented Pi-compatibility exception. Cover New Work, WorkItem, Prompt Stack, phase runner, retry/fork/resume and external MCP isolation.
+6. **P6 / feedback and lifecycle:** Return safe, actionable Pi feedback and complete per-call receipts. Correct Direct final outcome/validation/review wording while preserving Isolated candidate flow. Reconcile cancellation and late result races.
+7. **P7 / headless integration and retirement:** Remove obsolete five-wrapper exposure from new Pi Work sessions only after replacement tests pass. Delete dead duplicate parser/registration code where safe, retain historical readers and migrations. Run source-bound headless T2 negative matrix and one aggregate check; stop runner after the checkpoint.
+8. **P8 / independent live closeout:** Manually run a same-model standalone Pi comparison and real Dope Direct/Isolated browser task in disposable projects, including open-tab and missing-directory cases. Record exact-source Green/Not Green, performance data and limitations. Native Electron evidence is recorded if available, never inferred from browser.
+
+## Shared acceptance criteria
+
+- Pi-maintained eligible tool contracts reach the model; every effect remains Dope-brokered and selected. Any adapter gap is documented per tool. Raw Pi file, process, network, extension or MCP bypass remains unavailable.
+- Authorized nested file create, subsequent overwrite and exact edit work in both modes. Bad paths, protected files, symlinks, races, stale source, dirty/unsaved owner edits, over-limit data and unselected/stale/forged tools fail safely with truthful feedback.
+- Direct journal and applied-change review are complete, crash-recoverable and never called candidate promotion. Isolated candidate Accept/Reject and validation remain intact. No automatic Git writes or Roadmap Green.
+- Every model tool invocation has one safe terminal outcome in live Chat and saved History; uncertain effects are identified and not replayed.
+- A complete disposable model task passes required validation. Compare outcome, tool calls, feedback loops, schema/prompt/context bytes and elapsed time to standalone Pi with the same model/settings; report costs even if Dope is slower.
+
+## Efficiency and evidence
+
+P2–P6 run only changed-package builds and focused tests plus `git diff --check`. P7 runs the relevant full product check once on the integrated candidate; P8 does live model/UI qualification. No P1–P7 browser or real-model GUI step. Tests should exercise real mutation, selection and recovery boundaries, not merely mirror implementation. Every prompt writes a dated `qualification/Pn-*.md` with HEAD, dirty state, changed files, exact commands and outcomes, PASS/FAIL/GAP per acceptance criterion and next-step gate. The runner owns P1–P7 commits; a commit is not a qualification receipt. A NOT GREEN/BLOCKED result requires a stop even if the runner's current prefix detector sees a commit. P8 is manual and must not be auto-run with `--closeout`.

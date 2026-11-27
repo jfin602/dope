@@ -1,0 +1,21 @@
+TASK: Correction 14 / P2 — Safe Pi-compatible Isolated file operations
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Runner-managed headless prompt; runner owns the checkpoint.
+
+VERSIONING
+- Required unchanged project version: `0.14.0`.
+- Do not change product version, dependency pins, manifests or lockfiles.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0060/0059, the Work tool-selection contract, this stack's README/assessment/plan and P1 audit and reproduction evidence. Inspect actual HEAD, git status, product/Pi versions and owner dirty work. Preserve unrelated edits and historical failures; no reset, stash, clean, self-commit, unrelated Work Run, provider switch or version change. Previous critical safety/authority gate must be source-bound PASS before dependent implementation. This is runner-managed; do not manually invoke a later prompt. Report PASS/NOT GREEN/BLOCKED truthfully and return control to the runner.
+
+Implement the **operation layer**, not a second Work system. In the existing isolated ExecutionWorkspace broker, support authorized Pi-style file read, complete write/create/overwrite and exact targeted edit, with missing parent directories created safely in the isolated candidate. The model-facing registration remains gated until P4. Keep selected-tool and `ExecutionGrant` checks, source identity, file/byte limits, protected-path/symlink/traversal checks, no-follow descriptor traversal, OS sandbox, command isolation and candidate delta rules. Do not make the isolated sandbox writable to an untrusted Pi process outside the broker.
+
+For writes, define one Dope operation that authorizes and accounts for all new parent directories and target bytes. Ensure a failed nested create cannot leave an unexplained partial candidate; expose an explicit recoverable state if cleanup is unsafe. For edits, match Pi's exact non-overlapping replacement behavior only after an authorized read, then recheck the target before committing; preserve BOM/line endings when applicable and reject a mismatch without a write. A Pi SDK callback pair is not authority by itself.
+
+Test headlessly with disposable repos: new `src/main.ts` under missing `src/`, overwrite `index.html`, exact edit, absent/multiple/overlapping match, large/invalid content, protected/symlink/path-escape targets, concurrent replacement, cancellation and candidate Reject/Accept regression. Cover no unauthorized parent dir left on denial. Run focused broker/workspace tests, affected builds and `git diff --check`. Write `docs/tasks/c14-pi-work-tools/qualification/P2-isolated.md` with actual changed paths, commands/results and failures.
+
+EXIT: P2 PASS requires correct file effects and negative tests under Isolated authority. A missing safety property is NOT GREEN; return control to the runner with a non-PASS verdict before Direct or Pi tool exposure.

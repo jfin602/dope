@@ -1,0 +1,23 @@
+TASK: Correction 14 / P5 — Trusted selection, catalog and bounded commands
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Runner-managed headless prompt; runner owns the checkpoint.
+
+VERSIONING
+- Required unchanged project version: `0.14.0`.
+- Do not change product version, dependency pins, manifests or lockfiles.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0060/0059, the Work tool-selection contract, this stack's README/assessment/plan and P1–P4 source-bound reports. Inspect actual HEAD, git status, product/Pi versions and owner dirty work. Preserve unrelated edits and historical failures; no reset, stash, clean, self-commit, unrelated Work Run, provider switch or version change. Previous critical safety/authority gate must be source-bound PASS before dependent implementation. This is runner-managed; do not manually invoke a later prompt. Report PASS/NOT GREEN/BLOCKED truthfully and return control to the runner.
+
+Replace the fixed five-wrapper **new-run** catalog and worker/host name allowlists with a trusted, broker-attested registry of eligible Pi tool definitions and documented thin adapters. Bind selected identities to Pi package version, schema/catalog revision, provider/model, project/task, execution mode and internal grant. Show every safely brokerable eligible tool individually in **Tools for this Work**; show unavailable tools with a concrete reason. A new Pi release/tool is not auto-selected. Enforce exact selection both at Pi registration and each broker call, including forged, stale, changed-schema, removed, duplicated and unselected tool attempts.
+
+Migrate old saved group/default preferences deliberately: preserve old run/grant/history parsing read-only, map only semantically equivalent known IDs after review, and require a fresh Start Work approval for a new run whenever the effective identities change. Cover New Work, WorkItem, Prompt Stack, phase runner, retry, fork/resume and all relevant UI/host attestation paths. Do not merge separate MCP activation/per-call consent or hosted-data consent into the built-in tool selection.
+
+Pi's unrestricted Bash cannot pass the fixed effect ceiling. Keep model command capability as an explicitly documented bounded Pi-compatible adapter only for approved test/build IDs; preserve isolated process sandbox, read-only canonical Direct view, output handles and Dope-owned required validation. If command behavior cannot be enforced, mark it unavailable before Start. Never silently substitute arbitrary host shell access.
+
+Test headlessly: custom groups, deny override, disabled command dependencies, cross-project isolation, old selection migration/re-review, stale recovery, exact worker names, unselected/forged calls and all Work starts. Run focused selection/host/broker tests, affected builds and `git diff --check`. Save `docs/tasks/c14-pi-work-tools/qualification/P5-selection.md` with exact catalog, tool schemas and recorded gaps.
+
+EXIT: P5 PASS requires no unselected or raw tool can execute and no old approval silently expands. An authority mismatch is NOT GREEN and blocks P6; return control to the runner with a non-PASS verdict.

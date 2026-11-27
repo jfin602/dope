@@ -1,0 +1,21 @@
+TASK: Correction 14 / P1 — Source audit, Pi SDK seam proof and headless disposable reproduction
+
+MODEL / REASONING / USAGE
+- Recommended configuration: `GPT-6 Sol High`.
+- Browser required: no.
+- Runner-managed headless prompt; runner owns the checkpoint.
+
+VERSIONING
+- Required unchanged project version: `0.14.0`.
+- Do not change product version, dependency pins, manifests or lockfiles.
+
+PREFLIGHT
+Read BOOT.md, AGENTS.md, docs/workflow.md, ADR 0060/0059, the Work tool-selection contract, this stack's README/assessment/plan and current Pi, broker, Work and runner source. Inspect actual HEAD, git status, product/Pi versions and owner dirty work. Preserve unrelated edits and historical failures; no reset, stash, clean, self-commit, unrelated Work Run, provider switch or version change. This is the entry audit for the runner-managed sequence; do not manually invoke a later prompt. Report PASS/NOT GREEN/BLOCKED truthfully and return control to the runner.
+
+1. Map every registered/model-facing Pi Work tool and result path from `packages/pi-runtime/worker.mjs` through runtime host/bridge, `pi-work-execution.ts`, local tool contracts/broker, Direct journal, Work selection, transcript/History and finalization. Identify all New Work, WorkItem, Prompt Stack, phase-runner, retry, fork and resume entry points. Separate Pi Chat/Planning and MCP paths that must survive.
+2. Inspect the installed pinned Pi SDK definitions and supported exports for read, write, edit, discovery and Bash. For each, list schema/name/description/results, all callbacks and side effects, whether Dope can enforce a full operation atomically, and the safe integration strategy. In particular, prove whether Pi write's `mkdir` and edit's access/read/write callbacks can avoid unjournaled or stale effects; use a thin compatible adapter where they cannot. Verify packaging/license and do not upgrade Pi on speculation.
+3. Inspect the failed `meteor-dodge-dope` run read-only if its local evidence is available. Record exact call order and status for `index.html`, `src/main.ts`, `docs/test.txt`, terminal receipt and Direct final outcome. Do not claim that opening a tab caused denial without a controlled reproduction.
+4. Create a disposable Git fixture with `index.html` and no `src/`. Reproduce the current broker's create-then-create, nested create and safe-denial behavior through headless tests or the backend path only; do not open the browser or run a real model. Keep owner projects out of the test. Capture baseline tool names/schema bytes, call counts and diagnostics when measurable; label unavailable measurements GAP. Defer the actual open-tab and local-model replay to P8.
+5. Write `docs/tasks/c14-pi-work-tools/qualification/P1-audit.md` with source identity, complete seam/call-site matrix, observed headless reproduction, per-tool native/adapter/unavailable choice, proposed catalog/grant migration and exact P2–P7 dependencies. This verified report is the required tracked P1 change for the runner checkpoint; do not invent a product edit or mark the replacement implemented. If a critical SDK/effect seam is unknown, leave the report as BLOCKED and return a non-PASS verdict so the runner does not checkpoint it.
+
+EXIT: P1 PASS requires a factual, source-bound audit and headless disposable reproduction. An unknown effect path or missing reproduction blocks implementation; report NOT GREEN/BLOCKED. Return control to the runner; it may advance only on an unambiguous PASS.
