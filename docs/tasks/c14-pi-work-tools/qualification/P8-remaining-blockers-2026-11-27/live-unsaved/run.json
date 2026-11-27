@@ -1,0 +1,128 @@
+{
+  "version": 1,
+  "id": "ac25406b-0531-45dc-be0e-296ab18274b0",
+  "taskId": "92f72592-323a-471a-a687-856136f28086",
+  "status": "cancelled",
+  "grantId": "70751a87-9e45-4b78-b6a8-cb8452e077da",
+  "grantRevision": 1,
+  "executionMode": "direct",
+  "requestedPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "projectRoot": ".",
+  "toolSelection": {
+    "catalogRevision": 4,
+    "projectUri": "file:///tmp/c14-p8-unsaved-live-65D0h6",
+    "taskId": "92f72592-323a-471a-a687-856136f28086",
+    "grantRevision": 1,
+    "connectionId": "dd582338-4ff1-48df-868c-ce73048abf6d",
+    "modelId": "qwen3.6-35b-a3b",
+    "piVersion": "1.4.0",
+    "executionMode": "direct",
+    "grantId": "70751a87-9e45-4b78-b6a8-cb8452e077da",
+    "tools": [
+      {
+        "id": "read",
+        "schemaRevision": 1,
+        "schemaHash": "134f19bcabe3e29d63c5cebb38f1d2556759fd08adad6bc90a4b4d3cd1fb8441"
+      },
+      {
+        "id": "edit",
+        "schemaRevision": 1,
+        "schemaHash": "55866598f02c5e00ddfcbcae3df78081e3712de09a622bac7a6bc02ef2acc1bc"
+      }
+    ]
+  },
+  "taskContract": {
+    "taskId": "92f72592-323a-471a-a687-856136f28086",
+    "taskHash": "14b0057c8e66fe9670164e25218323a25c3803d50467a378c0126fcc81d8d8a0",
+    "objective": "Inspect index.html and change its page title and heading from Meteor Dodge to Meteor Dodge Conflict Probe. Do not change any other file. Finish after the edit attempt; Dope will run validation.",
+    "instructionsHash": "ca312278345f6e0be0be1498d3d40161710d56e195b815961001cd22627852ee",
+    "acceptance": "unknown",
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --check main.js"
+      }
+    ],
+    "planning": "unknown",
+    "roadmap": "unknown",
+    "grant": {
+      "id": "70751a87-9e45-4b78-b6a8-cb8452e077da",
+      "revision": 1,
+      "acceptedAt": "2026-11-27T22:27:54.132Z",
+      "permissionsHash": "650357c32a4ea617bcecdb3e481f78c1269517808f99e6d8b685ab548750f0b4"
+    },
+    "sourceHead": "ab16e3c8262a065d671758e5b21d7c256c52f02a"
+  },
+  "createdAt": "2026-11-27T22:27:54.309Z",
+  "startedAt": "2026-11-27T22:27:54.309Z",
+  "endedAt": "2026-11-27T22:28:57.508Z",
+  "executionWorkspace": {
+    "id": "ba60c669-2348-4df1-a3a6-488f26b8a5e6",
+    "basisHead": "ab16e3c8262a065d671758e5b21d7c256c52f02a"
+  },
+  "directJournal": {
+    "id": "1573ab88-16b2-4d6e-bd3b-0eecdb44953d",
+    "path": ".dope/agent/direct-journals/1573ab88-16b2-4d6e-bd3b-0eecdb44953d.json"
+  },
+  "directApplied": [],
+  "provenance": {
+    "version": 1,
+    "connectionId": "dd582338-4ff1-48df-868c-ce73048abf6d",
+    "modelId": "qwen3.6-35b-a3b",
+    "providerId": "local",
+    "runtimeKind": "local",
+    "adapterId": "pi-local-work",
+    "policyRevision": 36
+  },
+  "basis": {
+    "head": "ab16e3c8262a065d671758e5b21d7c256c52f02a",
+    "clean": true,
+    "metadataChanged": false
+  },
+  "changedFiles": [],
+  "validationResults": [
+    {
+      "version": 1,
+      "kind": "test",
+      "label": "Required validation",
+      "status": "cancelled",
+      "owner": "dope",
+      "command": "node --check main.js",
+      "reason": "Validation cancelled"
+    }
+  ],
+  "finalGit": {
+    "head": "ab16e3c8262a065d671758e5b21d7c256c52f02a",
+    "clean": true,
+    "headChanged": false,
+    "metadataChanged": false,
+    "statuses": [],
+    "truncated": false
+  },
+  "changeSummary": {
+    "version": 1,
+    "filesChanged": 0,
+    "insertions": 0,
+    "deletions": 0,
+    "summary": "0 task files changed; 0 bounded text insertions, 0 deletions; 0 untracked bytes",
+    "truncated": false
+  },
+  "validationBasis": "direct-applied-snapshot",
+  "candidateDelta": {
+    "version": 1,
+    "effects": []
+  },
+  "candidateFingerprint": "2f2c0b34c90c4b63527d6cbf293e26664caf9e27a6df46ce768cb3e392737e6b",
+  "authorityDecision": {
+    "allowed": true,
+    "blocked": []
+  },
+  "appliedFiles": [],
+  "outcome": {
+    "code": "cancelled",
+    "summary": "Direct Work: 0 applied file(s), 0 uncertain file(s); run stopped; review applied changes"
+  }
+}

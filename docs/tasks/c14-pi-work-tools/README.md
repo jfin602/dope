@@ -1,6 +1,8 @@
 # c14-pi-work-tools — Runner Pi Work tool replacement and manual qualification
 
-**Status:** ASSESSED / PLANNED / RUNNER PROMPTS P1–P7 AND MANUAL P8 AUTHORED ONLY — NOT RUN OR QUALIFIED. **Revised:** 2026-11-27. **Required unchanged product version:** `0.14.0`; verify HEAD, manifests and dirty owner work before execution. **Authority:** [ADR 0060](../../decisions/0060-pi-native-work-tools-dope-controlled-operations.md), [ADR 0059](../../decisions/0059-direct-and-isolated-work-execution-modes.md), [Work tool selection](../../planning/p13/work-tool-selection-proposal.md), ADR 0027/0028, and [workflow](../../workflow.md).
+> **2026-11-27 CURRENT OWNER CLOSE:** [P8 OWNER GREEN / correction closed for the accepted functional scope](qualification/P8-owner-closeout-2026-11-27.md). The [original P8 NOT GREEN report](qualification/P8-final-closeout.md) and [later technical NOT GREEN report](qualification/P8-remaining-blockers-qualification-2026-11-27.md) remain intact; the owner deferred their remaining exhaustive T3 observations. This does not award a product Roadmap Gate, Phase, provider-wide status, version change or commit.
+
+**Original authoring status (historical):** ASSESSED / PLANNED / RUNNER PROMPTS P1–P7 AND MANUAL P8 AUTHORED ONLY — NOT RUN OR QUALIFIED. **Revised:** 2026-11-27. **Required unchanged product version:** `0.14.0`; verify HEAD, manifests and dirty owner work before execution. **Authority:** [ADR 0060](../../decisions/0060-pi-native-work-tools-dope-controlled-operations.md), [ADR 0059](../../decisions/0059-direct-and-isolated-work-execution-modes.md), [Work tool selection](../../planning/p13/work-tool-selection-proposal.md), ADR 0027/0028, and [workflow](../../workflow.md).
 
 ## Outcome
 

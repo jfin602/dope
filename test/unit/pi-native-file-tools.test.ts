@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -79,6 +79,12 @@ for (const mode of ['isolated', 'direct'] as const) test(`selected Pi file adapt
         }
         assert.equal((await call({ id: 'bad2', kind: 'write', path: '.git/config', content: 'x' })).status,
             'denied');
+        await symlink('/tmp', join(workspace.root, 'src', 'escape'));
+        assert.notEqual((await call({ id: 'symlink', kind: 'write', path: 'src/escape/foreign.txt',
+            content: 'x' })).status, 'completed');
+        await rm(join(workspace.root, 'src', 'escape'));
+        assert.equal((await call({ id: 'stale', kind: 'write', path: 'new/stale.txt', content: 'x' },
+            { ...request, executionRoot: `${workspace.root}-stale` })).status, 'denied');
         assert.equal((await call({ id: 'bad3', kind: 'write', path: '../escape', content: 'x' })).status,
             'denied');
         assert.equal((await call({ id: 'bad4', kind: 'write', path: 'huge/file', content: 'x'.repeat(65537) })).status,

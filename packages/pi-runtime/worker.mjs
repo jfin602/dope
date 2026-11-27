@@ -631,9 +631,9 @@ function workTools() {
       return {
         name, label: definition.label, parameters: definition.parameters,
         description: name === 'read' ?
-          'Read text file contents through Dope. Use offset/limit for line ranges. A call scans at most 64KB and returns at most 16KB. Use a relative project path.' :
-          name === 'ls' ? 'List directory contents through Dope. Returns sorted entries with / for directories. Includes permitted dotfiles. At most 100 entries; use a relative project path.' :
-          `${definition.description} Use a relative project path; Dope checks and records the whole operation.`,
+          'Read text file contents through Dope. Use offset/limit for line ranges. A call scans at most 64KB and returns at most 16KB.' :
+          name === 'ls' ? 'List directory contents through Dope. Returns sorted entries with / for directories. Includes permitted dotfiles. At most 100 entries.' :
+          `${definition.description} Dope checks and records the whole operation.`,
         promptSnippet: definition.promptSnippet,
         promptGuidelines: [...(definition.promptGuidelines ?? [])],
         async execute(piToolCallId, untrusted, signal) {

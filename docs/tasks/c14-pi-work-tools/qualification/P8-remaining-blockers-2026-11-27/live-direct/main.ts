@@ -1,0 +1,6 @@
+const canvas = document.getElementById('game');
+const context = canvas.getContext('2d');
+context.fillStyle = '#07152c';
+context.fillRect(0, 0, canvas.width, canvas.height);
+context.fillStyle = '#e5f5ff';
+context.fillText('Meteor Dodge Replay', 24, 32);

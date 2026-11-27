@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { execFile } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
@@ -10,7 +10,7 @@ import { makeWorkToolSelection, workToolRegistration, WORK_PI_VERSION,
     WORK_TOOL_CATALOG_REVISION } from '../../packages/agent-core/lib/work-tool-selection.js';
 import { ExecutionWorkspace } from '../../packages/agent-core/lib/node/execution-workspace.js';
 import { DirectWorkJournal } from '../../packages/agent-core/lib/node/direct-work-journal.js';
-import { PiWorkExecutionAdapter, piFileArgumentDetail } from '../../packages/theia-extension/lib/node/pi-work-execution.js';
+import { PiWorkExecutionAdapter, piFileArgumentDetail, projectPathForPiFile } from '../../packages/theia-extension/lib/node/pi-work-execution.js';
 import { dispatch } from '../../packages/pi-runtime/worker.mjs';
 
 const execute = promisify(execFile);
@@ -37,6 +37,18 @@ test('Pi Work file diagnostics distinguish absolute paths without retaining priv
         { fields: ['path', 'content'], path: 'src/main.ts', pathStatus: 'project-relative', contentBytes: 14 });
     assert.deepEqual(piFileArgumentDetail({ path: '.git/private-secret', content: 'x' }),
         { fields: ['path', 'content'], pathStatus: 'protected', contentBytes: 1 });
+});
+
+test('Pi Work absolute file paths resolve only inside the exact execution workspace', () => {
+    const workspace = { root: '/tmp/dope-execution-test/work' };
+    assert.equal(projectPathForPiFile(workspace.root, workspace), '.');
+    assert.equal(projectPathForPiFile(`${workspace.root}/src/main.ts`, workspace), 'src/main.ts');
+    assert.equal(projectPathForPiFile('src/main.ts', workspace), 'src/main.ts');
+    for (const path of ['/tmp/elsewhere', `${workspace.root}-sibling`, '/project/src/main.ts',
+        `${workspace.root}/../elsewhere`, `${workspace.root}//src`, `${workspace.root}/`,
+        `${workspace.root}/src/./main.ts`, 'src/../main.ts', '', '~/file', 'C:\\file',
+        `${workspace.root}/src\\main.ts`, `${workspace.root}/src\u0000main.ts`])
+        assert.throws(() => projectPathForPiFile(path, workspace), /Pi file path/u, path);
 });
 
 test('Pi Work Direct write updates canonical source only through the broker', async () => {
@@ -78,6 +90,50 @@ test('Pi Work Direct write updates canonical source only through the broker', as
     } finally { await workspace?.dispose(); await rm(project, { recursive: true, force: true }); }
 });
 
+test('Pi Work serializes parallel Direct write and edit calls in Pi call order', async () => {
+    const project = await mkdtemp(join(tmpdir(), 'dope-pi-direct-parallel-'));
+    let workspace: ExecutionWorkspace | undefined;
+    try {
+        await writeFile(join(project, 'index.html'), '<title>Before</title>\n');
+        await execute('git', ['init', '-q', project]);
+        await execute('git', ['add', 'index.html'], { cwd: project });
+        await execute('git', ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+            'commit', '-qm', 'basis'], { cwd: project });
+        const head = (await execute('git', ['rev-parse', 'HEAD'], { cwd: project })).stdout.trim();
+        workspace = await ExecutionWorkspace.create(project);
+        const grant = selectedGrant(project, 'grant-parallel', 'task-parallel', 'model',
+            ['write', 'edit'], 'direct');
+        const journal = await DirectWorkJournal.create(project, head, 'task-parallel', 'run-parallel', grant);
+        workspace.bindDirectBasis(journal);
+        const host: any = { async start() {}, async runWork(_prompt: string,
+            onTool: (call: any) => Promise<any>) {
+            const [written, edited] = await Promise.all([
+                brokerCall(onTool, { id: 1, name: 'write', arguments: {
+                    path: join(workspace!.root, 'src/main.ts'), content: 'export const ready = true;\n' } }),
+                brokerCall(onTool, { id: 2, name: 'edit', arguments: {
+                    path: join(workspace!.root, 'index.html'), edits: [
+                        { oldText: 'Before', newText: 'After' }] } })
+            ]);
+            assert.equal(written.status, 'completed', JSON.stringify(written));
+            assert.equal(edited.status, 'completed', JSON.stringify(edited));
+            return { modelId: 'model', text: 'Done.' };
+        }, dispose() {} };
+        const adapter = new PiWorkExecutionAdapter({ async bind() {
+            return { endpoint: 'http://127.0.0.1:9/v1', registryRevision: 1 };
+        }, async assertWorkSelection() {} } as any,
+        { create: () => host, release() {} } as any, () => workspace!, () => [], undefined,
+        () => ({ journal, unsaved: async () => false, refresh: async () => true }));
+        const run = await adapter.start({ projectRoot: project, executionRoot: workspace.root,
+            executionMode: 'direct', grant, taskId: 'task-parallel', runId: 'run-parallel',
+            connectionId: 'local', registrationId: 'local', modelId: 'model',
+            prompt: 'Create the source and edit the page.', onEvent() {} });
+        await run.result;
+        assert.equal(await readFile(join(project, 'src/main.ts'), 'utf8'), 'export const ready = true;\n');
+        assert.equal(await readFile(join(project, 'index.html'), 'utf8'), '<title>After</title>\n');
+        assert.deepEqual(journal.changes.map(change => change.path), ['src/main.ts', 'index.html']);
+    } finally { await workspace?.dispose(); await rm(project, { recursive: true, force: true }); }
+});
+
 for (const mode of ['isolated', 'direct'] as const)
 test(`Pi native selected file calls traverse the ${mode} Work bridge`, async () => {
     const project = await mkdtemp(join(tmpdir(), `dope-pi-native-bridge-${mode}-`));
@@ -103,40 +159,59 @@ test(`Pi native selected file calls traverse the ${mode} Work bridge`, async () 
             ls: 'ad4ee18683e9c3d6bfa7969709a0683bc9f896099ed6a74db0b6c49444718a0c'
         };
         const observations: any[] = [];
+        let savedEditorRefreshes = 0;
         const host: any = { async start() {}, async runWork(_prompt: string,
             onTool: (call: any) => Promise<any>) {
             let id = 0;
             const call = (name: keyof typeof hashes, args: unknown) => brokerCall(onTool, { id: ++id, name,
                 arguments: args, contract: { revision: 4, schemaHash: hashes[name], piVersion: '1.4.0' } });
-            assert.match((await call('read', { path: 'src/file.txt' })).output, /before/);
-            assert.match((await call('write', { path: 'src/nested/new.txt', content: 'one\n' })).output,
+            assert.match((await call('ls', { path: workspace!.root })).output, /src\//);
+            assert.match((await call('read', { path: join(workspace!.root, 'src/file.txt') })).output, /before/);
+            assert.match((await call('write', { path: join(workspace!.root, 'src/nested/new.txt'), content: 'one\n' })).output,
                 /Successfully wrote/);
             assert.equal((await call('write', { path: 'src/nested/new.txt', content: 'two\n' })).status,
                 'completed');
-            assert.match((await call('edit', { path: 'src/nested/new.txt', edits: [
+            assert.match((await call('edit', { path: join(workspace!.root, 'src/nested/new.txt'), edits: [
                 { oldText: 'two', newText: 'three' }] })).output, /Successfully edited/);
+            assert.match((await call('edit', { path: join(workspace!.root, 'src/file.txt'), edits: [
+                { oldText: 'before', newText: 'after' }] })).output, /Successfully edited/);
             assert.match((await call('ls', { path: 'src/nested' })).output, /new.txt/);
             assert.equal((await call('write', { path: '.git/private-secret', content: 'x' })).status, 'denied');
+            assert.equal((await call('write', { path: join(workspace!.root, '.git/config'),
+                content: 'x' })).status, 'denied');
+            await symlink('/tmp', join(workspace!.root, 'src', 'escape'));
+            assert.notEqual((await call('write', { path: join(workspace!.root, 'src/escape/foreign.txt'),
+                content: 'x' })).status, 'completed');
+            await rm(join(workspace!.root, 'src', 'escape'));
             return { modelId: 'model', text: 'Native calls completed.' };
         }, dispose() {} };
         const adapter = new PiWorkExecutionAdapter({ async bind() {
             return { endpoint: 'http://127.0.0.1:9/v1', registryRevision: 1 };
         }, async assertWorkSelection() {} } as any,
         { create: () => host, release() {} } as any, () => workspace!, () => [], undefined,
-        journal ? () => ({ journal, unsaved: async () => false, refresh: async () => true }) : undefined);
+        journal ? () => ({ journal, unsaved: async () => false,
+            refresh: async () => { savedEditorRefreshes++; return true; } }) : undefined);
         const run = await adapter.start({ projectRoot: project, executionRoot: workspace.root,
             executionMode: mode, grant, taskId: 'native-task', runId: 'native-run',
             connectionId: 'local', registrationId: 'local', modelId: 'model',
             prompt: 'Use native file tools.', onEvent(event: unknown) { observations.push(event); } });
         await run.result;
-        for (let id = 1; id <= 6; id++) assert.equal(observations.filter(event =>
+        for (let id = 1; id <= 10; id++) assert.equal(observations.filter(event =>
             event.kind === 'work-observation' && event.toolId === `pi-${id}` &&
             ['completed', 'failed', 'recoverable', 'denied', 'cancelled'].includes(event.phase)).length, 1);
+        assert.ok(observations.some(event => event.kind === 'work-observation' &&
+            event.toolId === 'pi-1' && event.phase === 'requested' &&
+            JSON.parse(event.detail).rawArguments.path === workspace!.root));
+        assert.ok(observations.some(event => event.kind === 'work-observation' &&
+            event.toolId === 'pi-1' && event.phase === 'validating' &&
+            JSON.parse(event.detail).resolvedProjectPath === '.'));
         assert.match(JSON.stringify(observations), /private-secret/u);
         assert.ok(observations.some(event => event.kind === 'work-observation' &&
-            event.toolId === 'pi-6' && event.phase === 'requested' &&
+            event.toolId === 'pi-8' && event.phase === 'requested' &&
             JSON.parse(event.detail).rawArguments.path === '.git/private-secret'));
         assert.equal(await readFile(join(workspace.root, 'src/nested/new.txt'), 'utf8'), 'three\n');
+        assert.equal(await readFile(join(workspace.root, 'src/file.txt'), 'utf8'), 'after\n');
+        assert.equal(savedEditorRefreshes > 0, mode === 'direct');
         assert.equal(await readFile(join(project, 'src/nested/new.txt'), 'utf8').catch(() => ''),
             mode === 'direct' ? 'three\n' : '');
     } finally { await workspace?.dispose(); await rm(project, { recursive: true, force: true }); }

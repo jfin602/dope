@@ -21,7 +21,7 @@ import { WorkDocumentRouting } from './work-document-routing';
 import { verifyRecoveryReads } from './work-recovery';
 import type { DocumentRead } from './work-document-routing';
 import { lstat } from 'node:fs/promises';
-import { join } from 'node:path';
+import { isAbsolute, join, relative } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseWorkToolSelection, WORK_TOOL_REGISTRY, WORK_TOOL_CATALOG_REVISION,
     WORK_PI_VERSION, workToolRegistration } from '@dope/agent-core/lib/work-tool-selection';
@@ -55,7 +55,26 @@ export function piFileArgumentDetail(value: unknown): Record<string, unknown> {
     if (Array.isArray(args.edits)) detail.editCount = args.edits.length;
     return detail;
 }
-function parsePiFileOperation(id: number, name: string, value: unknown): PiFileOperation {
+export function projectPathForPiFile(rawPath: string, workspace: Pick<ExecutionWorkspace, 'root'>): string {
+    // Pi runs with the execution workspace as cwd and may pass that absolute cwd back
+    // to its native tools. Convert only paths inside this exact, trusted workspace.
+    // Do not normalize dot segments before validation: that would hide traversal.
+    const absolute = isAbsolute(rawPath);
+    const segments = rawPath.split('/').slice(absolute ? 1 : 0);
+    if (!rawPath || Buffer.byteLength(rawPath, 'utf8') > 512 ||
+        /[\\:\u0000-\u001f\u007f]/u.test(rawPath) || rawPath.startsWith('~') ||
+        segments.some(part => !part || part === '..' || part === '.' && rawPath !== '.'))
+        throw new Error('Invalid Pi file path');
+    if (absolute) {
+        const path = relative(workspace.root, rawPath);
+        if (path === '..' || path.startsWith('../') || isAbsolute(path))
+            throw new Error('Pi file path is outside the execution workspace');
+        return path || '.';
+    }
+    return rawPath;
+}
+function parsePiFileOperation(id: number, name: string, value: unknown,
+    workspace: ExecutionWorkspace): PiFileOperation {
     if (!nativeFileNames.has(name) || !value || typeof value !== 'object' || Array.isArray(value))
         throw new Error('Invalid Pi file arguments');
     const args = value as Record<string, unknown>;
@@ -63,11 +82,9 @@ function parsePiFileOperation(id: number, name: string, value: unknown): PiFileO
         name === 'write' ? ['path', 'content'] : ['path', 'edits'];
     if (Object.keys(args).some(field => !fields.includes(field)) ||
         (name !== 'ls' && !Object.hasOwn(args, 'path')) ||
-        typeof (args.path ?? '.') !== 'string' ||
-        !/^(?!\/)(?!~)(?!.*(?:^|\/)\.\.?\/)[^\\:\u0000-\u001f\u007f]+$/u.test(args.path as string ?? '.') ||
-        Buffer.byteLength(args.path as string ?? '.', 'utf8') > 512)
+        typeof (args.path ?? '.') !== 'string')
         throw new Error('Invalid Pi file path');
-    const path = (args.path ?? '.') as string;
+    const path = projectPathForPiFile((args.path ?? '.') as string, workspace);
     if (name === 'read' || name === 'ls') {
         for (const field of ['offset', 'limit']) if (args[field] !== undefined &&
             (!Number.isSafeInteger(args[field]) || (args[field] as number) < 1 ||
@@ -348,7 +365,11 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                 for (;;) {
                 lastPiSequence = 0;
                 let accepted: Promise<void> | undefined;
-                const answer = await host.runWork(turnMessage.text, async raw => {
+                // Pi can issue several tool calls in one model turn. Direct's canonical
+                // journal and its disposable model view form one ordered effect stream.
+                let directToolTail: Promise<void> = Promise.resolve();
+                const answer = await host.runWork(turnMessage.text, raw => {
+                  const execute = async () => {
                   let stage = 'request-check';
                   const toolId = Number.isSafeInteger(raw.id) && raw.id > 0 ? `pi-${raw.id}` : 'pi-invalid';
                   const isMCP = !!mcpObservation?.descriptors.some(tool => tool.name === raw.name);
@@ -418,7 +439,10 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                         stage = 'request-parse';
                         observe('validating', { stage, detail: JSON.stringify(piFileArgumentDetail(raw.arguments)),
                             effectExecuted: false });
-                        const operation = parsePiFileOperation(raw.id, raw.name, raw.arguments);
+                        const operation = parsePiFileOperation(raw.id, raw.name, raw.arguments, workspace);
+                        observe('validating', { stage, detail: JSON.stringify({
+                            ...piFileArgumentDetail(raw.arguments), resolvedProjectPath: operation.path }),
+                            effectExecuted: false });
                         stage = 'workspace-check';
                         this.workspace(request);
                         stage = 'model-check';
@@ -806,6 +830,11 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                         summary: `Pi Work tool denied at ${stage}` });
                     throw new Error('Pi Work tool denied');
                   }
+                  };
+                  if (request.executionMode !== 'direct') return execute();
+                  const pending = directToolTail.then(execute);
+                  directToolTail = pending.then(() => undefined, () => undefined);
+                  return pending;
                 }, event => {
                     if (cancelled || this.disposed) return;
                     if (event.sequence !== lastPiSequence + 1 || event.sequence > 512)

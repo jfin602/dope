@@ -1,0 +1,183 @@
+{
+  "version": 1,
+  "id": "1ff56cc1-a5c7-4d1d-b96f-6d03a083d4c7",
+  "taskId": "5715124c-29b0-4c59-8c11-3711bcdcb7a8",
+  "status": "completed",
+  "grantId": "d4878bf6-b64b-46b3-9184-34ce26ae124b",
+  "grantRevision": 1,
+  "executionMode": "direct",
+  "requestedPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "projectRoot": ".",
+  "toolSelection": {
+    "catalogRevision": 4,
+    "projectUri": "file:///tmp/c14-p8-parallel-live-BCGO4Z",
+    "taskId": "5715124c-29b0-4c59-8c11-3711bcdcb7a8",
+    "grantRevision": 1,
+    "connectionId": "dd582338-4ff1-48df-868c-ce73048abf6d",
+    "modelId": "qwen3.6-35b-a3b",
+    "piVersion": "1.4.0",
+    "executionMode": "direct",
+    "grantId": "d4878bf6-b64b-46b3-9184-34ce26ae124b",
+    "tools": [
+      {
+        "id": "read",
+        "schemaRevision": 1,
+        "schemaHash": "134f19bcabe3e29d63c5cebb38f1d2556759fd08adad6bc90a4b4d3cd1fb8441"
+      },
+      {
+        "id": "ls",
+        "schemaRevision": 1,
+        "schemaHash": "ad4ee18683e9c3d6bfa7969709a0683bc9f896099ed6a74db0b6c49444718a0c"
+      },
+      {
+        "id": "write",
+        "schemaRevision": 1,
+        "schemaHash": "e98a2484f667cf7c22d76ca103bf2022bf9113dc63fe38b899e71c328cb1e833"
+      },
+      {
+        "id": "edit",
+        "schemaRevision": 1,
+        "schemaHash": "55866598f02c5e00ddfcbcae3df78081e3712de09a622bac7a6bc02ef2acc1bc"
+      }
+    ]
+  },
+  "taskContract": {
+    "taskId": "5715124c-29b0-4c59-8c11-3711bcdcb7a8",
+    "taskHash": "f2cc33eb9741b80c0e29f643d2a368f0987a244daacb66c8f43b21dd4848879f",
+    "objective": "Inspect this project. Create src/main.ts using only JavaScript syntax to draw the title on the canvas. Edit index.html to say Meteor Dodge Replay and load src/main.ts. Keep main.js intact. Finish after the edits; Dope will run the configured syntax check.",
+    "instructionsHash": "f5e287189b5ee993fe46d9629e9d8cf2627da1838cd8d8760155f2a846741f49",
+    "acceptance": "unknown",
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --check src/main.ts"
+      }
+    ],
+    "planning": "unknown",
+    "roadmap": "unknown",
+    "grant": {
+      "id": "d4878bf6-b64b-46b3-9184-34ce26ae124b",
+      "revision": 1,
+      "acceptedAt": "2026-11-27T22:22:28.310Z",
+      "permissionsHash": "374d04c8a724b426312dcd040d7d9523776334790a8b80113837903cdf06df9c"
+    },
+    "sourceHead": "d4bc333a0c69ab35d20ca9147a3cfe7ffe3353fa"
+  },
+  "createdAt": "2026-11-27T22:22:28.587Z",
+  "startedAt": "2026-11-27T22:22:28.587Z",
+  "endedAt": "2026-11-27T22:24:48.149Z",
+  "executionWorkspace": {
+    "id": "6d78ee5e-26b4-4652-a32c-b99ca0960d08",
+    "basisHead": "d4bc333a0c69ab35d20ca9147a3cfe7ffe3353fa"
+  },
+  "directJournal": {
+    "id": "df851437-3e2b-4a4e-bd73-6e7afc7a0a2e",
+    "path": ".dope/agent/direct-journals/df851437-3e2b-4a4e-bd73-6e7afc7a0a2e.json"
+  },
+  "directApplied": [
+    {
+      "path": "src/main.ts",
+      "operation": "create",
+      "before": null,
+      "after": "8131fb3bb70919282f14171d94cb6fbbdae8c116ee94a24f2669599a85b05617",
+      "result": "applied"
+    },
+    {
+      "path": "index.html",
+      "operation": "modify",
+      "before": "0878b8cf8ab8e1247bddea24577c366f8eac00c3d63a395debf98943659a4d85",
+      "after": "4b343bccdc564e3363acce57ba3d3d7e36ddd73127dc4fe94afe7a1bba58dcb3",
+      "result": "applied"
+    }
+  ],
+  "provenance": {
+    "version": 1,
+    "connectionId": "dd582338-4ff1-48df-868c-ce73048abf6d",
+    "modelId": "qwen3.6-35b-a3b",
+    "providerId": "local",
+    "runtimeKind": "local",
+    "adapterId": "pi-local-work",
+    "policyRevision": 36
+  },
+  "basis": {
+    "head": "d4bc333a0c69ab35d20ca9147a3cfe7ffe3353fa",
+    "clean": true,
+    "metadataChanged": false
+  },
+  "changedFiles": [
+    "index.html",
+    "src/main.ts"
+  ],
+  "validationResults": [
+    {
+      "version": 1,
+      "kind": "test",
+      "label": "Required validation",
+      "status": "passed",
+      "durationMs": 51,
+      "owner": "dope",
+      "command": "node --check src/main.ts",
+      "candidateFingerprint": "b719e659003ef878681a2ca3b3fd27458b04f7a9a811e7c76a3e65ea06efb8f8",
+      "workspaceId": "3ca6ff4d-54f0-491b-8ddf-6fe0f93d8ba6",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "",
+      "stdoutTruncated": false,
+      "stderrTruncated": false
+    }
+  ],
+  "finalGit": {
+    "head": "d4bc333a0c69ab35d20ca9147a3cfe7ffe3353fa",
+    "clean": false,
+    "headChanged": false,
+    "metadataChanged": false,
+    "statuses": [
+      {
+        "code": " M",
+        "path": "index.html"
+      },
+      {
+        "code": "??",
+        "path": "src/main.ts"
+      }
+    ],
+    "truncated": false
+  },
+  "changeSummary": {
+    "version": 1,
+    "filesChanged": 2,
+    "insertions": 9,
+    "deletions": 2,
+    "summary": "2 task files changed; 9 bounded text insertions, 2 deletions; 253 untracked bytes",
+    "truncated": false
+  },
+  "validationBasis": "direct-applied-snapshot",
+  "candidateDelta": {
+    "version": 1,
+    "effects": [
+      {
+        "kind": "modify",
+        "path": "index.html",
+        "before": "0878b8cf8ab8e1247bddea24577c366f8eac00c3d63a395debf98943659a4d85",
+        "after": "4b343bccdc564e3363acce57ba3d3d7e36ddd73127dc4fe94afe7a1bba58dcb3"
+      },
+      {
+        "kind": "create",
+        "path": "src/main.ts",
+        "after": "8131fb3bb70919282f14171d94cb6fbbdae8c116ee94a24f2669599a85b05617"
+      }
+    ]
+  },
+  "candidateFingerprint": "b719e659003ef878681a2ca3b3fd27458b04f7a9a811e7c76a3e65ea06efb8f8",
+  "authorityDecision": {
+    "allowed": true,
+    "blocked": []
+  },
+  "appliedFiles": [
+    "index.html",
+    "src/main.ts"
+  ]
+}

@@ -12,6 +12,8 @@ import type { LocalProcessCommand } from '@dope/agent-core/lib/node/local-tool-b
 import { ExecutionWorkspace } from '@dope/agent-core/lib/node/execution-workspace';
 import { DirectWorkJournal } from '@dope/agent-core/lib/node/direct-work-journal';
 import { brokerIsolatedFileOperation } from '@dope/agent-core/lib/node/isolated-file-operations';
+import { lstat } from 'node:fs/promises';
+import { isAbsolute, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { LocalContextBudget } from './local-context-budget';
 import { LocalToolTurnTransport } from './local-tool-turn';
@@ -185,6 +187,26 @@ export async function brokerDirectFileOperation(request: AgentExecutionRequest, 
     const prior = direct.journal.changes.length;
     try {
         await workspace.assertActiveBasis(request.projectRoot, request.executionRoot);
+        // The model sees the candidate workspace. Reject an unsafe candidate path before
+        // journaled canonical effects; a later mirror rejection must not surprise Direct Work.
+        if (isAbsolute(input.path) || input.path.split('/').some(part => !part || part === '.' || part === '..'))
+            return outcome('denied');
+        let parent = workspace.root;
+        for (const part of input.path.split('/').slice(0, -1)) {
+            parent = join(parent, part);
+            try {
+                const info = await lstat(parent);
+                if (info.isSymbolicLink() || !info.isDirectory()) return outcome('denied');
+            } catch (error) {
+                if ((error as NodeJS.ErrnoException).code === 'ENOENT') break;
+                return outcome('denied');
+            }
+        }
+        try {
+            if ((await lstat(join(workspace.root, input.path))).isSymbolicLink()) return outcome('denied');
+        } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== 'ENOENT') return outcome('denied');
+        }
         const change = input.kind === 'write' ?
             await direct.journal.write(input.path, input.content, direct.unsaved, signal) :
             await direct.journal.exactEdit(input.path, input.edits, direct.unsaved, signal);

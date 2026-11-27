@@ -1,0 +1,9 @@
+{"version":1,"runId":"a5120042-c985-458e-bf88-d204fbde2d04","sequence":1,"at":"2026-11-27T21:19:17.218Z","kind":"status","summary":"Agent run started","status":"running"}
+{"version":1,"runId":"a5120042-c985-458e-bf88-d204fbde2d04","sequence":2,"at":"2026-11-27T21:19:19.311Z","kind":"message","summary":"Provider status received"}
+{"version":1,"runId":"a5120042-c985-458e-bf88-d204fbde2d04","sequence":3,"at":"2026-11-27T21:19:19.645Z","kind":"message","summary":"Provider status received"}
+{"version":1,"runId":"a5120042-c985-458e-bf88-d204fbde2d04","sequence":4,"at":"2026-11-27T21:19:19.677Z","kind":"message","summary":"Pi session started"}
+{"version":1,"runId":"a5120042-c985-458e-bf88-d204fbde2d04","sequence":5,"at":"2026-11-27T21:19:19.680Z","kind":"message","summary":"Pi model turn running"}
+{"version":1,"runId":"a5120042-c985-458e-bf88-d204fbde2d04","sequence":6,"at":"2026-11-27T21:19:32.490Z","kind":"message","summary":"Pi ls started"}
+{"version":1,"runId":"a5120042-c985-458e-bf88-d204fbde2d04","sequence":7,"at":"2026-11-27T21:19:32.507Z","kind":"message","summary":"Pi Work tool stopped at request-parse"}
+{"version":1,"runId":"a5120042-c985-458e-bf88-d204fbde2d04","sequence":8,"at":"2026-11-27T21:19:32.510Z","kind":"authority","summary":"Execution authority denied"}
+{"version":1,"runId":"a5120042-c985-458e-bf88-d204fbde2d04","sequence":9,"at":"2026-11-27T21:19:32.710Z","kind":"status","summary":"Direct Work: 0 applied file(s), 0 uncertain file(s); authority denied","status":"failed"}

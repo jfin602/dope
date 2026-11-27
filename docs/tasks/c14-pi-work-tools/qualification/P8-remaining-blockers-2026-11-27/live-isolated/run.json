@@ -1,0 +1,186 @@
+{
+  "version": 1,
+  "id": "effe96af-9d48-4a51-9b5d-bc8878f19f34",
+  "taskId": "23a848cf-1b64-41fa-90be-c3f741a246e9",
+  "status": "completed",
+  "grantId": "7d677b03-41bc-4e1a-ae67-de42a70bba42",
+  "grantRevision": 1,
+  "executionMode": "isolated",
+  "requestedPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "projectRoot": ".",
+  "toolSelection": {
+    "catalogRevision": 4,
+    "projectUri": "file:///tmp/c14-p8-isolated-live-dw9V0d",
+    "taskId": "23a848cf-1b64-41fa-90be-c3f741a246e9",
+    "grantRevision": 1,
+    "connectionId": "dd582338-4ff1-48df-868c-ce73048abf6d",
+    "modelId": "qwen3.6-35b-a3b",
+    "piVersion": "1.4.0",
+    "executionMode": "isolated",
+    "grantId": "7d677b03-41bc-4e1a-ae67-de42a70bba42",
+    "tools": [
+      {
+        "id": "read",
+        "schemaRevision": 1,
+        "schemaHash": "134f19bcabe3e29d63c5cebb38f1d2556759fd08adad6bc90a4b4d3cd1fb8441"
+      },
+      {
+        "id": "ls",
+        "schemaRevision": 1,
+        "schemaHash": "ad4ee18683e9c3d6bfa7969709a0683bc9f896099ed6a74db0b6c49444718a0c"
+      },
+      {
+        "id": "write",
+        "schemaRevision": 1,
+        "schemaHash": "e98a2484f667cf7c22d76ca103bf2022bf9113dc63fe38b899e71c328cb1e833"
+      },
+      {
+        "id": "edit",
+        "schemaRevision": 1,
+        "schemaHash": "55866598f02c5e00ddfcbcae3df78081e3712de09a622bac7a6bc02ef2acc1bc"
+      }
+    ]
+  },
+  "taskContract": {
+    "taskId": "23a848cf-1b64-41fa-90be-c3f741a246e9",
+    "taskHash": "3ea525d21b2ecb564c2e89848119f8221eef9fda3c01a5803aa673ef509e1920",
+    "objective": "Inspect index.html and change the page title and heading to Meteor Dodge Isolated. Keep the other files unchanged. Finish after the edit; Dope will run validation.",
+    "instructionsHash": "68347393583c9b9a9d3ea39a2dbd90c93d5dd0804e81b1eec8f8a35f870ef764",
+    "acceptance": "unknown",
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --check main.js"
+      }
+    ],
+    "planning": "unknown",
+    "roadmap": "unknown",
+    "grant": {
+      "id": "7d677b03-41bc-4e1a-ae67-de42a70bba42",
+      "revision": 1,
+      "acceptedAt": "2026-11-27T22:31:21.866Z",
+      "permissionsHash": "da6714ef23f11ea9b3f7087a3c043de38e2f57397decc2b1c4fe2de3e1166f7e"
+    },
+    "sourceHead": "6f91c1e18319c62d45b496a98e004ea7134d7c87"
+  },
+  "createdAt": "2026-11-27T22:31:22.179Z",
+  "startedAt": "2026-11-27T22:31:22.179Z",
+  "endedAt": "2026-11-27T22:32:41.985Z",
+  "executionWorkspace": {
+    "id": "6b2164a0-ad06-4ff3-8ac8-fa2a648dfe8c",
+    "basisHead": "6f91c1e18319c62d45b496a98e004ea7134d7c87"
+  },
+  "provenance": {
+    "version": 1,
+    "connectionId": "dd582338-4ff1-48df-868c-ce73048abf6d",
+    "modelId": "qwen3.6-35b-a3b",
+    "providerId": "local",
+    "runtimeKind": "local",
+    "adapterId": "pi-local-work",
+    "policyRevision": 36
+  },
+  "basis": {
+    "head": "6f91c1e18319c62d45b496a98e004ea7134d7c87",
+    "clean": true,
+    "metadataChanged": false
+  },
+  "changedFiles": [
+    "index.html"
+  ],
+  "validationResults": [
+    {
+      "version": 1,
+      "kind": "test",
+      "label": "Required validation",
+      "status": "passed",
+      "durationMs": 61,
+      "owner": "dope",
+      "command": "node --check main.js",
+      "candidateFingerprint": "ce52f2420212e1724a331d109882cf21a07a0843aed42550012f16fbf55bdf31",
+      "workspaceId": "55614056-d738-4213-a2e2-127d68eca940",
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": "",
+      "stdoutTruncated": false,
+      "stderrTruncated": false
+    }
+  ],
+  "finalGit": {
+    "head": "6f91c1e18319c62d45b496a98e004ea7134d7c87",
+    "clean": false,
+    "headChanged": false,
+    "metadataChanged": false,
+    "statuses": [
+      {
+        "code": " M",
+        "path": "index.html"
+      }
+    ],
+    "truncated": false
+  },
+  "changeSummary": {
+    "version": 1,
+    "filesChanged": 1,
+    "insertions": 2,
+    "deletions": 2,
+    "summary": "1 task files changed; 2 bounded text insertions, 2 deletions; 0 untracked bytes",
+    "truncated": false
+  },
+  "validationBasis": "execution-workspace",
+  "candidateDelta": {
+    "version": 1,
+    "effects": [
+      {
+        "kind": "modify",
+        "path": "index.html",
+        "before": "0878b8cf8ab8e1247bddea24577c366f8eac00c3d63a395debf98943659a4d85",
+        "after": "6e59de10f06662fd1739432a9a3cd077dded0e83f00e28fb328e70046a70a4a1"
+      }
+    ]
+  },
+  "candidateFingerprint": "ce52f2420212e1724a331d109882cf21a07a0843aed42550012f16fbf55bdf31",
+  "candidateReview": {
+    "state": "ready",
+    "revision": 0,
+    "candidateFingerprint": "ce52f2420212e1724a331d109882cf21a07a0843aed42550012f16fbf55bdf31",
+    "diff": "diff --git a/index.html b/index.html\n--- a/index.html\n+++ b/index.html\n@@ -6,5 +6,5 @@\n-  <title>Meteor Dodge</title>\n-</head>\n-<body>\n-  <main>\n-    <h1>Meteor Dodge</h1>\n+  <title>Meteor Dodge Isolated</title>\n+</head>\n+<body>\n+  <main>\n+    <h1>Meteor Dodge Isolated</h1>\n",
+    "diffTruncated": false,
+    "changedPaths": [
+      "index.html"
+    ],
+    "validation": [
+      {
+        "version": 1,
+        "kind": "test",
+        "label": "Required validation",
+        "status": "passed",
+        "durationMs": 61,
+        "owner": "dope",
+        "command": "node --check main.js",
+        "candidateFingerprint": "ce52f2420212e1724a331d109882cf21a07a0843aed42550012f16fbf55bdf31",
+        "workspaceId": "55614056-d738-4213-a2e2-127d68eca940",
+        "exitCode": 0,
+        "stdout": "",
+        "stderr": "",
+        "stdoutTruncated": false,
+        "stderrTruncated": false
+      }
+    ]
+  },
+  "reviewDecision": {
+    "kind": "accept",
+    "revision": 1,
+    "at": "2026-11-27T22:32:41.634Z",
+    "candidateFingerprint": "ce52f2420212e1724a331d109882cf21a07a0843aed42550012f16fbf55bdf31"
+  },
+  "authorityDecision": {
+    "allowed": true,
+    "blocked": []
+  },
+  "appliedFiles": [
+    "index.html"
+  ]
+}

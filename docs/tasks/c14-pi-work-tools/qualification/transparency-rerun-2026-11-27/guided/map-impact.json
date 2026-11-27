@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "runId": "772fb3b6-8142-44b2-9575-09c99de96cd4",
+  "taskId": "bf466efa-1119-4f8b-a09e-969873503f9d",
+  "decisionFingerprint": "ef4a88b05f605b28e1a998b0305eade7490fb956a28201332043b6348a8be11a",
+  "generation": 0,
+  "recordedAt": "2026-11-27T21:26:11.471Z",
+  "reanalysisNeeded": true,
+  "paths": [
+    {
+      "path": "index.html",
+      "sourceFingerprint": "1e6788b04fc7a95e9d04d7ba5659e14709c014d109f1245cbefa806cb3682f26",
+      "status": "unknown",
+      "nodeIds": [],
+      "evidenceIds": [],
+      "reason": "missing-map"
+    },
+    {
+      "path": "src/main.ts",
+      "sourceFingerprint": "65980569740eb2eeb94ad2b231e488e89a2f4ef36d17efb1bf927125593bae11",
+      "status": "unknown",
+      "nodeIds": [],
+      "evidenceIds": [],
+      "reason": "missing-map"
+    }
+  ]
+}

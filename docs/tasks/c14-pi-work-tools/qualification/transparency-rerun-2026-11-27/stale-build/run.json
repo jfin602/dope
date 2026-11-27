@@ -1,0 +1,138 @@
+{
+  "version": 1,
+  "id": "a5120042-c985-458e-bf88-d204fbde2d04",
+  "taskId": "11af0de2-9dc5-4968-8cfa-c5ce435947a9",
+  "status": "failed",
+  "grantId": "acc20307-946e-4668-aca9-c43e4d06c07f",
+  "grantRevision": 1,
+  "executionMode": "direct",
+  "requestedPolicy": {
+    "kind": "follow-coding-agent"
+  },
+  "projectRoot": ".",
+  "toolSelection": {
+    "catalogRevision": 4,
+    "projectUri": "file:///tmp/c14-p8-transparency-CT5vg2",
+    "taskId": "11af0de2-9dc5-4968-8cfa-c5ce435947a9",
+    "grantRevision": 1,
+    "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+    "modelId": "qwen3.6-35b-a3b",
+    "piVersion": "1.4.0",
+    "executionMode": "direct",
+    "grantId": "acc20307-946e-4668-aca9-c43e4d06c07f",
+    "tools": [
+      {
+        "id": "read",
+        "schemaRevision": 1,
+        "schemaHash": "134f19bcabe3e29d63c5cebb38f1d2556759fd08adad6bc90a4b4d3cd1fb8441"
+      },
+      {
+        "id": "ls",
+        "schemaRevision": 1,
+        "schemaHash": "ad4ee18683e9c3d6bfa7969709a0683bc9f896099ed6a74db0b6c49444718a0c"
+      },
+      {
+        "id": "write",
+        "schemaRevision": 1,
+        "schemaHash": "e98a2484f667cf7c22d76ca103bf2022bf9113dc63fe38b899e71c328cb1e833"
+      },
+      {
+        "id": "edit",
+        "schemaRevision": 1,
+        "schemaHash": "55866598f02c5e00ddfcbcae3df78081e3712de09a622bac7a6bc02ef2acc1bc"
+      }
+    ]
+  },
+  "taskContract": {
+    "taskId": "11af0de2-9dc5-4968-8cfa-c5ce435947a9",
+    "taskHash": "c0e63a86454936d8365ecc486245238a0e02da99e17bdf62a040df0640c5b116",
+    "objective": "Inspect this small Meteor Dodge project. Create a new src directory with main.ts containing valid JavaScript-compatible TypeScript that draws the game title on the canvas. Precisely update index.html so its heading says Meteor Dodge Replay and its script loads the new main.ts file. Keep main.js intact. Validate the new file with the required command.",
+    "instructionsHash": "70a7a254a02b9db4c12de54c0848e4de356720ff26f74b6191b25ae5e0b3e441",
+    "acceptance": "unknown",
+    "validation": [
+      {
+        "kind": "test",
+        "label": "Required validation",
+        "command": "node --check src/main.ts"
+      }
+    ],
+    "planning": "unknown",
+    "roadmap": "unknown",
+    "grant": {
+      "id": "acc20307-946e-4668-aca9-c43e4d06c07f",
+      "revision": 1,
+      "acceptedAt": "2026-11-27T21:19:16.852Z",
+      "permissionsHash": "6871af52c4511019b4e85b9f8029545fc9d44f680bb5a3391ea8f5f2bc05d59c"
+    },
+    "sourceHead": "db2bd81bed7eb4bd6490dbd0c5b452cfd747941f"
+  },
+  "createdAt": "2026-11-27T21:19:17.198Z",
+  "startedAt": "2026-11-27T21:19:17.198Z",
+  "endedAt": "2026-11-27T21:19:32.691Z",
+  "executionWorkspace": {
+    "id": "246b7ea4-80ba-4c55-a643-465ab66dd013",
+    "basisHead": "db2bd81bed7eb4bd6490dbd0c5b452cfd747941f"
+  },
+  "directJournal": {
+    "id": "3d9ad80a-e15f-4f67-aa78-35d980a9d23a",
+    "path": ".dope/agent/direct-journals/3d9ad80a-e15f-4f67-aa78-35d980a9d23a.json"
+  },
+  "directApplied": [],
+  "provenance": {
+    "version": 1,
+    "connectionId": "98c9cf59-9550-4e91-a63f-141f990d5913",
+    "modelId": "qwen3.6-35b-a3b",
+    "providerId": "local",
+    "runtimeKind": "local",
+    "adapterId": "pi-local-work",
+    "policyRevision": 34
+  },
+  "basis": {
+    "head": "db2bd81bed7eb4bd6490dbd0c5b452cfd747941f",
+    "clean": true,
+    "metadataChanged": true
+  },
+  "changedFiles": [],
+  "validationResults": [
+    {
+      "version": 1,
+      "kind": "test",
+      "label": "Required validation",
+      "status": "not-started",
+      "owner": "dope",
+      "command": "node --check src/main.ts",
+      "reason": "Provider or applied source did not reach validation"
+    }
+  ],
+  "finalGit": {
+    "head": "db2bd81bed7eb4bd6490dbd0c5b452cfd747941f",
+    "clean": true,
+    "headChanged": false,
+    "metadataChanged": true,
+    "statuses": [],
+    "truncated": false
+  },
+  "changeSummary": {
+    "version": 1,
+    "filesChanged": 0,
+    "insertions": 0,
+    "deletions": 0,
+    "summary": "0 task files changed; 0 bounded text insertions, 0 deletions; 0 untracked bytes",
+    "truncated": false
+  },
+  "validationBasis": "direct-applied-snapshot",
+  "candidateDelta": {
+    "version": 1,
+    "effects": []
+  },
+  "candidateFingerprint": "2f2c0b34c90c4b63527d6cbf293e26664caf9e27a6df46ce768cb3e392737e6b",
+  "authorityDecision": {
+    "allowed": true,
+    "blocked": []
+  },
+  "appliedFiles": [],
+  "outcome": {
+    "code": "authority-denied",
+    "summary": "Direct Work: 0 applied file(s), 0 uncertain file(s); authority denied"
+  }
+}
