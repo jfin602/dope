@@ -70,24 +70,27 @@ export function workRecoveryContext(current: TaskContractSnapshot,
             JSON.stringify(previous.validation) !== JSON.stringify(current.validation))
             throw new Error('Original Task Contract checkpoint missing or accepted basis changed; prepare a new reviewed task');
         reads = prior.documentReads ?? [];
-        lines.push(`Prior run ${prior.id}: ${prior.status}; candidate ${prior.candidateFingerprint ?? 'unknown'}.`);
-        lines.push(`Actual candidate effects: ${prior.candidateDelta?.effects.map(effect =>
-            `${effect.kind} ${effect.path}`).join('; ') || 'none recorded'}.`);
+        const direct = prior.executionMode === 'direct';
+        lines.push(`Prior run ${prior.id}: ${prior.status}; ${direct ? 'applied-source snapshot' : 'candidate'} ${prior.candidateFingerprint ?? 'unknown'}.`);
+        lines.push(`${direct ? 'Actual Direct effects' : 'Actual candidate effects'}: ${direct ?
+            prior.directApplied?.map(effect => `${effect.operation} ${effect.path} (${effect.result})`).join('; ') || 'none recorded' :
+            prior.candidateDelta?.effects.map(effect => `${effect.kind} ${effect.path}`).join('; ') || 'none recorded'}.`);
         lines.push(`Actual Dope verification: ${prior.validationResults.filter(item => item.owner === 'dope')
             .map(item => `${item.label} ${item.status}`).join('; ') || 'none recorded'}.`);
         lines.push(`Prior command outcomes: ${prior.commandEvidence?.map(item =>
             `${item.commandSummary} ${item.result}`).join('; ') || 'none recorded'}.`);
         lines.push(`Prior Pi compaction: ${prior.contextCompactions?.map(item =>
             `${item.reason} ${item.result}`).join('; ') || 'none recorded'}; summary content unverified.`);
-        lines.push(`Prior interruption: ${prior.outcome?.summary ?? 'unknown'}; candidate review: ${prior.candidateReview ? 'pending' :
-            prior.reviewDecision?.kind ?? 'unknown'}.`);
+        lines.push(direct ? `Prior interruption: ${prior.outcome?.summary ?? 'unknown'}; applied-source review remains required.` :
+            `Prior interruption: ${prior.outcome?.summary ?? 'unknown'}; candidate review: ${prior.candidateReview ? 'pending' :
+                prior.reviewDecision?.kind ?? 'unknown'}.`);
         lines.push(`Observed document ranges: ${reads.length ? reads.map(read =>
             `${read.path}${read.section ? `#${read.section}` : ''} bytes ${read.offset}-${read.endOffset} content SHA-256 ${read.contentHash ?? 'unknown'} (question: ${read.question})`)
             .join('; ') : 'none recorded'}.`);
         lines.push('Document meaning/findings: unknown unless independently established from current source. ' +
             'Unresolved questions: unknown. Last model summary: unverified. ' +
-            'Next step: inspect the restored candidate and current requirements before the affected edit or test. ' +
-            'Do not replay old mutations or infer GREEN from a read, command, or candidate.');
+            `Next step: inspect the ${direct ? 'applied source' : 'restored candidate'} and current requirements before the affected edit or test. ` +
+            `Do not replay old mutations or infer GREEN from a read, command, or ${direct ? 'applied change' : 'candidate'}.`);
     } else {
         lines.push('Document findings, unresolved questions, actual edits/tests and next step: unknown until observed in this run.');
     }

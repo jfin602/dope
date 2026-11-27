@@ -592,14 +592,12 @@ function chatTools() {
   }));
 }
 function workTools() {
-  const legacy = [...Object.entries(WORK_TOOLS).filter(([name]) => selectedWorkToolNames.includes(name)),
+  const adapters = [...Object.entries(WORK_TOOLS).filter(([name]) => selectedWorkToolNames.includes(name)),
     ...mcpChatTools.map(tool => [tool.name, {}])].map(([name, properties]) => ({
-    name, label: name, description: mcpChatTools.find(tool => tool.name === name)?.description ?? (name === 'read_file' ?
-      'Read an authorized candidate file. On the FIRST read of each file, send path and offset 0; OMIT expectedSourceHash entirely. The reply supplies sourceHash and nextOffset. Only for later pages, send that exact returned sourceHash as expectedSourceHash with nextOffset. A task, Git or candidate hash is NOT a file sourceHash. Path-only reads retain the legacy sanitized prefix.' :
-      name === 'list_files' ? 'List one directory in the authorized candidate workspace. Use path "." for the project root, or a relative directory path. maxEntries is required and must be an integer from 1 to 100. If a path is a file, use read_file.' :
-      name === 'edit_file' ? 'Create or modify one file using a relative project path and string content of at most 65536 UTF-8 bytes. operation must be create or modify. Dope applies the selected Work execution mode and checks every write.' :
-      name === 'read_command_output' ? 'Read a retained page of a completed approved command result by its returned handle. offset is a nonnegative UTF-8 byte offset; maxBytes is an integer from 1 to 4096. This does not rerun the command.' :
-      'Run an approved test or build command by its granted commandId in the authorized candidate workspace. kind must be test or build.'),
+    name, label: name, description: mcpChatTools.find(tool => tool.name === name)?.description ??
+      (name === 'read_command_output' ?
+        'Read a retained page of a completed approved command result by its returned handle. offset is a nonnegative UTF-8 byte offset; maxBytes is an integer from 1 to 4096. This does not rerun the command.' :
+        'Run an approved test or build command by its granted commandId in the selected Work mode. kind must be test or build.'),
     parameters: Type.Object(properties, { additionalProperties: false }),
     async execute(piToolCallId, params, signal) {
       const isMCP = mcpChatTools.some(tool => tool.name === name);
@@ -664,7 +662,7 @@ function workTools() {
         }
       };
     });
-  return [...legacy, ...native];
+  return [...adapters, ...native];
 }
 
 const emptyResources = Object.freeze({

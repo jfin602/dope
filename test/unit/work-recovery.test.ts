@@ -42,6 +42,20 @@ test('recovery uses owner fields and observed effects without inventing findings
     assert.throws(() => workRecoveryContext(current, { ...prior, taskContract: undefined }), /checkpoint missing/);
 });
 
+test('Direct recovery describes applied changes without candidate review language', () => {
+    const prior = { id: 'direct-run', taskId: 'old-task', status: 'interrupted', executionMode: 'direct',
+        basis: { head }, taskContract: contract, candidateFingerprint: digest('applied'),
+        directApplied: [{ path: 'src/parser.ts', operation: 'modify', before: digest('before'),
+            after: digest('after'), result: 'applied' }], validationResults: [], outcome: { summary: 'stopped' } } as any;
+    const current = { ...contract, taskId: 'new-task', grant: { ...contract.grant,
+        id: nextGrant.id, acceptedAt: nextGrant.acceptedAt } } as any;
+    const result = workRecoveryContext(current, prior);
+    assert.match(result.text, /Actual Direct effects: modify src\/parser.ts \(applied\)/);
+    assert.match(result.text, /applied-source review remains required/);
+    assert.match(result.text, /inspect the applied source/);
+    assert.doesNotMatch(result.text, /candidate review|restored candidate/);
+});
+
 test('a restored read needs unchanged bytes and a fresh read grant', async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-work-recovery-'));
     const value = 'parser requirement\n';

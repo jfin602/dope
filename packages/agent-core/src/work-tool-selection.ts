@@ -1,17 +1,20 @@
 /** Trusted Work registration. Each eligible definition has a broker implementation;
  * the hashes are independently checked against the pinned Pi/adapter schemas by
- * the worker and again on every broker call. Historical IDs remain parseable. */
+ * the worker and again on every broker call. Historical IDs remain parseable
+ * only through the archived selection reader below. */
 export const WORK_TOOL_CATALOG_REVISION = 4;
 export const WORK_PI_VERSION = '1.4.0';
+const HISTORICAL_WORK_FILE_TOOLS = [
+    { id: 'read_file', schemaRevision: 1 },
+    { id: 'list_files', schemaRevision: 1 },
+    { id: 'edit_file', schemaRevision: 1 }
+] as const;
 export const WORK_TOOL_CATALOG = [
-    { id: 'read_file', group: 'Inspect', name: 'Read file', description: 'Read a candidate file in the isolated Work workspace.', effect: 'workspace-read', schemaRevision: 1 },
-    { id: 'list_files', group: 'Inspect', name: 'List files', description: 'List a candidate directory in the isolated Work workspace.', effect: 'workspace-read', schemaRevision: 1 },
-    { id: 'edit_file', group: 'Edit', name: 'Edit file', description: 'Create or modify a file under the selected Work execution mode.', effect: 'workspace-write', schemaRevision: 1 },
     { id: 'read', group: 'Inspect', name: 'Read', description: 'Read a text file through the Dope broker using the Pi file schema.', effect: 'workspace-read', schemaRevision: 1 },
     { id: 'ls', group: 'Inspect', name: 'List', description: 'List a directory through the Dope broker using the Pi list schema.', effect: 'workspace-read', schemaRevision: 1 },
     { id: 'write', group: 'Edit', name: 'Write', description: 'Create or overwrite a file through a whole Dope operation.', effect: 'workspace-write', schemaRevision: 1 },
     { id: 'edit', group: 'Edit', name: 'Exact edit', description: 'Apply unique exact replacements through a whole Dope operation.', effect: 'workspace-write', schemaRevision: 1 },
-    { id: 'run_command', group: 'Commands', name: 'Run approved command', description: 'Run an approved test or build command in the isolated Work workspace.', effect: 'workspace-process', schemaRevision: 1 },
+    { id: 'run_command', group: 'Commands', name: 'Run approved command', description: 'Run an approved test or build command in the selected Work mode.', effect: 'workspace-process', schemaRevision: 1 },
     { id: 'read_command_output', group: 'Commands', name: 'Read command output', description: 'Read output from a completed approved command.', effect: 'workspace-process', schemaRevision: 1, requires: 'run_command' },
     { id: 'mcp_godot_server_info', group: 'External', name: 'Godot server information', description: 'Observe the reviewed Godot server method after project activation and per-call approval.', effect: 'workspace-read', schemaRevision: 1, serverId: 'godot', toolName: 'godot_get_server_info' }
 ] as const;
@@ -30,7 +33,7 @@ export const WORK_TOOL_UNAVAILABLE = [
     { id: 'powershell', name: 'PowerShell', description: 'Pi shell command', unavailableReason: 'Unrestricted shell cannot meet the fixed Work effect ceiling' }
 ] as const;
 export const workToolRegistration = (id: string) => WORK_TOOL_REGISTRY.find(tool => tool.id === id);
-export type WorkToolId = typeof WORK_TOOL_CATALOG[number]['id'];
+export type WorkToolId = typeof WORK_TOOL_CATALOG[number]['id'] | typeof HISTORICAL_WORK_FILE_TOOLS[number]['id'];
 export type WorkToolGroup = 'Inspect' | 'Edit' | 'Commands' | 'External';
 export interface WorkToolCatalogContext {
     locality: 'local' | 'hosted' | undefined;
@@ -40,7 +43,7 @@ export interface WorkToolCatalogContext {
 }
 /** Only registrations with an explicit Dope Work broker mapping appear here. */
 export function workToolCatalogFor(context: WorkToolCatalogContext) {
-    const eligible = WORK_TOOL_CATALOG.filter(tool => !['read_file', 'list_files', 'edit_file'].includes(tool.id)).map(tool => {
+    const eligible = WORK_TOOL_CATALOG.map(tool => {
         const unavailableReason = context.locality !== 'local' ?
             'Individual tools are enforceable only for the local Pi provider' :
             tool.group === 'Commands' && !context.commandsAvailable ?
@@ -51,12 +54,12 @@ export function workToolCatalogFor(context: WorkToolCatalogContext) {
                 'Project observation consent is required' : undefined;
         return { ...tool, catalogRevision: WORK_TOOL_CATALOG_REVISION,
             provider: 'local-pi' as const, projectScope: tool.group === 'External' ?
-                'activated-project' as const : 'isolated-candidate' as const,
+                'activated-project' as const : 'selected-work-mode' as const,
             available: unavailableReason === undefined, unavailableReason };
     });
     return [...eligible, ...WORK_TOOL_UNAVAILABLE.map(tool => ({ ...tool, group: 'Unavailable' as const,
         effect: 'unavailable' as const, schemaRevision: 0, catalogRevision: WORK_TOOL_CATALOG_REVISION,
-        provider: 'local-pi' as const, projectScope: 'isolated-candidate' as const,
+        provider: 'local-pi' as const, projectScope: 'selected-work-mode' as const,
         available: false }))];
 }
 export interface WorkToolChoice { groups: string[]; allow: string[]; deny: string[] }
@@ -76,8 +79,7 @@ export function resolveWorkTools(choice: WorkToolChoice, customGroups: readonly 
     const requested = new Set<string>(choice.allow);
     for (const group of choice.groups) {
         const members = ['Inspect', 'Edit', 'Commands'].includes(group) ?
-            WORK_TOOL_CATALOG.filter(tool => tool.group === group &&
-                !['read_file', 'list_files', 'edit_file'].includes(tool.id)).map(tool => tool.id) :
+            WORK_TOOL_CATALOG.filter(tool => tool.group === group).map(tool => tool.id) :
             customGroups.find(item => item.id === group)?.tools;
         if (!members) { requested.add(group); continue; }
         for (const id of members) { selected.add(id); requested.add(id); }
@@ -85,9 +87,9 @@ export function resolveWorkTools(choice: WorkToolChoice, customGroups: readonly 
     for (const id of choice.deny) { selected.delete(id); requested.delete(id); }
     const unavailable: string[] = [];
     for (const id of unique([...requested, ...selected])) {
-        if (!ids.has(id)) unavailable.push(`${id}: unknown or changed tool`);
-        else if (['read_file', 'list_files', 'edit_file'].includes(id))
+        if (HISTORICAL_WORK_FILE_TOOLS.some(tool => tool.id === id))
             unavailable.push(`${id}: previous Work file tool requires new review`);
+        else if (!ids.has(id)) unavailable.push(`${id}: unknown or changed tool`);
         else if (!commandsAvailable && (id === 'run_command' || id === 'read_command_output'))
             unavailable.push(`${id}: no approved task command`);
         else if (id === 'mcp_godot_server_info' && !externalAvailable)
@@ -96,7 +98,6 @@ export function resolveWorkTools(choice: WorkToolChoice, customGroups: readonly 
     if (!selected.has('run_command') && selected.has('read_command_output'))
         unavailable.push('read_command_output: requires run_command');
     return { tools: WORK_TOOL_CATALOG.filter(tool => selected.has(tool.id) &&
-        !['read_file', 'list_files', 'edit_file'].includes(tool.id) &&
         (commandsAvailable || tool.group !== 'Commands') &&
         (externalAvailable || tool.group !== 'External') &&
         (tool.id !== 'read_command_output' || selected.has('run_command'))).map(tool => tool.id), unavailable };
@@ -105,6 +106,8 @@ export function makeWorkToolSelection(input: Omit<WorkToolSelection, 'catalogRev
     toolIds: readonly WorkToolId[]): WorkToolSelection {
     if (!input.grantId || !['direct', 'isolated'].includes(input.executionMode ?? ''))
         throw new Error('New Work tool selection requires grant and execution mode');
+    if (toolIds.some(id => !WORK_TOOL_CATALOG.some(tool => tool.id === id)))
+        throw new Error('Historical Work tool requires new review');
     return parseWorkToolSelection({ ...input, catalogRevision: WORK_TOOL_CATALOG_REVISION,
         piVersion: WORK_PI_VERSION,
         tools: WORK_TOOL_CATALOG.filter(tool => toolIds.includes(tool.id)).map(tool =>
@@ -127,20 +130,21 @@ export function parseWorkToolSelection(value: unknown): WorkToolSelection {
         !Number.isSafeInteger(x.grantRevision) || (x.grantRevision as number) < 0 ||
         typeof x.connectionId !== 'string' || !x.connectionId ||
         typeof x.modelId !== 'string' || !x.modelId || !Array.isArray(x.tools) ||
-        x.tools.length > WORK_TOOL_CATALOG.length)
+        x.tools.length > (current ? WORK_TOOL_CATALOG.length : WORK_TOOL_CATALOG.length + HISTORICAL_WORK_FILE_TOOLS.length))
         throw new Error('Invalid Work tool selection');
     const tools: WorkToolSelection['tools'] = [];
     for (const item of x.tools) {
         if (!item || typeof item !== 'object' || Array.isArray(item)) throw new Error('Invalid Work tool identity');
         const entry = item as Record<string, unknown>;
-        const definition = WORK_TOOL_CATALOG.find(tool => tool.id === entry.id);
+        const definition = WORK_TOOL_CATALOG.find(tool => tool.id === entry.id) ??
+            (!current ? HISTORICAL_WORK_FILE_TOOLS.find(tool => tool.id === entry.id) : undefined);
         const registration = workToolRegistration(entry.id as string);
         if (!definition || Object.keys(entry).sort().join(',') !== (current && registration ?
             'id,schemaHash,schemaRevision' : 'id,schemaRevision') ||
             entry.schemaRevision !== definition.schemaRevision ||
-            current && (!registration && definition.group !== 'External' ||
+            current && (!registration && 'group' in definition && definition.group !== 'External' ||
                 registration && entry.schemaHash !== registration.schemaHash ||
-                ['read_file', 'list_files', 'edit_file'].includes(definition.id)) ||
+                HISTORICAL_WORK_FILE_TOOLS.some(tool => tool.id === definition.id)) ||
             tools.some(tool => tool.id === entry.id) ||
             (x.catalogRevision !== 3 && !current && ['read', 'ls', 'write', 'edit'].includes(definition.id)))
             throw new Error('Unknown or changed Work tool');

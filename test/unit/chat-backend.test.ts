@@ -182,14 +182,19 @@ test('Assessment broker retains the 128-tool ceiling with a distinct resource re
     await execute('git', ['-C', root, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.test',
         'commit', '-qm', 'Fixture']);
     const outputs: { code?: string }[] = [];
+    let renewLease: (() => Promise<void>) | undefined;
     const models = { list: async () => ({ connections: [{ id: 'local', label: 'Local', ready: true,
         providerId: 'local', models: [{ id: 'q4', label: 'Q4', usable: true,
             capabilities: { conversationalText: true, streaming: true, contextWindowTokens: 16384,
                 maxInputTokens: 16384 } }] }] }),
     async *generate(_selection: unknown, request: { projectTools?: {
         execute(name: string, args: unknown): Promise<string> } }) {
-        for (let index = 0; index < 129; index++)
+        for (let index = 0; index < 129; index++) {
+            // Under the full concurrent suite, 128 filesystem-backed calls can
+            // outlast one lease. Keep the owner live while testing the count cap.
+            if (index > 0 && index % 16 === 0) await renewLease?.();
             outputs.push(JSON.parse(await request.projectTools!.execute('assessment_status', {})));
+        }
         yield { type: 'complete' as const, text: 'No sealed assessment', actualModelId: 'q4',
             finishReason: 'stop' as const, usage: { tokenMeasurement: 'unavailable' as const } };
     } };
@@ -203,6 +208,7 @@ test('Assessment broker retains the 128-tool ceiling with a distinct resource re
             operation: { type: 'create-chat', id: chatId, folderPath: '', title: 'Ceiling' } });
         const lease = await backend.claim({ projectHandle, chatId, ownerId: 'owner' });
         assert.equal(lease.acquired, true);
+        if (lease.acquired) renewLease = () => backend.renew(projectHandle, chatId, lease.token);
         await assert.rejects(backend.runTurn({ projectHandle, chatId, leaseToken: lease.token,
             selectedModel: { connectionId: 'local', modelId: 'q4' },
             content: '/prompt-ass ceiling Check package.json' }));

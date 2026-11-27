@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { access, mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -206,7 +206,8 @@ test('one saved Chat follows current checkpoint, pins exact owner, restores and 
         await competitor.attach(workspace);
         assert.equal(await competitor.select(chatId), false);
         first.dispose();
-        await new Promise(resolve => setTimeout(resolve, 20));
+        const leasePath = join(root, '.dope/chats/.leases', `${chatId}.json`);
+        await waitForLeaseRelease(leasePath);
         const reopened = new ChatPanelController(connect, () => {}, owners, 'center', () => {}, selection);
         reopened.restorePlanning('pin', pin, workspace);
         await reopened.attach(workspace);
@@ -225,11 +226,25 @@ test('one saved Chat follows current checkpoint, pins exact owner, restores and 
         assert.equal(await reopened.runTurn(), true);
         assert.equal(calls.at(-1)?.[0].id, 'p1');
         reopened.dispose(); competitor.dispose();
+        await waitForLeaseRelease(leasePath);
         const saved = await repository.read(root);
         assert.equal(saved.chats.length, 1);
         assert.equal(saved.chats[0].id, chatId);
-    } finally { first.dispose(); await rm(root, { recursive: true, force: true }); }
+    } finally { first.dispose(); await rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }); }
 });
+
+async function waitForLeaseRelease(leasePath: string): Promise<void> {
+    const deadline = Date.now() + 10_000;
+    while (Date.now() < deadline) {
+        try { await access(leasePath); }
+        catch (error) {
+            if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+            throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    assert.fail('Timed out waiting for Chat lease release');
+}
 
 test('selection resolver rejects missing and foreign owner state; map views never launch Chat', async () => {
     const root = 'file:///tmp/roadmap-panel';

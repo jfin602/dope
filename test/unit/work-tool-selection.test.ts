@@ -39,6 +39,8 @@ test('trusted Work catalog includes the reviewed MCP observation with project an
     const unavailable = workToolCatalogFor({ locality: 'local', commandsAvailable: false,
         externalOffered: false, externalConsent: false });
     assert.equal(unavailable.length, 11);
+    assert.ok(unavailable.every(tool => !['read_file', 'list_files', 'edit_file'].includes(tool.id)));
+    assert.ok(unavailable.every(tool => tool.projectScope !== 'isolated-candidate'));
     for (const id of ['find', 'grep', 'bash', 'powershell'])
         assert.ok(unavailable.find(tool => tool.id === id)?.unavailableReason);
     assert.equal(unavailable.find(tool => tool.id === 'mcp_godot_server_info')?.available, false);
@@ -103,6 +105,9 @@ test('saved approval freezes identities and rejects stale catalog, unknown tools
     assert.throws(() => parseWorkToolSelection({ ...frozen, tools: [
         { id: 'read_command_output', schemaRevision: 1 }] }));
     assert.throws(() => parseWorkToolSelection({ ...frozen, catalogRevision: 1 }));
+    assert.throws(() => makeWorkToolSelection({ projectUri: project, taskId: 'task-a',
+        grantRevision: 1, ...target, grantId: 'grant-a', executionMode: 'isolated' }, ['read_file']),
+    /Historical Work tool/);
     const old = { catalogRevision: 1, projectUri: project, taskId: 'task-a', grantRevision: 1,
         ...target, tools: [{ id: 'read_file', schemaRevision: 1 }] };
     assert.deepEqual(parseWorkToolSelection(old).tools, old.tools,
@@ -115,7 +120,9 @@ test('saved approval freezes identities and rejects stale catalog, unknown tools
 
 test('a removed group cannot silently expand a draft or produce an approved run', () => {
     const prefs = new WorkToolPreferences(memory());
-    prefs.upsertGroup({ id: 'custom', name: 'Custom', tools: ['read_file'] });
+    assert.throws(() => prefs.upsertGroup({ id: 'archived', name: 'Archived', tools: ['read_file'] }),
+        /known tools/, 'archived wrappers cannot enter a new custom group');
+    prefs.upsertGroup({ id: 'custom', name: 'Custom', tools: ['read'] });
     prefs.saveChoice(project, 'retry:1', { groups: ['custom'], allow: [], deny: [] });
     prefs.deleteGroup('custom');
     assert.match(prefs.resolve(project, 'retry:1', true).unavailable[0], /unknown or changed tool/);

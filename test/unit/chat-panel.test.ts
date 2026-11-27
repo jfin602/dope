@@ -255,8 +255,9 @@ test('output-limit controls stay above the fixed composer with accessible narrow
     assert.doesNotMatch(css.match(/\.dope-chat-output-limit-notice \{[^}]*\}/)?.[0] ?? '', /#[\da-f]{3,8}\b/i);
 });
 
-async function until(ready: () => boolean): Promise<void> {
-    for (let i = 0; i < 100; i++) { if (ready()) return; await new Promise(resolve => setTimeout(resolve, 10)); }
+async function until(ready: () => boolean, timeoutMs = 1000): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) { if (ready()) return; await new Promise(resolve => setTimeout(resolve, 10)); }
     assert.fail('Timed out waiting for Chat event');
 }
 async function untilAsync(ready: () => Promise<boolean>): Promise<void> {
@@ -491,7 +492,9 @@ test('restoration resolves duplicate panels, permits different Chats, and releas
         await first.select(undefined);
         assert.equal(await first.newChat(''), true);
         const two = first.chatId!;
-        await until(() => second.snapshot?.chats.length === 2 && third.snapshot?.chats.length === 2);
+        await Promise.all([second.refresh(), third.refresh()]);
+        assert.equal(second.snapshot?.chats.length, 2);
+        assert.equal(third.snapshot?.chats.length, 2);
         second.restore(workspace, 'chat', one);
         await until(() => second.chatId === one);
         third.restore(workspace, 'chat', one);
@@ -589,14 +592,15 @@ test('saved Chat restore reclaims an orphaned browser lease only after expiry', 
         assert.equal(old.acquired, true);
         if (!old.acquired) throw new Error('Expected original lease');
         const leasePath = join(root, '.dope/chats/.leases', `${chatId}.json`);
+        restored.restore(workspace, 'chat', chatId);
+        await restored.attach(workspace);
+        await until(() => restored.error.includes('orphaned-window'), 10_000);
+        assert.equal(restored.mode, 'select-chat');
+        assert.equal((await repository.claim(root, chatId, 'competitor')).acquired, false);
         const lease = JSON.parse(await readFile(leasePath, 'utf8'));
         await writeFile(leasePath, JSON.stringify({ ...lease, expiresAt: Date.now() + 250 }));
         restored.restore(workspace, 'chat', chatId);
-        await restored.attach(workspace);
-        await until(() => restored.error.includes('orphaned-window'));
-        assert.equal(restored.mode, 'select-chat');
-        assert.equal((await repository.claim(root, chatId, 'competitor')).acquired, false);
-        await until(() => restored.chatId === chatId);
+        await until(() => restored.chatId === chatId, 10_000);
         assert.equal(restored.mode, 'chat');
         assert.equal(restored.snapshot?.revision, state.revision);
         await assert.rejects(repository.renew(root, chatId, old.token), /lost/);

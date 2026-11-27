@@ -612,7 +612,7 @@ test('unvalidated direct Work is denied before adapter execution or canonical wr
     const offered = createDefaultExecutionGrant({ id: 'unvalidated-grant', revision: 0,
         taskId: task.id, acceptedAt: new Date().toISOString() });
     await assert.rejects(f.backend.start(f.handle, pathToFileURL(f.root).href, task.id, offered, true),
-        /Direct Work validation or candidate review is invalid/);
+        /Direct Work validation or applied-source review is invalid/);
     assert.equal(f.adapter.starts.length, 0);
     assert.deepEqual(await f.store.listRuns(f.root), []);
     assert.equal((await captureGitBasis(f.root)).clean, true);

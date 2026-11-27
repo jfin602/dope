@@ -26,8 +26,9 @@ import { parseWorkToolSelection, WORK_TOOL_REGISTRY, WORK_TOOL_CATALOG_REVISION,
     WORK_PI_VERSION, workToolRegistration } from '@dope/agent-core/lib/work-tool-selection';
 
 const expectedTools: string[] = WORK_TOOL_REGISTRY.map(tool => tool.id);
-const workToolNames = { read_file: 'read', list_files: 'list', edit_file: 'edit',
-    run_command: 'process', read_command_output: 'output' } as const;
+// The Local protocol remains an adapter only for bounded approved commands.
+// Native Pi file calls above always use the whole-operation broker.
+const workToolNames = { run_command: 'process', read_command_output: 'output' } as const;
 const nativeFileNames = new Set(['read', 'write', 'edit', 'ls']);
 function parsePiFileOperation(id: number, name: string, value: unknown): PiFileOperation {
     if (!nativeFileNames.has(name) || !value || typeof value !== 'object' || Array.isArray(value))
@@ -200,7 +201,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
             throw new Error('Pi Work grant unavailable');
         const workspace = this.workspace(request);
         if (!(workspace instanceof ExecutionWorkspace) || workspace.root !== request.executionRoot ||
-            workspace.projectRoot !== request.projectRoot) throw new Error('Pi Work candidate unavailable');
+            workspace.projectRoot !== request.projectRoot) throw new Error('Pi Work execution workspace unavailable');
         await workspace.assertActiveBasis(request.projectRoot, request.executionRoot);
         const priorReads = request.priorDocumentReads?.length ?
             await verifyRecoveryReads(request.executionRoot, grant, request.priorDocumentReads) : [];
