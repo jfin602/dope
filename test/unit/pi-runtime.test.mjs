@@ -263,6 +263,24 @@ test('host rejects malformed broker replies without reporting an acknowledgement
   } finally { host.dispose(); }
 });
 
+test('host refuses an unattested native Pi file call before broker execution', async () => {
+  const host = new PiRuntimeHost('/unused');
+  let effects = 0;
+  host.child = { exitCode: null, killed: false, kill() { this.killed = true; },
+    stdin: { writableLength: 0, write(_line, callback) { callback?.(); return true; } } };
+  try {
+    const turn = host.request({ type: 'turn' }, undefined, async () => {
+      effects++; return { status: 'completed', output: '' };
+    });
+    const requestId = host.nextId;
+    host.acceptOutput(JSON.stringify({ id: requestId, tool: { id: 1, name: 'write',
+      arguments: { path: 'file.txt', content: 'x' },
+      contract: { revision: 3, schemaHash: '0'.repeat(64), piVersion: '1.4.0' } } }) + '\n');
+    await assert.rejects(turn, error => error.code === 'tool_reply_invalid');
+    assert.equal(effects, 0);
+  } finally { host.dispose(); }
+});
+
 test('worker rejects an unmatched result frame and host identifies a close with a pending tool', async () => {
   await assert.rejects(dispatch({ type: 'tool-result', requestId: 9999, toolId: 9999,
     result: { status: 'completed', output: '' } }),
@@ -1703,13 +1721,79 @@ test('Pi Work exposes only Dope wrappers and relays a model tool call to the hos
       return new Response(chunks.join(''), { status: 200,
         headers: { 'content-type': 'text/event-stream' } });
     };
-    const opened = await dispatch({ type: 'open', mode: 'work', cwd, model });
+    const opened = await dispatch({ type: 'open', mode: 'work', cwd, model,
+      workToolNames: ['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output'] });
     assert.deepEqual(opened.tools.sort(), ['edit_file', 'list_files', 'read_command_output', 'read_file', 'run_command']);
     const answer = await dispatch({ type: 'work', id: 7, prompt: 'Inspect src/main.ts.' });
     assert.equal(answer.modelId, 'offline-fixture');
     assert.equal(seen.length, 1);
     assert.deepEqual(seen[0].arguments, { path: 'src/main.ts', maxBytes: 100 });
     await assert.rejects(access(marker), { code: 'ENOENT' });
+  } finally {
+    process.stdout.write = originalWrite;
+    globalThis.fetch = originalFetch;
+    await dispatch({ type: 'close' });
+    await rm(cwd, { recursive: true, force: true });
+  }
+});
+
+test('Pi Work registers pinned Pi schemas and relays only selected whole-operation calls', async () => {
+  const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-native-schema-'));
+  const originalFetch = globalThis.fetch;
+  const originalWrite = process.stdout.write;
+  const forwarded = [];
+  let turn = 0;
+  try {
+    process.stdout.write = function (chunk, ...args) {
+      try {
+        const frame = JSON.parse(String(chunk));
+        if (frame.tool) {
+          forwarded.push(frame.tool);
+          queueMicrotask(() => { void dispatch({ type: 'tool-result', requestId: frame.id,
+            toolId: frame.tool.id, result: { status: 'completed',
+              output: 'Successfully wrote to src/main.ts' } }); });
+          return true;
+        }
+      } catch { /* ordinary output */ }
+      return originalWrite.call(this, chunk, ...args);
+    };
+    globalThis.fetch = async (_url, options) => {
+      const body = JSON.parse(String(options.body));
+      assert.deepEqual(body.tools.map(tool => tool.function.name).sort(), ['edit', 'ls', 'read', 'write']);
+      const read = body.tools.find(tool => tool.function.name === 'read').function;
+      const write = body.tools.find(tool => tool.function.name === 'write').function;
+      const edit = body.tools.find(tool => tool.function.name === 'edit').function;
+      assert.deepEqual(Object.keys(read.parameters.properties).sort(), ['limit', 'offset', 'path']);
+      assert.deepEqual(Object.keys(write.parameters.properties).sort(), ['content', 'path']);
+      assert.deepEqual(Object.keys(edit.parameters.properties).sort(), ['edits', 'path']);
+      assert.match(write.description, /Automatically creates parent directories/);
+      assert.doesNotMatch(JSON.stringify(body.tools), /run_command|bash|grep|find|read_file|edit_file/);
+      const choices = ++turn === 1 ? [
+        { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: 'native-1',
+          type: 'function', function: { name: 'write',
+            arguments: '{"path":"src/main.ts","content":"const n = 1;\\n"}' } }] }, finish_reason: null },
+        { index: 0, delta: {}, finish_reason: 'tool_calls' }
+      ] : [
+        { index: 0, delta: { role: 'assistant', content: 'Done.' }, finish_reason: null },
+        { index: 0, delta: {}, finish_reason: 'stop' }
+      ];
+      return new Response(choices.map((choice, index) => `data: ${JSON.stringify({
+        id: `native-${turn}-${index}`, object: 'chat.completion.chunk', created: 1,
+        model: 'offline-fixture', choices: [choice] })}\n\n`).join('') + 'data: [DONE]\n\n',
+      { status: 200, headers: { 'content-type': 'text/event-stream' } });
+    };
+    const opened = await dispatch({ type: 'open', mode: 'work', cwd, model,
+      workToolNames: ['read', 'write', 'edit', 'ls'] });
+    assert.deepEqual(opened.tools.slice().sort(), ['edit', 'ls', 'read', 'write']);
+    assert.equal(opened.workCatalogRevision, 3);
+    const answer = await dispatch({ type: 'work', id: 83, prompt: 'Write a file.' });
+    assert.equal(answer.text, 'Done.');
+    assert.equal(forwarded.length, 1);
+    assert.equal(forwarded[0].name, 'write');
+    assert.deepEqual(forwarded[0].arguments, { path: 'src/main.ts', content: 'const n = 1;\n' });
+    assert.deepEqual(forwarded[0].contract, {
+      revision: 3, schemaHash: 'e98a2484f667cf7c22d76ca103bf2022bf9113dc63fe38b899e71c328cb1e833',
+      piVersion: '1.4.0' });
   } finally {
     process.stdout.write = originalWrite;
     globalThis.fetch = originalFetch;
@@ -1758,9 +1842,8 @@ test('Pi Work without approved process commands does not offer run_command', asy
   const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-work-no-process-'));
   try {
     const opened = await dispatch({ type: 'open', mode: 'work', cwd, model,
-      workProcessAvailable: false });
-    assert.deepEqual(opened.tools.slice().sort(),
-      ['edit_file', 'list_files', 'read_file']);
+      workProcessAvailable: false, workToolNames: ['read', 'write', 'edit', 'ls'] });
+    assert.deepEqual(opened.tools.slice().sort(), ['edit', 'ls', 'read', 'write']);
   } finally {
     await dispatch({ type: 'close' });
     await rm(cwd, { recursive: true, force: true });
@@ -1770,10 +1853,13 @@ test('Pi Work without approved process commands does not offer run_command', asy
 test('Pi Work registers only selected tools and rejects stale or dependent choices', async () => {
   const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-work-selection-'));
   try {
+    const empty = await dispatch({ type: 'open', mode: 'work', cwd, model });
+    assert.deepEqual(empty.tools, [], 'omitted selection cannot activate any Work tool');
+    await dispatch({ type: 'close' });
     const opened = await dispatch({ type: 'open', mode: 'work', cwd, model,
       workToolNames: ['read_file', 'list_files'] });
     assert.deepEqual(opened.tools.slice().sort(), ['list_files', 'read_file']);
-    assert.equal(opened.workCatalogRevision, 2);
+    assert.equal(opened.workCatalogRevision, 3);
     await dispatch({ type: 'close' });
     await assert.rejects(dispatch({ type: 'open', mode: 'work', cwd, model,
       workToolNames: ['future_tool'] }), /Invalid Pi Work tool selection/);
@@ -1830,7 +1916,8 @@ test('Pi Work compacts between distinct tool turns, then continues without repla
         object: 'chat.completion.chunk', created: 1, model: 'offline-fixture', choices: [choice] })}\n\n`).join('') +
         'data: [DONE]\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } });
     };
-    await dispatch({ type: 'open', mode: 'work', cwd, model });
+    await dispatch({ type: 'open', mode: 'work', cwd, model,
+      workToolNames: ['read_file', 'run_command'] });
     const anchor = 'DOPE CHECKED TASK RECOVERY\nOriginal accepted objective: Inspect distinct authorized sources.\n' +
       'Acceptance: one approved command, no replay.\nNext step: inspect current evidence.';
     const answer = await dispatch({ type: 'work', id: 77, prompt: 'Inspect distinct authorized sources.',
@@ -1952,7 +2039,8 @@ test('a failed approved Work test reaches Pi as repair feedback on the next mode
         object: 'chat.completion.chunk', created: 1, model: 'offline-fixture', choices: [item] })}\n\n`).join('') +
         'data: [DONE]\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } });
     };
-    await dispatch({ type: 'open', mode: 'work', cwd, model });
+    await dispatch({ type: 'open', mode: 'work', cwd, model,
+      workToolNames: ['run_command'] });
     const answer = await dispatch({ type: 'work', id: 8, prompt: 'Run the approved test, then repair failures.' });
     assert.equal(answer.text, 'I will repair the checkout mismatch.');
     assert.equal(turn, 2);

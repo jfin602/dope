@@ -24,10 +24,10 @@ test('command tools require a validation shape accepted by the sandbox broker', 
 });
 
 test('groups, individual overrides and command dependency resolve with denial precedence', () => {
-    const groups = [{ id: 'small', name: 'Small', tools: ['read_file', 'edit_file'] }];
+    const groups = [{ id: 'small', name: 'Small', tools: ['read', 'edit'] }];
     const selected = resolveWorkTools({ groups: ['Inspect', 'small'], allow: ['run_command'],
-        deny: ['read_file', 'run_command'] }, groups, true);
-    assert.deepEqual(selected.tools, ['list_files', 'edit_file']);
+        deny: ['read', 'run_command'] }, groups, true);
+    assert.deepEqual(selected.tools, ['ls', 'edit']);
     assert.deepEqual(resolveWorkTools({ groups: [], allow: ['read_command_output'], deny: [] }, [], true),
         { tools: [], unavailable: ['read_command_output: requires run_command'] });
     assert.deepEqual(resolveWorkTools({ groups: ['Commands'], allow: [], deny: [] }, [], false),
@@ -38,7 +38,7 @@ test('groups, individual overrides and command dependency resolve with denial pr
 test('trusted Work catalog includes the reviewed MCP observation with project and consent reasons', () => {
     const unavailable = workToolCatalogFor({ locality: 'local', commandsAvailable: false,
         externalOffered: false, externalConsent: false });
-    assert.equal(unavailable.length, 6);
+    assert.equal(unavailable.length, 7);
     assert.equal(unavailable.find(tool => tool.id === 'mcp_godot_server_info')?.available, false);
     assert.match(unavailable.find(tool => tool.id === 'mcp_godot_server_info')?.unavailableReason ?? '',
         /inactive for this project/);
@@ -47,7 +47,7 @@ test('trusted Work catalog includes the reviewed MCP observation with project an
         externalOffered: true, externalConsent: true });
     assert.equal(offered.find(tool => tool.id === 'mcp_godot_server_info')?.available, true);
     assert.deepEqual(resolveWorkTools({ groups: ['Inspect'], allow: ['mcp_godot_server_info'], deny: [] },
-        [], true, true).tools, ['read_file', 'list_files', 'mcp_godot_server_info']);
+        [], true, true).tools, ['read', 'ls', 'mcp_godot_server_info']);
     assert.match(resolveWorkTools({ groups: [], allow: ['mcp_godot_server_info'], deny: [] },
         [], true, false).unavailable[0], /observation consent missing/);
     assert.deepEqual(resolveWorkTools({ groups: ['external'], allow: [], deny: ['mcp_godot_server_info'] },
@@ -58,25 +58,34 @@ test('trusted Work catalog includes the reviewed MCP observation with project an
 test('custom groups persist across instances while task and default choices stay project scoped', () => {
     const storage = memory();
     const first = new WorkToolPreferences(storage);
-    first.upsertGroup({ id: 'small', name: 'Small', tools: ['read_file'] });
+    first.upsertGroup({ id: 'small', name: 'Small', tools: ['read'] });
     first.saveDefault(project, { groups: ['small'], allow: [], deny: [] });
-    first.saveChoice(project, 'task-a', { groups: ['Inspect'], allow: [], deny: ['read_file'] });
+    first.saveChoice(project, 'task-a', { groups: ['Inspect'], allow: [], deny: ['read'] });
     const restarted = new WorkToolPreferences(storage);
     assert.deepEqual(restarted.groups().map(group => group.name), ['Small']);
-    assert.deepEqual(restarted.resolve(project, 'task-a', true).tools, ['list_files']);
-    assert.deepEqual(restarted.resolve(project, 'task-b', true).tools, ['read_file']);
+    assert.deepEqual(restarted.resolve(project, 'task-a', true).tools, ['ls']);
+    assert.deepEqual(restarted.resolve(project, 'task-b', true).tools, ['read']);
     assert.deepEqual(restarted.resolve('file:///tmp/dope-b', 'task-a', true).tools,
-        ['read_file', 'list_files', 'edit_file']);
-    restarted.upsertGroup({ id: 'small', name: 'Small renamed', tools: ['edit_file'] });
-    assert.deepEqual(restarted.resolve(project, 'task-b', true).tools, ['edit_file']);
+        ['read', 'ls', 'write', 'edit']);
+    restarted.upsertGroup({ id: 'small', name: 'Small renamed', tools: ['edit'] });
+    assert.deepEqual(restarted.resolve(project, 'task-b', true).tools, ['edit']);
 });
 
 test('optional validation leaves command tools out while preserving simple explicit choices', () => {
     const prefs = new WorkToolPreferences(memory());
-    assert.deepEqual(prefs.resolve(project, 'direct', false).tools, ['read_file', 'list_files', 'edit_file']);
-    prefs.saveChoice(project, 'direct', { groups: [], allow: ['read_file', 'run_command'], deny: [] });
-    assert.deepEqual(prefs.resolve(project, 'direct', false).tools, ['read_file']);
-    assert.deepEqual(prefs.resolve(project, 'direct', true).tools, ['read_file', 'run_command']);
+    assert.deepEqual(prefs.resolve(project, 'direct', false).tools, ['read', 'ls', 'write', 'edit']);
+    prefs.saveChoice(project, 'direct', { groups: [], allow: ['read', 'run_command'], deny: [] });
+    assert.deepEqual(prefs.resolve(project, 'direct', false).tools, ['read']);
+    assert.deepEqual(prefs.resolve(project, 'direct', true).tools, ['read', 'run_command']);
+});
+
+test('a saved legacy file choice requires review before a new Work approval', () => {
+    const prefs = new WorkToolPreferences(memory());
+    prefs.saveChoice(project, 'legacy', { groups: [], allow: ['read_file', 'edit_file'], deny: [] });
+    assert.deepEqual(prefs.resolve(project, 'legacy', true).tools, []);
+    assert.match(prefs.resolve(project, 'legacy', true).unavailable.join(' '), /previous Work file tool/);
+    assert.throws(() => prefs.snapshot(project, 'legacy', 'new-task', 0, target, true),
+        /Review unavailable Work tools/);
 });
 
 test('saved approval freezes identities and rejects stale catalog, unknown tools and grant drift', () => {

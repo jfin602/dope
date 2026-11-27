@@ -145,7 +145,8 @@ function validText(value: unknown): value is string {
 
 /** P2's operation entry point. P4/P5 will bind Pi registrations to it; no model tool is added here. */
 export async function brokerIsolatedFileOperation(request: AgentExecutionRequest,
-    workspace: ExecutionWorkspace, input: IsolatedFileOperation, signal?: AbortSignal): Promise<IsolatedFileResult> {
+    workspace: ExecutionWorkspace, input: IsolatedFileOperation, signal?: AbortSignal,
+    directMirror = false): Promise<IsolatedFileResult> {
     if (signal?.aborted) return denied('cancelled');
     if (!(workspace instanceof ExecutionWorkspace) || request.executionMode === 'direct' ||
         !input || typeof input !== 'object') return denied();
@@ -160,8 +161,15 @@ export async function brokerIsolatedFileOperation(request: AgentExecutionRequest
             request.reservedPaths?.some(reserved => path === reserved || path.startsWith(`${reserved}/`) ||
                 reserved.startsWith(`${path}/`))) return denied();
         const grant = parseExecutionGrant(request.grant);
-        const selected = input.kind === 'read' ? 'read_file' : 'edit_file';
-        if (grant.taskId !== request.taskId || !grant.toolSelection?.tools.some(tool => tool.id === selected) ||
+        const nativeSelection = grant.toolSelection?.tools.some(tool =>
+            ['read', 'ls', 'write', 'edit'].includes(tool.id));
+        const selected = nativeSelection ?
+            input.kind === 'read' ? 'read' : input.kind === 'write' ? 'write' : 'edit' :
+            input.kind === 'read' ? 'read_file' : 'edit_file';
+        if (grant.taskId !== request.taskId ||
+            !(directMirror && input.kind === 'write' && grant.toolSelection?.tools.some(tool =>
+                tool.id === 'edit' || tool.id === 'write' || tool.id === 'edit_file')) &&
+            !grant.toolSelection?.tools.some(tool => tool.id === selected) ||
             request.projectRoot !== workspace.projectRoot || request.executionRoot !== workspace.root ||
             !checkEffect(grant, { kind: input.kind === 'read' ? 'workspace-read' : 'workspace-write',
                 scope: 'workspace', path }).allowed || input.kind === 'edit' &&

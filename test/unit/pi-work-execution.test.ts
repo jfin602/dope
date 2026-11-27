@@ -57,6 +57,61 @@ test('Pi Work Direct edit_file updates canonical source only through the broker'
     } finally { await workspace?.dispose(); await rm(project, { recursive: true, force: true }); }
 });
 
+for (const mode of ['isolated', 'direct'] as const)
+test(`Pi native selected file calls traverse the ${mode} Work bridge`, async () => {
+    const project = await mkdtemp(join(tmpdir(), `dope-pi-native-bridge-${mode}-`));
+    let workspace: ExecutionWorkspace | undefined;
+    try {
+        await mkdir(join(project, 'src'));
+        await writeFile(join(project, 'src', 'file.txt'), 'before\n');
+        await execute('git', ['init', '-q', project]);
+        await execute('git', ['add', 'src/file.txt'], { cwd: project });
+        await execute('git', ['-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid',
+            'commit', '-qm', 'basis'], { cwd: project });
+        const head = (await execute('git', ['rev-parse', 'HEAD'], { cwd: project })).stdout.trim();
+        workspace = await ExecutionWorkspace.create(project);
+        const grant = selectedGrant(project, 'native-grant', 'native-task', 'model',
+            ['read', 'ls', 'write', 'edit']);
+        const journal = mode === 'direct' ? await DirectWorkJournal.create(project, head,
+            'native-task', 'native-run', grant) : undefined;
+        if (journal) workspace.bindDirectBasis(journal);
+        const hashes = {
+            read: '134f19bcabe3e29d63c5cebb38f1d2556759fd08adad6bc90a4b4d3cd1fb8441',
+            write: 'e98a2484f667cf7c22d76ca103bf2022bf9113dc63fe38b899e71c328cb1e833',
+            edit: '55866598f02c5e00ddfcbcae3df78081e3712de09a622bac7a6bc02ef2acc1bc',
+            ls: 'ad4ee18683e9c3d6bfa7969709a0683bc9f896099ed6a74db0b6c49444718a0c'
+        };
+        const host: any = { async start() {}, async runWork(_prompt: string,
+            onTool: (call: any) => Promise<any>) {
+            let id = 0;
+            const call = (name: keyof typeof hashes, args: unknown) => onTool({ id: ++id, name,
+                arguments: args, contract: { revision: 3, schemaHash: hashes[name], piVersion: '1.4.0' } });
+            assert.match((await call('read', { path: 'src/file.txt' })).output, /before/);
+            assert.match((await call('write', { path: 'src/nested/new.txt', content: 'one\n' })).output,
+                /Successfully wrote/);
+            assert.equal((await call('write', { path: 'src/nested/new.txt', content: 'two\n' })).status,
+                'completed');
+            assert.match((await call('edit', { path: 'src/nested/new.txt', edits: [
+                { oldText: 'two', newText: 'three' }] })).output, /Successfully edited/);
+            assert.match((await call('ls', { path: 'src/nested' })).output, /new.txt/);
+            return { modelId: 'model', text: 'Native calls completed.' };
+        }, dispose() {} };
+        const adapter = new PiWorkExecutionAdapter({ async bind() {
+            return { endpoint: 'http://127.0.0.1:9/v1', registryRevision: 1 };
+        }, async assertWorkSelection() {} } as any,
+        { create: () => host, release() {} } as any, () => workspace!, () => [], undefined,
+        journal ? () => ({ journal, unsaved: async () => false, refresh: async () => true }) : undefined);
+        const run = await adapter.start({ projectRoot: project, executionRoot: workspace.root,
+            executionMode: mode, grant, taskId: 'native-task', runId: 'native-run',
+            connectionId: 'local', registrationId: 'local', modelId: 'model',
+            prompt: 'Use native file tools.', onEvent() {} });
+        await run.result;
+        assert.equal(await readFile(join(workspace.root, 'src/nested/new.txt'), 'utf8'), 'three\n');
+        assert.equal(await readFile(join(project, 'src/nested/new.txt'), 'utf8').catch(() => ''),
+            mode === 'direct' ? 'three\n' : '');
+    } finally { await workspace?.dispose(); await rm(project, { recursive: true, force: true }); }
+});
+
 test('Pi Work rejects foreign project, task and model selections before opening a session', async () => {
     const adapter = new PiWorkExecutionAdapter({} as any, {} as any,
         () => { throw new Error('workspace must not open'); }, () => []);
@@ -116,7 +171,9 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
     };
     const factory: any = { create() { return {
         async start() { return { version: '1.4.0', transport: 'supervised-worker', tools: [] }; },
-        openWorkSession(model: unknown, cwd: string) { return dispatch({ type: 'open', mode: 'work', model, cwd }); },
+        openWorkSession(model: unknown, cwd: string, workToolNames: string[]) {
+            return dispatch({ type: 'open', mode: 'work', model, cwd, workToolNames });
+        },
         async runWork(prompt: string, onTool: (call: any) => Promise<any>, onEvent: (event: any) => void) {
             scopedPrompt = prompt;
             const original = process.stdout.write;
@@ -148,11 +205,12 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         await writeFile(join(workspace.root, 'AGENTS.md'), 'Use the approved Work tools and keep changes in the candidate.\n');
         await writeFile(join(workspace.root, 'docs', 'p3-fixture.md'), 'Task requirement: keep candidate changes reviewed.\n');
         const endpoint = 'http://127.0.0.1:9/v1';
-        const bridge: any = { async bind(_selection: unknown, host: any, cwd: string) {
+        const bridge: any = { async bind(_selection: unknown, host: any, cwd: string,
+            options: { workToolNames: string[] }) {
             const opened = await host.openWorkSession({ id: 'synthetic-local', name: 'Synthetic Local',
                 provider: 'dope-local', api: 'openai-completions', baseUrl: endpoint,
                 reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-                contextWindow: 4096, maxTokens: 512 }, cwd);
+                contextWindow: 4096, maxTokens: 512 }, cwd, options.workToolNames);
             assert.deepEqual(opened.tools.sort(), ['edit_file', 'list_files', 'read_command_output', 'read_file', 'run_command']);
             return { endpoint };
         }, async assertWorkSelection() {} };

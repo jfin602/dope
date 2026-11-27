@@ -2794,7 +2794,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                             const modelStatus = document.createElement('p'); modelStatus.className = 'dope-work-detail';
                             modelStatus.textContent = controller.followUpTargetReason;
                             const tools = document.createElement('div'); tools.className = 'dope-work-tool-list';
-                            for (const tool of WORK_TOOL_CATALOG) {
+                            for (const tool of WORK_TOOL_CATALOG.filter(item =>
+                                !['read_file', 'list_files', 'edit_file'].includes(item.id))) {
                                 const label = document.createElement('label'); label.className = 'dope-work-tool-row';
                                 const check = document.createElement('input'); check.type = 'checkbox';
                                 check.checked = controller.followUpToolIds.includes(tool.id);

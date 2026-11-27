@@ -41,11 +41,91 @@ export interface LocalTurnLoopBroker {
     execute(call: LocalToolRequest, signal: AbortSignal): Promise<LocalToolResult>;
     assertActive(): Promise<void>;
     executeFileOperation?(operation: DirectFileOperation, signal: AbortSignal): Promise<LocalToolResult>;
+    executePiFileOperation(operation: PiFileOperation, signal: AbortSignal): Promise<LocalToolResult>;
 }
 
 /** Internal P3 whole-operation seam. P4 binds selected Pi file contracts to this broker. */
 export type DirectFileOperation = { id: string; kind: 'write'; path: string; content: string } |
     { id: string; kind: 'edit'; path: string; edits: readonly { oldText: string; newText: string }[] };
+export type PiFileOperation =
+    { id: string; kind: 'read'; path: string; offset?: number; limit?: number } |
+    { id: string; kind: 'ls'; path?: string; limit?: number } |
+    DirectFileOperation;
+
+export async function brokerPiFileOperation(request: AgentExecutionRequest, workspace: ExecutionWorkspace,
+    direct: { journal: DirectWorkJournal; unsaved(path: string): Promise<boolean>;
+        refresh(path: string): Promise<boolean> } | undefined,
+    input: PiFileOperation, signal: AbortSignal): Promise<LocalToolResult> {
+    const denied = (status: LocalToolResult['status'] = 'denied', output = '') => parseLocalToolResult({
+        id: /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/u.test(input?.id ?? '') ? input.id : 'invalid',
+        name: input?.kind === 'ls' ? 'list' : input?.kind === 'read' ? 'read' : 'edit',
+        status, output, truncated: false });
+    if (signal.aborted) return denied('cancelled');
+    const path = input?.kind === 'ls' ? input.path ?? '.' : input?.path;
+    if (!path || !['read', 'ls', 'write', 'edit'].includes(input.kind) ||
+        !request.grant.toolSelection?.tools.some(tool => tool.id === input.kind) ||
+        request.grant.toolSelection.catalogRevision !== 3 ||
+        request.grant.toolSelection.projectUri !== pathToFileURL(request.projectRoot).href ||
+        request.grant.toolSelection.taskId !== request.taskId ||
+        request.grant.toolSelection.grantRevision !== request.grant.revision ||
+        request.grant.toolSelection.connectionId !== request.connectionId ||
+        request.grant.toolSelection.modelId !== request.modelId ||
+        request.authorizedPaths && !request.authorizedPaths.some(allowed =>
+            path === allowed || path.startsWith(`${allowed}/`)) ||
+        request.reservedPaths?.some(reserved => path === reserved || path.startsWith(`${reserved}/`) ||
+            reserved.startsWith(`${path}/`))) return denied();
+    if (input.kind === 'write' || input.kind === 'edit') {
+        const success = input.kind === 'write' ? `Successfully wrote to ${path}` :
+            `Successfully edited ${path}\n` + input.edits.map(edit =>
+                `- ${edit.oldText}\n+ ${edit.newText}`).join('\n').slice(0, 8192);
+        if (request.executionMode === 'direct') {
+            if (!direct) return denied();
+            const result = await brokerDirectFileOperation(request, workspace, direct, input, signal);
+            return result.status === 'completed' ? denied('completed', success) : result;
+        }
+        const result = await brokerIsolatedFileOperation(request, workspace, input, signal);
+        return denied(result.status === 'recovery-required' ? 'failed' : result.status,
+            result.status === 'completed' ? success : result.output);
+    }
+    if (input.kind === 'ls') {
+        if (input.limit !== undefined && (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 100))
+            return denied();
+        const call = { id: input.id, name: 'list' as const, arguments: { path, maxEntries: input.limit ?? 100 } };
+        const result = await brokerLocalRead(request, call, signal, workspace);
+        if (result.status !== 'completed') return denied(result.status, result.output);
+        const entries = JSON.parse(result.output) as { name: string; kind: string }[];
+        return denied('completed', entries.map(entry => `${entry.name}${entry.kind === 'directory' ? '/' : ''}`)
+            .sort().join('\n') + (result.truncated ? '\n[Listing truncated at 100 entries]' : ''));
+    }
+    if (input.offset !== undefined && (!Number.isSafeInteger(input.offset) || input.offset < 1) ||
+        input.limit !== undefined && (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 2000))
+        return denied();
+    let byteOffset = 0;
+    let sourceHash: string | undefined;
+    let contents = '';
+    let more = true;
+    while (more && byteOffset < 65536) {
+        const result = await brokerIsolatedFileOperation({ ...request, executionMode: 'isolated' }, workspace, { kind: 'read', path,
+            offset: byteOffset, maxBytes: 4096, ...(sourceHash ? { expectedSourceHash: sourceHash } : {}) }, signal);
+        if (result.status !== 'completed') return denied(result.status === 'recovery-required' ? 'failed' : result.status, result.output);
+        const page = JSON.parse(result.output) as { text: string; nextOffset: number | null; sourceHash: string };
+        if (sourceHash && page.sourceHash !== sourceHash) return denied('failed', 'SOURCE_HASH_MISMATCH');
+        sourceHash = page.sourceHash;
+        contents += page.text;
+        more = page.nextOffset !== null;
+        if (more && page.nextOffset! <= byteOffset) return denied('failed');
+        byteOffset = page.nextOffset ?? byteOffset;
+    }
+    const lines = contents.split('\n');
+    const start = (input.offset ?? 1) - 1;
+    if (start >= lines.length) return denied('failed', 'Line offset is beyond the bounded file scan');
+    const selected = lines.slice(start, start + (input.limit ?? 2000));
+    let output = selected.join('\n');
+    if (Buffer.byteLength(output, 'utf8') > 16384)
+        output = Buffer.from(output, 'utf8').subarray(0, 16000).toString('utf8') + '\n[Read output truncated]';
+    if (more || start + selected.length < lines.length) output += '\n[More lines available]';
+    return denied('completed', output);
+}
 
 export async function brokerDirectFileOperation(request: AgentExecutionRequest, workspace: ExecutionWorkspace,
     direct: { journal: DirectWorkJournal; unsaved(path: string): Promise<boolean>;
@@ -59,7 +139,7 @@ export async function brokerDirectFileOperation(request: AgentExecutionRequest, 
         !(workspace instanceof ExecutionWorkspace) || request.executionRoot !== workspace.root ||
         request.projectRoot !== workspace.projectRoot ||
         !direct.journal.matches(request.taskId, request.runId, request.projectRoot, request.grant) ||
-        !request.grant.toolSelection?.tools.some(tool => tool.id === 'edit_file') ||
+        !request.grant.toolSelection?.tools.some(tool => tool.id === input.kind || tool.id === 'edit_file') ||
         request.grant.toolSelection?.projectUri !== pathToFileURL(request.projectRoot).href ||
         request.grant.toolSelection?.taskId !== request.taskId ||
         request.grant.toolSelection?.grantRevision !== request.grant.revision ||
@@ -82,10 +162,11 @@ export async function brokerDirectFileOperation(request: AgentExecutionRequest, 
         const mirror = await brokerIsolatedFileOperation({ ...request, executionMode: 'isolated' }, workspace,
             { kind: 'write', path: change.path,
                 content: Buffer.from(change.afterBytes, 'base64').toString('utf8'),
-                expectedSourceHash: change.before });
+                expectedSourceHash: change.before }, undefined, true);
         if (mirror.status !== 'completed') return outcome('failed', 'DIRECT_EDIT_APPLIED_MODEL_VIEW_UNAVAILABLE');
         try { await direct.refresh(change.path); } catch { /* Saved editor refresh is best effort. */ }
-        return outcome('completed');
+        return outcome('completed', input.kind === 'write' ? `Successfully wrote to ${input.path}` :
+            `Successfully edited ${input.path}`);
     } catch (error) {
         const effects = direct.journal.changes.slice(prior);
         if (effects.some(change => change.result === 'completed'))
@@ -106,6 +187,8 @@ export function localWorkspaceBroker(request: AgentExecutionRequest, workspace: 
     if (!(workspace instanceof ExecutionWorkspace)) throw fail('Local execution workspace unavailable');
     return {
         assertActive: () => workspace.assertActiveBasis(request.projectRoot, request.executionRoot),
+        executePiFileOperation: (operation, signal) =>
+            brokerPiFileOperation(request, workspace, direct, operation, signal),
         executeFileOperation: direct ? (operation, signal) =>
             brokerDirectFileOperation(request, workspace, direct, operation, signal) : undefined,
         execute: (call, signal) => call.name === 'read' || call.name === 'list' ?

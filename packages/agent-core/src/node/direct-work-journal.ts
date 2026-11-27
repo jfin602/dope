@@ -499,7 +499,8 @@ export class DirectWorkJournal {
         const target = await safePath(this.root, path);
         const before = await bytesAt(target);
         return this.edit(before === null ? 'create' : 'modify', path, content, unsaved, signal,
-            before === null ? undefined : hash(before), undefined, { identity: await identityAt(target) });
+            before === null ? undefined : hash(before), undefined, { identity: await identityAt(target) },
+            this.grant.toolSelection?.tools.some(tool => tool.id === 'write') ? 'write' : 'edit_file');
     }
     async exactEdit(path: string, edits: readonly { oldText: string; newText: string }[],
         unsaved: (path: string) => Promise<boolean>, signal?: AbortSignal): Promise<DirectChange> {
@@ -528,28 +529,29 @@ export class DirectWorkJournal {
         const content = bom + (crlf ? updated.replace(/\n/gu, '\r\n') : updated);
         if (content === raw) throw new Error('Direct Work exact edit made no change');
         return this.edit('modify', path, content, unsaved, signal, hash(before), undefined,
-            { identity: originalIdentity });
+            { identity: originalIdentity },
+            this.grant.toolSelection?.tools.some(tool => tool.id === 'edit') ? 'edit' : 'edit_file');
     }
     async edit(operation: 'create' | 'modify', path: string, content: string,
         unsaved: (path: string) => Promise<boolean>, signal?: AbortSignal,
         expectedBefore?: string, fault?: 'pause-after-parent' | 'pause-after-temp' | 'after-temp' | 'after-file',
-        expectedState?: { identity: FileIdentity | null }): Promise<DirectChange> {
+        expectedState?: { identity: FileIdentity | null }, toolIdentity: 'write' | 'edit' | 'edit_file' = 'edit_file'): Promise<DirectChange> {
         if (this.writing) throw new Error('Concurrent Direct Work operation conflict');
         this.writing = true;
-        try { return await this.performEdit(operation, path, content, unsaved, signal, expectedBefore, fault, expectedState); }
+        try { return await this.performEdit(operation, path, content, unsaved, signal, expectedBefore, fault, expectedState, toolIdentity); }
         finally { this.writing = false; }
     }
     private async performEdit(operation: 'create' | 'modify', path: string, content: string,
         unsaved: (path: string) => Promise<boolean>, signal?: AbortSignal,
         expectedBefore?: string, fault?: 'pause-after-parent' | 'pause-after-temp' | 'after-temp' | 'after-file',
-        expectedState?: { identity: FileIdentity | null }): Promise<DirectChange> {
+        expectedState?: { identity: FileIdentity | null }, toolIdentity: 'write' | 'edit' | 'edit_file' = 'edit_file'): Promise<DirectChange> {
         if (operation !== 'create' && operation !== 'modify' || this.ledger.changes.length >= 500)
             throw new Error('Direct Work operation denied');
         if (!validText(content)) throw new Error('Invalid Direct Work content');
         if (signal?.aborted) throw new Error('Direct Work cancelled');
         await this.assertActive();
         const within = (parent: string, child: string): boolean => child === parent || child.startsWith(`${parent}/`);
-        if (!this.grant.toolSelection?.tools.some(tool => tool.id === 'edit_file') ||
+        if (!this.grant.toolSelection?.tools.some(tool => tool.id === toolIdentity) ||
             this.scope && (!this.scope.authorizedPaths.some(allowed => within(allowed, path)) ||
                 this.scope.reservedPaths.some(reserved => within(reserved, path) || within(path, reserved))))
             throw new Error('Direct Work tool or delegated scope denied');

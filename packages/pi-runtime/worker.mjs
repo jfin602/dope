@@ -7,7 +7,8 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Type } from 'typebox';
 import {
-  createAgentSession, createExtensionRuntime, ModelRuntime, SessionManager, SettingsManager
+  createAgentSession, createExtensionRuntime, createReadToolDefinition, createWriteToolDefinition,
+  createEditToolDefinition, createLsToolDefinition, ModelRuntime, SessionManager, SettingsManager
 } from '@earendil-works/pi-coding-agent';
 
 const version = JSON.parse(readFileSync(new URL('./node_modules/@earendil-works/pi-coding-agent/package.json', import.meta.url), 'utf8')).version;
@@ -272,7 +273,48 @@ const WORK_TOOLS = {
   run_command: { kind: Type.Union([Type.Literal('test'), Type.Literal('build')]), commandId: Type.String() },
   read_command_output: { handle: Type.String(), offset: Type.Integer(), maxBytes: Type.Integer() }
 };
-const WORK_CATALOG_REVISION = 2;
+const WORK_CATALOG_REVISION = 3;
+const PI_WORK_SCHEMA_HASHES = Object.freeze({
+  read: '134f19bcabe3e29d63c5cebb38f1d2556759fd08adad6bc90a4b4d3cd1fb8441',
+  write: 'e98a2484f667cf7c22d76ca103bf2022bf9113dc63fe38b899e71c328cb1e833',
+  edit: '55866598f02c5e00ddfcbcae3df78081e3712de09a622bac7a6bc02ef2acc1bc',
+  ls: 'ad4ee18683e9c3d6bfa7969709a0683bc9f896099ed6a74db0b6c49444718a0c'
+});
+const PI_WORK_DEFINITIONS = Object.freeze(Object.fromEntries([
+  createReadToolDefinition('/dope-broker-only'), createWriteToolDefinition('/dope-broker-only'),
+  createEditToolDefinition('/dope-broker-only'), createLsToolDefinition('/dope-broker-only')
+].map(definition => [definition.name, definition])));
+function attestPiWorkDefinition(name) {
+  const definition = PI_WORK_DEFINITIONS[name];
+  if (version !== '1.4.0' || !definition || definition.name !== name ||
+      hash(JSON.stringify(definition.parameters)) !== PI_WORK_SCHEMA_HASHES[name])
+    throw new Error('Pi Work tool contract changed');
+  return definition;
+}
+function checkedPiWorkArgs(name, params) {
+  const fields = { read: ['path', 'offset', 'limit'], write: ['path', 'content'],
+    edit: ['path', 'edits'], ls: ['path', 'limit'] }[name];
+  if (!fields || !params || typeof params !== 'object' || Array.isArray(params) ||
+      Object.keys(params).some(key => !fields.includes(key)) ||
+      (name !== 'ls' && !Object.hasOwn(params, 'path')))
+    throw new Error('Invalid Pi Work arguments');
+  if (params.path !== undefined && (typeof params.path !== 'string' || !params.path ||
+      Buffer.byteLength(params.path, 'utf8') > 512)) throw new Error('Invalid Pi Work path');
+  if (name === 'read' && (params.offset !== undefined && (!Number.isSafeInteger(params.offset) || params.offset < 1) ||
+      params.limit !== undefined && (!Number.isSafeInteger(params.limit) || params.limit < 1 || params.limit > 2000)))
+    throw new Error('Invalid Pi Work read range');
+  if (name === 'ls' && params.limit !== undefined && (!Number.isSafeInteger(params.limit) ||
+      params.limit < 1 || params.limit > 100)) throw new Error('Invalid Pi Work list limit');
+  if (name === 'write' && (typeof params.content !== 'string' ||
+      Buffer.byteLength(params.content, 'utf8') > 65536)) throw new Error('Invalid Pi Work content');
+  if (name === 'edit' && (!Array.isArray(params.edits) || params.edits.length < 1 ||
+      params.edits.length > 32 || params.edits.some(edit => !edit || typeof edit !== 'object' ||
+        Array.isArray(edit) || Object.keys(edit).sort().join(',') !== 'newText,oldText' ||
+        typeof edit.oldText !== 'string' || !edit.oldText || typeof edit.newText !== 'string') ||
+      Buffer.byteLength(JSON.stringify(params.edits), 'utf8') > 131072))
+    throw new Error('Invalid Pi Work edits');
+  return params;
+}
 const CHAT_TOOLS = {
   read_file: { path: Type.String(), offset: Type.Optional(Type.Integer()),
     maxBytes: Type.Optional(Type.Integer()), expectedSourceHash: Type.Optional(Type.String()) },
@@ -548,7 +590,7 @@ function chatTools() {
   }));
 }
 function workTools() {
-  return [...Object.entries(WORK_TOOLS).filter(([name]) => selectedWorkToolNames.includes(name)),
+  const legacy = [...Object.entries(WORK_TOOLS).filter(([name]) => selectedWorkToolNames.includes(name)),
     ...mcpChatTools.map(tool => [tool.name, {}])].map(([name, properties]) => ({
     name, label: name, description: mcpChatTools.find(tool => tool.name === name)?.description ?? (name === 'read_file' ?
       'Read an authorized candidate file. On the FIRST read of each file, send path and offset 0; OMIT expectedSourceHash entirely. The reply supplies sourceHash and nextOffset. Only for later pages, send that exact returned sourceHash as expectedSourceHash with nextOffset. A task, Git or candidate hash is NOT a file sourceHash. Path-only reads retain the legacy sanitized prefix.' :
@@ -576,6 +618,41 @@ function workTools() {
       } finally { signal?.removeEventListener('abort', onAbort); pendingTools.delete(id); }
     }
   }));
+  const native = Object.keys(PI_WORK_SCHEMA_HASHES).filter(name => selectedWorkToolNames.includes(name))
+    .map(name => {
+      const definition = attestPiWorkDefinition(name);
+      return {
+        name, label: definition.label, parameters: definition.parameters,
+        description: name === 'read' ?
+          'Read text file contents through Dope. Use offset/limit for line ranges. A call scans at most 64KB and returns at most 16KB. Use a relative project path.' :
+          name === 'ls' ? 'List directory contents through Dope. Returns sorted entries with / for directories. Includes permitted dotfiles. At most 100 entries; use a relative project path.' :
+          `${definition.description} Use a relative project path; Dope checks and records the whole operation.`,
+        promptSnippet: definition.promptSnippet,
+        promptGuidelines: [...(definition.promptGuidelines ?? [])],
+        async execute(_toolCallId, untrusted, signal) {
+          if (!workMode || signal?.aborted || !selectedWorkToolNames.includes(name))
+            throw new Error('Dope Work tool unavailable');
+          attestPiWorkDefinition(name);
+          const params = checkedPiWorkArgs(name, untrusted);
+          const id = ++nextToolId;
+          const answer = new Promise((resolve, reject) => pendingTools.set(id,
+            { resolve, reject, requestId: workRequestId, name }));
+          const onAbort = () => { pendingTools.get(id)?.reject(new Error('Dope Work tool cancelled')); pendingTools.delete(id); };
+          signal?.addEventListener('abort', onAbort, { once: true });
+          process.stdout.write(`${JSON.stringify({ id: workRequestId, tool: { id, name, arguments: params,
+            contract: { revision: WORK_CATALOG_REVISION, schemaHash: PI_WORK_SCHEMA_HASHES[name],
+              piVersion: version } } })}\n`);
+          try {
+            const result = await answer;
+            if (!['completed', 'failed', 'denied'].includes(result.status))
+              throw new Error(`Dope Work tool ${result.status}`);
+            return { content: [{ type: 'text', text: result.status === 'completed' ? result.output :
+              `${result.status}: ${result.output || 'Dope Work authority rejected the operation.'}` }] };
+          } finally { signal?.removeEventListener('abort', onAbort); pendingTools.delete(id); }
+        }
+      };
+    });
+  return [...legacy, ...native];
 }
 
 const emptyResources = Object.freeze({
@@ -690,8 +767,9 @@ export async function dispatch(message) {
         throw new Error('Invalid Pi Work process availability');
       if (message.workToolNames !== undefined && (message.mode !== 'work' ||
           !Array.isArray(message.workToolNames) || new Set(message.workToolNames).size !== message.workToolNames.length ||
-          message.workToolNames.some(name => !Object.hasOwn(WORK_TOOLS, name) ||
-            !message.workProcessAvailable && ['run_command', 'read_command_output'].includes(name)) ||
+          message.workToolNames.some(name => !Object.hasOwn(WORK_TOOLS, name) &&
+            !Object.hasOwn(PI_WORK_SCHEMA_HASHES, name) ||
+            message.workProcessAvailable === false && ['run_command', 'read_command_output'].includes(name)) ||
           message.workToolNames.includes('read_command_output') && !message.workToolNames.includes('run_command')))
         throw new Error('Invalid Pi Work tool selection');
       if (typeof message.cwd !== 'string' || !message.cwd.startsWith('/'))
@@ -716,8 +794,9 @@ export async function dispatch(message) {
         });
         workMode = message.mode === 'work';
         workProcessAvailable = message.workProcessAvailable !== false;
-        selectedWorkToolNames = message.workToolNames ?? Object.keys(WORK_TOOLS).filter(name =>
-          workProcessAvailable || !['run_command', 'read_command_output'].includes(name));
+        selectedWorkToolNames = message.workToolNames ?? [];
+        for (const name of selectedWorkToolNames) if (Object.hasOwn(PI_WORK_SCHEMA_HASHES, name))
+          attestPiWorkDefinition(name);
         chatToolsMode = message.mode === 'chat-tools';
         roadmapToolsMode = chatToolsMode && message.roadmapTools === true;
         roadmapGenerationMode = chatToolsMode && message.roadmapGeneration === true && !roadmapToolsMode;

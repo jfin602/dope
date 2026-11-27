@@ -57,7 +57,8 @@ type Pending = { resolve(value: unknown): void; reject(error: Error): void; time
     resultEnd?: { bytes: number; sha256: string };
     onEvent?: (event: { type: 'delta'; text: string } | { type: 'reset' } |
         { type: 'activity'; kind: 'thinking' | 'provisional'; text: string } | PiWorkEvent) => void;
-    onTool?: (call: { id: number; name: string; arguments: unknown }) => Promise<unknown> };
+    onTool?: (call: { id: number; name: string; arguments: unknown;
+        contract?: { revision: number; schemaHash: string; piVersion: string } }) => Promise<unknown> };
 
 export type PiWorkerFailureCode = 'session_init' | 'provider_http' | 'provider_connection' |
     'tool_protocol' | 'model_generation' | 'worker_exit' | 'worker_protocol' |
@@ -101,7 +102,13 @@ const failureOrigins = new Set(['tool_budget', 'model_call_budget', 'generation_
     'invalid_final_tool_call', 'invalid_final_assistant']);
 const boundedCount = (value: unknown): value is number =>
     Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= 1_000_000;
-const offeredToolNames = new Set(['read_file', 'list_files', 'search_paths', 'search_text',
+const piWorkSchemaHashes: Record<string, string> = {
+    read: '134f19bcabe3e29d63c5cebb38f1d2556759fd08adad6bc90a4b4d3cd1fb8441',
+    write: 'e98a2484f667cf7c22d76ca103bf2022bf9113dc63fe38b899e71c328cb1e833',
+    edit: '55866598f02c5e00ddfcbcae3df78081e3712de09a622bac7a6bc02ef2acc1bc',
+    ls: 'ad4ee18683e9c3d6bfa7969709a0683bc9f896099ed6a74db0b6c49444718a0c'
+};
+const offeredToolNames = new Set(['read', 'write', 'edit', 'ls', 'read_file', 'list_files', 'search_paths', 'search_text',
     'run_command', 'edit_file', 'read_command_output', 'roadmap_read', 'roadmap_stage',
     'roadmap_cancel', 'roadmap_phase', 'roadmap_finish', 'proposal_status',
     'proposal_stage_document', 'proposal_stage_prompt', 'proposal_stage_file', 'proposal_replace_file', 'proposal_finish',
@@ -196,7 +203,7 @@ export class PiRuntimeHost {
             return Promise.reject(new Error('Invalid MCP Work manifest'));
         this.mcpToolNames = new Set(mcpTools.map(tool => tool.name));
         if (workToolNames && (new Set(workToolNames).size !== workToolNames.length ||
-            workToolNames.some(name => !['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output'].includes(name)) ||
+            workToolNames.some(name => !['read', 'write', 'edit', 'ls', 'read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output'].includes(name)) ||
             (!processAvailable && workToolNames.some(name => ['run_command', 'read_command_output'].includes(name))) ||
             workToolNames.includes('read_command_output') && !workToolNames.includes('run_command')))
             return Promise.reject(new Error('Invalid selected Pi Work tools'));
@@ -393,7 +400,8 @@ export class PiRuntimeHost {
                     lastToolReceipt?: PiToolFailureDetail['lastConfirmed'];
                     event?: { type: 'delta'; text: string } | { type: 'reset' } |
                         { type: 'activity'; kind: 'thinking' | 'provisional'; text: string } | PiWorkEvent;
-                    tool?: { id: number; name: string; arguments: unknown } };
+                    tool?: { id: number; name: string; arguments: unknown;
+                        contract?: { revision: number; schemaHash: string; piVersion: string } } };
                 const pending = this.pending.get(record.id);
                 if (!pending) throw new PiWorkerFailure(this.toolReplyRequestIds.has(record.id) ?
                     'tool_reply_duplicate' : 'tool_reply_unmatched');
@@ -425,6 +433,10 @@ export class PiRuntimeHost {
                         typeof record.tool.name !== 'string') throw new PiWorkerFailure('tool_reply_invalid');
                     if (!offeredToolNames.has(record.tool.name) && !this.mcpToolNames.has(record.tool.name))
                         throw new PiWorkerFailure('model_tool_call_invalid');
+                    if (Object.hasOwn(piWorkSchemaHashes, record.tool.name) &&
+                        (record.tool.contract?.revision !== 3 || record.tool.contract.piVersion !== '1.4.0' ||
+                            record.tool.contract.schemaHash !== piWorkSchemaHashes[record.tool.name]))
+                        throw new PiWorkerFailure('tool_reply_invalid');
                     if (this.seenToolIds.has(record.tool.id)) throw new PiWorkerFailure('tool_reply_duplicate');
                     this.seenToolIds.add(record.tool.id);
                     this.activeTools.set(record.tool.id, { requestId: record.id,

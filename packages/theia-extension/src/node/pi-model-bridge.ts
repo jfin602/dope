@@ -165,9 +165,7 @@ export class PiModelBridge {
                 await host.openChatToolsSession(modelSpec, cwd, credential, thinkingLevel, false, false, false, false,
                     options.operationPolicy, false, false, options.mcpTools) :
                 await host.openNoToolSession(modelSpec, cwd, credential, thinkingLevel);
-        const expected = options.tools ? options.workToolNames ? [...options.workToolNames] :
-            ['edit_file', 'list_files', 'read_command_output', 'read_file',
-            ...(options.workProcessAvailable === false ? [] : ['run_command'])] :
+        const expected = options.tools ? options.workToolNames ? [...options.workToolNames] : [] :
             options.chatTools ? options.roadmapGeneration ?
                 ['roadmap_finish', 'roadmap_phase'] :
                 options.proposalTools ? ['list_files', 'read_file', 'search_paths', 'search_text',

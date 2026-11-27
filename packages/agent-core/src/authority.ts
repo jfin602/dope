@@ -95,7 +95,7 @@ export function parseExecutionGrant(value: unknown): ExecutionGrant {
         toolSelection?.connectionId !== mcpObservation.connectionId ||
         toolSelection.modelId !== mcpObservation.modelId))
         throw new Error('External Work selection has no matching reviewed scope');
-    if (mcpObservation && toolSelection?.catalogRevision === 2 && !externalSelected)
+    if (mcpObservation && (toolSelection?.catalogRevision ?? 0) >= 2 && !externalSelected)
         throw new Error('External Work scope was not selected');
     return freeze({ version: AGENT_SCHEMA_VERSION, id: id(x.id), revision: integer(x.revision),
         taskId: id(x.taskId), projectRoot: '.', acceptedAt,
