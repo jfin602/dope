@@ -4,8 +4,9 @@ export const WORK_TOOL_PREFERENCES_KEY = 'dope.work-tool-selection.v1';
 const key = WORK_TOOL_PREFERENCES_KEY;
 const initial: WorkToolChoice = { groups: ['Inspect', 'Edit'], allow: [], deny: [] };
 interface Saved { revision: number; groups: WorkToolCustomGroup[];
-    defaults: Record<string, WorkToolChoice>; drafts: Record<string, WorkToolChoice> }
-const blank = (): Saved => ({ revision: 1, groups: [], defaults: {}, drafts: {} });
+    defaults: Record<string, WorkToolChoice>; drafts: Record<string, WorkToolChoice>;
+    reviewed?: string[] }
+const blank = (): Saved => ({ revision: 2, groups: [], defaults: {}, drafts: {} });
 const validChoice = (value: unknown): value is WorkToolChoice => !!value && typeof value === 'object' &&
     ['groups', 'allow', 'deny'].every(field => Array.isArray((value as Record<string, unknown>)[field]) &&
         ((value as Record<string, unknown>)[field] as unknown[]).every(item => typeof item === 'string'));
@@ -44,12 +45,19 @@ export class WorkToolPreferences {
     private read(): Saved {
         try {
             const parsed = JSON.parse(this.storage.getItem(key) ?? 'null') as Saved;
-            if (parsed?.revision === 1 && Array.isArray(parsed.groups) && parsed.defaults && parsed.drafts)
+            if ([1, 2].includes(parsed?.revision) && Array.isArray(parsed.groups) &&
+                parsed.defaults && parsed.drafts)
                 return parsed;
         } catch { /* Invalid local preference is inert. */ }
         return blank();
     }
     private write(saved: Saved): void { this.storage.setItem(key, JSON.stringify(saved)); }
+    private needsLegacyReview(saved: Saved, project: string, task: string): boolean {
+        if (saved.revision !== 1) return false;
+        const draft = `${project}\u0000${task}`;
+        return (Object.hasOwn(saved.drafts, draft) || Object.hasOwn(saved.defaults, project)) &&
+            !saved.reviewed?.includes(draft);
+    }
     groups(): WorkToolCustomGroup[] {
         return this.read().groups.filter(group => typeof group.id === 'string' && typeof group.name === 'string' &&
             Array.isArray(group.tools) && group.tools.every(id => typeof id === 'string'));
@@ -62,7 +70,9 @@ export class WorkToolPreferences {
     }
     saveChoice(project: string, task: string, choice: WorkToolChoice): void {
         if (!validChoice(choice)) throw new Error('Invalid Work tool choices');
-        const saved = this.read(); saved.drafts[`${project}\u0000${task}`] = choice; this.write(saved);
+        const saved = this.read(); const draft = `${project}\u0000${task}`;
+        saved.drafts[draft] = choice;
+        saved.reviewed = [...new Set([...(saved.reviewed ?? []), draft])]; this.write(saved);
     }
     saveDefault(project: string, choice: WorkToolChoice): void {
         const saved = this.read(); saved.defaults[project] = choice; this.write(saved);
@@ -81,18 +91,19 @@ export class WorkToolPreferences {
         this.write(saved);
     }
     resolve(project: string, task: string, commandsAvailable: boolean, externalAvailable = false) {
+        const saved = this.read();
         const choice = this.choice(project, task);
-        const available = commandsAvailable ? choice : { ...choice,
-            groups: choice.groups.filter(group => group !== 'Commands'),
-            allow: choice.allow.filter(id => id !== 'run_command' && id !== 'read_command_output') };
-        return resolveWorkTools(available, this.groups(), commandsAvailable, externalAvailable);
+        const resolved = resolveWorkTools(choice, this.groups(), commandsAvailable, externalAvailable);
+        if (this.needsLegacyReview(saved, project, task))
+            resolved.unavailable.push('Saved Work group/default preference requires fresh tool review');
+        return resolved;
     }
     snapshot(project: string, task: string, taskId: string, grantRevision: number,
         target: { connectionId: string; modelId: string }, commandsAvailable: boolean,
-        externalAvailable = false) {
+        externalAvailable = false, grantId?: string, executionMode?: 'direct' | 'isolated') {
         const resolved = this.resolve(project, task, commandsAvailable, externalAvailable);
         if (resolved.unavailable.length) throw new Error(`Review unavailable Work tools: ${resolved.unavailable.join('; ')}`);
-        return makeWorkToolSelection({ projectUri: project, taskId, grantRevision,
+        return makeWorkToolSelection({ projectUri: project, taskId, grantRevision, grantId, executionMode,
             connectionId: target.connectionId, modelId: target.modelId }, resolved.tools);
     }
 }

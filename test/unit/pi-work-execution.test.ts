@@ -6,7 +6,8 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { promisify } from 'node:util';
 import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/authority.js';
-import { makeWorkToolSelection } from '../../packages/agent-core/lib/work-tool-selection.js';
+import { makeWorkToolSelection, workToolRegistration, WORK_PI_VERSION,
+    WORK_TOOL_CATALOG_REVISION } from '../../packages/agent-core/lib/work-tool-selection.js';
 import { ExecutionWorkspace } from '../../packages/agent-core/lib/node/execution-workspace.js';
 import { DirectWorkJournal } from '../../packages/agent-core/lib/node/direct-work-journal.js';
 import { PiWorkExecutionAdapter } from '../../packages/theia-extension/lib/node/pi-work-execution.js';
@@ -15,12 +16,19 @@ import { dispatch } from '../../packages/pi-runtime/worker.mjs';
 const execute = promisify(execFile);
 const selectedGrant = (project: string, id: string, taskId: string, modelId: string,
     tools: Parameters<typeof makeWorkToolSelection>[1] =
-        ['read_file', 'list_files', 'edit_file']) =>
+        ['read', 'ls', 'write'], mode: 'isolated' | 'direct' = 'isolated') =>
     createDefaultExecutionGrant({ id, revision: 0, taskId, acceptedAt: new Date().toISOString(),
         toolSelection: makeWorkToolSelection({ projectUri: 'file://' + project, taskId,
-            grantRevision: 0, connectionId: 'local', modelId }, tools) });
+            grantRevision: 0, connectionId: 'local', modelId, grantId: id,
+            executionMode: mode }, tools) });
+const brokerCall = (tool: (call: any) => Promise<any>, call: any) => {
+    const registration = workToolRegistration(call.name);
+    return tool({ ...call, contract: registration ? {
+        revision: WORK_TOOL_CATALOG_REVISION, piVersion: WORK_PI_VERSION,
+        schemaHash: registration.schemaHash } : undefined });
+};
 
-test('Pi Work Direct edit_file updates canonical source only through the broker', async () => {
+test('Pi Work Direct write updates canonical source only through the broker', async () => {
     const project = await mkdtemp(join(tmpdir(), 'dope-pi-direct-'));
     let workspace: ExecutionWorkspace | undefined;
     try {
@@ -32,13 +40,15 @@ test('Pi Work Direct edit_file updates canonical source only through the broker'
             'commit', '-qm', 'basis'], { cwd: project });
         const head = (await execute('git', ['rev-parse', 'HEAD'], { cwd: project })).stdout.trim();
         workspace = await ExecutionWorkspace.create(project);
-        const grant = selectedGrant(project, 'grant-direct', 'task-direct', 'model', ['edit_file']);
+        const grant = selectedGrant(project, 'grant-direct', 'task-direct', 'model', ['write'], 'direct');
         const journal = await DirectWorkJournal.create(project, head, 'task-direct', 'run-direct', grant);
         workspace.bindDirectBasis(journal);
         const host: any = { async start() {}, async runWork(_prompt: string,
             onTool: (call: any) => Promise<any>) {
-            const result = await onTool({ id: 1, name: 'edit_file', arguments: {
-                operation: 'modify', path: 'src/file.txt', content: 'direct\n' } });
+            const result = await brokerCall(onTool, { id: 1, name: 'write', arguments: {
+                path: 'src/file.txt', content: 'direct\n' }, contract: {
+                    revision: 4, piVersion: '1.4.0',
+                    schemaHash: 'e98a2484f667cf7c22d76ca103bf2022bf9113dc63fe38b899e71c328cb1e833' } });
             assert.equal(result.status, 'completed');
             return { modelId: 'model', text: 'Edited through Dope.' };
         }, dispose() {} };
@@ -71,7 +81,7 @@ test(`Pi native selected file calls traverse the ${mode} Work bridge`, async () 
         const head = (await execute('git', ['rev-parse', 'HEAD'], { cwd: project })).stdout.trim();
         workspace = await ExecutionWorkspace.create(project);
         const grant = selectedGrant(project, 'native-grant', 'native-task', 'model',
-            ['read', 'ls', 'write', 'edit']);
+            ['read', 'ls', 'write', 'edit'], mode);
         const journal = mode === 'direct' ? await DirectWorkJournal.create(project, head,
             'native-task', 'native-run', grant) : undefined;
         if (journal) workspace.bindDirectBasis(journal);
@@ -84,8 +94,8 @@ test(`Pi native selected file calls traverse the ${mode} Work bridge`, async () 
         const host: any = { async start() {}, async runWork(_prompt: string,
             onTool: (call: any) => Promise<any>) {
             let id = 0;
-            const call = (name: keyof typeof hashes, args: unknown) => onTool({ id: ++id, name,
-                arguments: args, contract: { revision: 3, schemaHash: hashes[name], piVersion: '1.4.0' } });
+            const call = (name: keyof typeof hashes, args: unknown) => brokerCall(onTool, { id: ++id, name,
+                arguments: args, contract: { revision: 4, schemaHash: hashes[name], piVersion: '1.4.0' } });
             assert.match((await call('read', { path: 'src/file.txt' })).output, /before/);
             assert.match((await call('write', { path: 'src/nested/new.txt', content: 'one\n' })).output,
                 /Successfully wrote/);
@@ -115,7 +125,7 @@ test(`Pi native selected file calls traverse the ${mode} Work bridge`, async () 
 test('Pi Work rejects foreign project, task and model selections before opening a session', async () => {
     const adapter = new PiWorkExecutionAdapter({} as any, {} as any,
         () => { throw new Error('workspace must not open'); }, () => []);
-    const grant = selectedGrant('/tmp/approved-project', 'grant', 'task', 'model', ['read_file']);
+    const grant = selectedGrant('/tmp/approved-project', 'grant', 'task', 'model', ['read']);
     const request: any = { projectRoot: '/tmp/approved-project', executionRoot: '/tmp/candidate',
         grant, taskId: 'task', connectionId: 'local', registrationId: 'local', modelId: 'model',
         prompt: 'Inspect.', onEvent() {} };
@@ -134,25 +144,17 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
     let turn = 0;
     let scopedPrompt = '';
     const calls = [
-        { name: 'read_file', args: { path: 'docs/p3-fixture.md', maxBytes: 4096, offset: 0,
-            expectedSourceHash: '0'.repeat(64) } },
-        { name: 'read_file', args: { path: 'docs/p3-fixture.md', maxBytes: 4096, offset: 0 } },
-        { name: 'edit_file', args: { operation: 'modify', path: 'README.md', content: 'candidate change\n' } },
+        { name: 'read', args: { path: 'docs/p3-fixture.md' } },
+        { name: 'write', args: { path: 'README.md', content: 'candidate change\n' } },
         { name: 'run_command', args: { kind: 'test', commandId: 'failing-sample' } },
         { name: 'run_command', args: { kind: 'test', commandId: 'sample' } }
     ];
     const originalFetch = globalThis.fetch;
     globalThis.fetch = async (_url, options) => {
         const wire = JSON.parse(String(options?.body));
-        if (turn === 1) assert.ok(wire.messages.some((message: any) =>
-            message.role === 'tool' && /status: denied/.test(message.content)));
         assert.equal(wire.model, 'synthetic-local');
         assert.deepEqual(wire.tools.map((item: any) => item.function.name).sort(),
-            ['edit_file', 'list_files', 'read_command_output', 'read_file', 'run_command']);
-        assert.match(wire.tools.find((item: any) => item.function.name === 'read_file')?.function.description ?? '',
-            /FIRST read.*OMIT expectedSourceHash/);
-        assert.match(wire.tools.find((item: any) => item.function.name === 'list_files')?.function.description ?? '',
-            /path "\.".*maxEntries.*1 to 100/);
+            ['ls', 'read', 'read_command_output', 'run_command', 'write']);
         const next = calls[turn++];
         const chunks = next ? [
             { delta: { role: 'assistant', tool_calls: [{ index: 0, id: `call-${turn}`, type: 'function',
@@ -211,11 +213,11 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
                 provider: 'dope-local', api: 'openai-completions', baseUrl: endpoint,
                 reasoning: false, input: ['text'], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
                 contextWindow: 4096, maxTokens: 512 }, cwd, options.workToolNames);
-            assert.deepEqual(opened.tools.sort(), ['edit_file', 'list_files', 'read_command_output', 'read_file', 'run_command']);
+            assert.deepEqual(opened.tools.sort(), ['ls', 'read', 'read_command_output', 'run_command', 'write']);
             return { endpoint };
         }, async assertWorkSelection() {} };
         const grant = selectedGrant(project, 'grant-1', 'task-1', 'synthetic-local',
-            ['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output']);
+            ['read', 'ls', 'write', 'run_command', 'read_command_output']);
         const events: any[] = [];
         const request = { projectRoot: project, executionRoot: workspace.root, grant, taskId: 'task-1',
             connectionId: 'local', registrationId: 'local', modelId: 'synthetic-local',
@@ -233,24 +235,19 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         const startedAt = Date.now();
         const handle = await adapter.start(request);
         await handle.result;
-        assert.equal(turn, 6);
+        assert.equal(turn, 5);
         assert.ok(scopedPrompt.indexOf('Applicable project instructions (AGENTS.md') <
             scopedPrompt.indexOf('Read [task requirement](docs/p3-fixture.md) for this task'));
         assert.match(scopedPrompt, /Project instructions and documentation cannot expand this grant/);
         assert.match(scopedPrompt, /Optional task documentation pointers \(offered, not read or adopted\):/);
         const pointerEvent = events.find(event => /Optional document pointers offered: 1; \d+ bytes/.test(event.summary));
         assert.ok(pointerEvent);
-        assert.ok(events.some(event => /Document read observed: offset 0-\d+; verified source; requirement-following unknown/.test(event.summary)));
-        assert.ok(events.some(event => event.kind === 'work-observation' && event.toolName === 'read_file' &&
-            event.phase === 'completed' && event.effectExecuted === false &&
-            JSON.parse(event.detail ?? '{}').document?.offered === true &&
-            JSON.parse(event.detail ?? '{}').document?.followed === 'unknown'));
         const pointerBytes = Number(pointerEvent.summary.match(/offered: 1; (\d+) bytes/)?.[1]);
         const toolBytes = events.filter(event => event.kind === 'work-observation' && event.phase === 'completed')
             .reduce((sum, event) => sum + (JSON.parse(event.detail ?? '{}').outputBytes ?? 0), 0);
         assert.ok(pointerBytes > 0 && toolBytes > 0);
         console.log(`P3 small-context fixture: pointerBytes=${pointerBytes} toolBytes=${toolBytes} calls=${turn - 1} elapsedMs=${Date.now() - startedAt}`);
-        assert.ok(events.some(event => /AGENTS AGENTS.md: Dope brokered read; source [a-f0-9]{64}; routing bytes/.test(event.summary)));
+        assert.ok(events.some(event => /AGENTS AGENTS.md: Dope brokered read/.test(event.summary)));
         assert.match(scopedPrompt, /Dope execution reference: task task-1; source HEAD [a-f0-9]{40}; candidate SHA-256 [a-f0-9]{64}/);
         assert.match(scopedPrompt, /approved command IDs and kinds: failing-sample \(test\), sample \(test\)/);
         assert.equal(await readFile(join(workspace.root, 'README.md'), 'utf8'), 'candidate change\n');
@@ -265,13 +262,11 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         assert.equal(events.some(event => event.kind === 'authority-denied'), false);
         assert.ok(events.some(event => event.summary === 'Pi session started'));
         assert.ok(events.some(event => event.summary === 'Pi model turn running'));
-        assert.ok(events.some(event => event.summary === 'Pi edit_file started'));
+        assert.ok(events.some(event => event.summary === 'Pi write started'));
         assert.ok(events.some(event => event.summary === 'Pi run_command ended'));
         assert.equal(events.some(event => event.kind === 'reasoning'), false);
         assert.ok(events.some(event => event.kind === 'work-observation' &&
-            event.toolName === 'read_file' && event.phase === 'completed' && event.brokerInvoked === true));
-        assert.ok(events.some(event => event.kind === 'work-observation' &&
-            event.toolName === 'read_file' && event.phase === 'denied' && event.code === 'SOURCE_HASH_MISMATCH'));
+            event.toolName === 'read' && event.phase === 'completed' && event.brokerInvoked === true));
         assert.ok(events.some(event => event.kind === 'work-observation' &&
             event.toolName === 'run_command' && event.phase === 'failed' && event.brokerInvoked === true));
         const commandStart = events.findIndex(event => event.kind === 'command-started');
@@ -306,28 +301,30 @@ test('Pi Work broker rejects a forged unselected edit before candidate mutation'
         workspace = await ExecutionWorkspace.create(project);
         await writeFile(join(workspace.root, 'AGENTS.md'), 'Inspect the candidate only.\n');
         const selection = makeWorkToolSelection({ projectUri: 'file://' + project,
-            taskId: 'selected-task', grantRevision: 1, connectionId: 'local', modelId: 'model' },
-            ['read_file']);
+            taskId: 'selected-task', grantRevision: 1, connectionId: 'local', modelId: 'model',
+            grantId: 'selected-grant', executionMode: 'isolated' }, ['read']);
         const grant = createDefaultExecutionGrant({ id: 'selected-grant', revision: 1,
             taskId: 'selected-task', acceptedAt: new Date().toISOString(), toolSelection: selection });
         const events: any[] = [];
         const host: any = { async start() {}, async runWork(_prompt: string,
             onTool: (call: any) => Promise<any>) {
-            await assert.rejects(onTool({ id: 1, name: 'edit_file', arguments: {
-                operation: 'create', path: 'forged.txt', content: 'forged' } }), /denied/);
+            await assert.rejects(brokerCall(onTool, { id: 1, name: 'write', arguments: {
+                path: 'forged.txt', content: 'forged' }, contract: { revision: 4,
+                piVersion: '1.4.0', schemaHash: 'e98a2484f667cf7c22d76ca103bf2022bf9113dc63fe38b899e71c328cb1e833' } }), /denied/);
             return { modelId: 'model', text: 'No change.' };
         }, dispose() {} };
         const adapter = new PiWorkExecutionAdapter({ async bind(_model: any, _host: any, _cwd: any, options: any) {
-            assert.deepEqual(options.workToolNames, ['read_file']);
+            assert.deepEqual(options.workToolNames, ['read']);
             return { endpoint: 'http://127.0.0.1:9/v1', registryRevision: 1 };
         }, async assertWorkSelection() {} } as any,
         { create: () => host, release() {} } as any, () => workspace!, () => []);
         const run = await adapter.start({ projectRoot: project, executionRoot: workspace.root,
+            executionMode: 'isolated',
             grant, taskId: 'selected-task', connectionId: 'local', registrationId: 'local',
             modelId: 'model', prompt: 'Inspect only.', onEvent(event: unknown) { events.push(event); } });
         await assert.rejects(run.result, /denied/);
         await assert.rejects(readFile(join(workspace.root, 'forged.txt')), { code: 'ENOENT' });
-        assert.ok(events.some(event => event.kind === 'work-observation' && event.toolName === 'edit_file' &&
+        assert.ok(events.some(event => event.kind === 'work-observation' && event.toolName === 'write' &&
             event.phase === 'denied' && event.brokerInvoked === false));
     } finally { await workspace?.dispose(); await rm(parent, { recursive: true, force: true }); }
 });
@@ -363,7 +360,7 @@ test('Pi Work rejects a revoked callback and ignores late Pi events after cancel
             await new Promise(resolveWait => setTimeout(resolveWait, 10));
         assert.ok(callTool);
         revoked = true;
-        await assert.rejects(callTool!({ id: 1, name: 'read_file', arguments: { path: 'README.md', maxBytes: 64 } }),
+        await assert.rejects(brokerCall(callTool!, { id: 1, name: 'read', arguments: { path: 'README.md' } }),
             /denied/);
         assert.ok(events.some(event => event.kind === 'authority-denied' &&
             event.summary === 'Pi Work tool denied at workspace-check'));
@@ -372,7 +369,7 @@ test('Pi Work rejects a revoked callback and ignores late Pi events after cancel
         await handle.cancel();
         const count = events.length;
         stream!({ type: 'work', sequence: 1, kind: 'agent_start' });
-        await assert.rejects(callTool!({ id: 2, name: 'read_file', arguments: { path: 'README.md', maxBytes: 64 } }),
+        await assert.rejects(brokerCall(callTool!, { id: 2, name: 'read', arguments: { path: 'README.md' } }),
             /stopped/);
         assert.equal(events.length, count);
         adapter.dispose();
@@ -391,12 +388,12 @@ test('Pi Work returns broker denials to the model and permits a corrected tool c
     let listDenied: any;
     let listRetry: any;
     const host: any = { async start() {}, async runWork(_prompt: string, tool: (call: any) => Promise<any>) {
-        reply = await tool({ id: 1, name: 'read_file', arguments: {
-            path: 'safe-source.txt', offset: 0, expectedSourceHash: '0'.repeat(64) } });
-        listDenied = await tool({ id: 2, name: 'list_files', arguments: {
-            path: 'missing-directory', maxEntries: 100 } });
-        listRetry = await tool({ id: 3, name: 'list_files', arguments: {
-            path: '.', maxEntries: 100 } });
+        reply = await brokerCall(tool, { id: 1, name: 'read', arguments: {
+            path: 'missing-source.txt' } });
+        listDenied = await brokerCall(tool, { id: 2, name: 'ls', arguments: {
+            path: 'missing-directory', limit: 100 } });
+        listRetry = await brokerCall(tool, { id: 3, name: 'ls', arguments: {
+            path: '.', limit: 100 } });
         return { modelId: 'fixture-model', text: 'No file content read' };
     }, dispose() {} };
     const factory: any = { create() { return host; }, release() {} };
@@ -416,20 +413,16 @@ test('Pi Work returns broker denials to the model and permits a corrected tool c
         assert.equal(listDenied.status, 'denied');
         assert.equal(listRetry.status, 'completed');
         assert.equal(events.some(event => event.kind === 'authority-denied'), false);
-        assert.match(reply.output, /^SOURCE_HASH_MISMATCH:/);
-        assert.ok(events.some(event => event.kind === 'work-observation' && event.toolName === 'read_file' &&
-            event.phase === 'denied' && event.code === 'SOURCE_HASH_MISMATCH' &&
+        assert.ok(events.some(event => event.kind === 'work-observation' && event.toolName === 'read' &&
+            event.phase === 'denied' &&
             event.brokerInvoked === true && event.effectExecuted === false));
-        assert.ok(events.some(event => event.kind === 'provider-event' &&
-            /broker denied: SOURCE_HASH_MISMATCH/.test(event.summary)));
-        assert.doesNotMatch(JSON.stringify(events), /"expectedSourceHash":"0{64}"/);
     } finally {
         await workspace?.dispose();
         await rm(parent, { recursive: true, force: true });
     }
 });
 
-test('Pi Work read parser feedback permits a corrected candidate page in the same run', async () => {
+test('Pi Work native read ranges return candidate content and redact reasoning', async () => {
     const parent = await mkdtemp(join(tmpdir(), 'dope-pi-work-recovery-'));
     const project = join(parent, 'project');
     let workspace: ExecutionWorkspace | undefined;
@@ -437,19 +430,12 @@ test('Pi Work read parser feedback permits a corrected candidate page in the sam
     const host: any = { async start() {}, async runWork(_prompt: string, tool: (call: any) => Promise<any>, stream: (event: any) => void) {
         stream({ type: 'work', sequence: 1, kind: 'reasoning', text: 'Check the candidate range. password=' });
         stream({ type: 'work', sequence: 2, kind: 'reasoning', text: 'hiddenvalue ' });
-        const malformed = await tool({ id: 1, name: 'read_file', arguments: { path: 'CANDIDATE.txt', offset: 9000 } });
-        observed.push(malformed);
-        observed.push(await tool({ id: 2, name: 'read_file', arguments: {
-            path: 'CANDIDATE.txt', offset: 0, maxBytes: 0 } }));
-        const first = await tool({ id: 3, name: 'read_file', arguments: { path: 'CANDIDATE.txt', offset: 0 } });
+        const first = await brokerCall(tool, { id: 1, name: 'read', arguments: { path: 'CANDIDATE.txt', offset: 1, limit: 5 } });
         observed.push(first);
-        const page = JSON.parse(first.output);
-        observed.push(await tool({ id: 4, name: 'read_file', arguments: {
-            path: 'CANDIDATE.txt', offset: page.fileBytes + 1,
-            expectedSourceHash: page.sourceHash } }));
-        const later = await tool({ id: 5, name: 'read_file', arguments: {
-            path: 'CANDIDATE.txt', offset: Math.min(9000, page.fileBytes),
-            expectedSourceHash: page.sourceHash } });
+        observed.push(await brokerCall(tool, { id: 2, name: 'read', arguments: {
+            path: 'CANDIDATE.txt', offset: 2, limit: 3 } }));
+        const later = await brokerCall(tool, { id: 3, name: 'read', arguments: {
+            path: 'CANDIDATE.txt', offset: 501, limit: 2 } });
         observed.push(later);
         stream({ type: 'work', sequence: 3, kind: 'reasoning_omitted' });
         return { modelId: 'fixture-model', text: 'Candidate read complete' };
@@ -469,25 +455,19 @@ test('Pi Work read parser feedback permits a corrected candidate page in the sam
             grant, taskId: 'task-recovery', connectionId: 'local', registrationId: 'local',
             modelId: 'fixture-model', prompt: 'Read candidate', onEvent: event => events.push(event) });
         await handle.result;
-        assert.equal(observed[0].status, 'failed');
-        assert.match(observed[0].output, /SOURCE_IDENTITY_REQUIRED/);
-        assert.equal(observed[1].status, 'failed');
-        assert.match(observed[1].output, /INVALID_PAGE_SIZE/);
+        assert.equal(observed[0].status, 'completed');
+        assert.match(observed[0].output, /safe candidate line/);
+        assert.equal(observed[1].status, 'completed');
         assert.equal(observed[2].status, 'completed');
-        assert.equal(observed[3].status, 'failed');
-        assert.match(observed[3].output, /INVALID_OFFSET/);
-        assert.equal(observed[4].status, 'completed');
-        assert.ok(JSON.parse(observed[4].output).endOffset > 8192);
-        assert.ok(events.some(event => /SOURCE_IDENTITY_REQUIRED; offset 9000;.*broker not executed/.test(event.summary)));
+        assert.match(observed[2].output, /safe candidate line/);
         assert.ok(events.some(event => event.kind === 'reasoning'));
         assert.doesNotMatch(JSON.stringify(events.filter(event => event.kind === 'reasoning')), /hiddenvalue|password=/);
         assert.ok(events.some(event => event.kind === 'work-observation' && event.toolId === 'pi-1' &&
-            event.phase === 'recoverable' && event.stage === 'request-parse' &&
-            event.code === 'SOURCE_IDENTITY_REQUIRED' && event.brokerInvoked === false));
-        assert.ok(events.some(event => event.kind === 'work-observation' && event.toolId === 'pi-3' &&
             event.phase === 'completed' && event.brokerInvoked === true));
-        assert.ok(events.some(event => event.kind === 'work-observation' && event.toolId === 'pi-4' &&
-            event.phase === 'recoverable' && event.code === 'INVALID_OFFSET'));
+        assert.ok(events.some(event => event.kind === 'work-observation' && event.toolId === 'pi-2' &&
+            event.phase === 'completed' && event.brokerInvoked === true));
+        assert.ok(events.some(event => event.kind === 'work-observation' && event.toolId === 'pi-3' &&
+            event.phase === 'completed'));
         assert.ok(events.some(event => event.kind === 'observation-gap'));
         assert.equal(events.some(event => event.kind === 'authority-denied'), false);
         assert.deepEqual(await readFile(join(workspace.root, 'CANDIDATE.txt')), original);
@@ -495,16 +475,15 @@ test('Pi Work read parser feedback permits a corrected candidate page in the sam
     } finally { await workspace?.dispose(); await rm(parent, { recursive: true, force: true }); }
 });
 
-test('Pi Work list argument mistakes and a file target are retryable, with a successful directory retry', async () => {
+test('Pi Work native list handles missing and file targets before a directory retry', async () => {
     const parent = await mkdtemp(join(tmpdir(), 'dope-pi-list-recovery-'));
     const project = join(parent, 'project');
     let workspace: ExecutionWorkspace | undefined;
     const replies: any[] = [];
     const host: any = { async start() {}, async runWork(_prompt: string, tool: (call: any) => Promise<any>) {
-        replies.push(await tool({ id: 1, name: 'list_files', arguments: { path: '', maxEntries: 20 } }));
-        replies.push(await tool({ id: 2, name: 'list_files', arguments: { path: '.', maxEntries: 101 } }));
-        replies.push(await tool({ id: 3, name: 'list_files', arguments: { path: 'README.md', maxEntries: 20 } }));
-        replies.push(await tool({ id: 4, name: 'list_files', arguments: { path: '.', maxEntries: 20 } }));
+        replies.push(await brokerCall(tool, { id: 1, name: 'ls', arguments: { path: 'missing-directory', limit: 20 } }));
+        replies.push(await brokerCall(tool, { id: 2, name: 'ls', arguments: { path: 'README.md', limit: 20 } }));
+        replies.push(await brokerCall(tool, { id: 3, name: 'ls', arguments: { path: '.', limit: 20 } }));
         return { modelId: 'fixture-model', text: 'Directory listed' };
     }, dispose() {} };
     try {
@@ -514,7 +493,7 @@ test('Pi Work list argument mistakes and a file target are retryable, with a suc
         const grant = selectedGrant(project, 'grant-list-recovery', 'task-list-recovery', 'fixture-model');
         const events: any[] = [];
         const adapter = new PiWorkExecutionAdapter({ async bind(_model: any, _host: any, _cwd: any, options: any) {
-            assert.ok(options.workToolNames.includes('list_files'));
+            assert.ok(options.workToolNames.includes('ls'));
             return { endpoint: 'http://127.0.0.1:9/v1' };
         }, async assertWorkSelection() {} } as any,
         { create: () => host, release() {} } as any, () => workspace!, () => []);
@@ -522,14 +501,10 @@ test('Pi Work list argument mistakes and a file target are retryable, with a suc
             grant, taskId: 'task-list-recovery', connectionId: 'local', registrationId: 'local',
             modelId: 'fixture-model', prompt: 'List the candidate.', onEvent: event => events.push(event) });
         await handle.result;
-        assert.deepEqual(replies.map(reply => reply.status), ['failed', 'failed', 'failed', 'completed']);
-        assert.match(replies[0].output, /^INVALID_PATH:.*"\."/);
-        assert.match(replies[1].output, /^INVALID_ENTRY_LIMIT:/);
-        assert.match(replies[2].output, /^NOT_A_DIRECTORY:/);
-        assert.ok(JSON.parse(replies[3].output).some((entry: any) => entry.name === 'README.md'));
-        assert.deepEqual(events.filter(event => event.kind === 'work-observation' &&
-            event.phase === 'recoverable').map(event => [event.code, event.brokerInvoked]),
-        [['INVALID_PATH', false], ['INVALID_ENTRY_LIMIT', false], ['NOT_A_DIRECTORY', true]]);
+        assert.deepEqual(replies.map(reply => reply.status), ['denied', 'failed', 'completed']);
+        assert.match(replies[2].output, /README\.md/);
+        assert.ok(events.some(event => event.kind === 'work-observation' &&
+            event.toolName === 'ls' && event.phase === 'completed' && event.brokerInvoked === true));
         assert.equal(events.some(event => event.kind === 'authority-denied'), false);
     } finally { await workspace?.dispose(); await rm(parent, { recursive: true, force: true }); }
 });
@@ -548,13 +523,13 @@ test('Pi Work retains sanitized command pages without rerunning the approved com
         await writeFile(join(workspace.root, 'sample-output.mjs'),
             `import fs from 'node:fs';\nfs.writeFileSync('/work/command-count', String(Number(fs.existsSync('/work/command-count') ? fs.readFileSync('/work/command-count', 'utf8') : '0') + 1));\nconsole.log('A'.repeat(1015) + ' password=hidden-value ' + 'B'.repeat(1300));\n`);
         const grant = selectedGrant(project, 'grant-output', 'task-output', 'model',
-            ['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output']);
+            ['read', 'ls', 'edit', 'run_command', 'read_command_output']);
         const request = { projectRoot: project, executionRoot: workspace.root, grant,
             taskId: 'task-output', connectionId: 'local', registrationId: 'local',
             modelId: 'model', prompt: 'Run one approved command and inspect its output.',
             onEvent(event: unknown) { observations.push(event); } };
         const host: any = { async start() {}, async runWork(_prompt: string, onTool: (call: any) => Promise<any>) {
-            const first = await onTool({ id: 1, name: 'run_command',
+            const first = await brokerCall(onTool, { id: 1, name: 'run_command',
                 arguments: { kind: 'build', commandId: 'sample-output' } });
             const initial = JSON.parse(first.output);
             assert.equal(first.status, 'completed');
@@ -563,7 +538,7 @@ test('Pi Work retains sanitized command pages without rerunning the approved com
             assert.ok(initial.nextOffset > 0);
             assert.match(initial.text, /^A+/);
             invocations++;
-            const later = await onTool({ id: 2, name: 'read_command_output',
+            const later = await brokerCall(onTool, { id: 2, name: 'read_command_output',
                 arguments: { handle: initial.handle, offset: initial.nextOffset, maxBytes: 2048 } });
             const page = JSON.parse(later.output);
             assert.equal(page.outputIdentity, initial.outputIdentity);
@@ -575,13 +550,13 @@ test('Pi Work retains sanitized command pages without rerunning the approved com
             const now = Date.now;
             Date.now = () => now() + 120_001;
             try {
-                const expired = await onTool({ id: 3, name: 'read_command_output',
+                const expired = await brokerCall(onTool, { id: 3, name: 'read_command_output',
                     arguments: { handle: initial.handle, offset: 0, maxBytes: 128 } });
                 assert.equal(expired.status, 'failed');
                 assert.match(expired.output, /OUTPUT_HANDLE_EXPIRED/);
             } finally { Date.now = now; }
             revoked = true;
-            await assert.rejects(onTool({ id: 4, name: 'read_command_output',
+            await assert.rejects(brokerCall(onTool, { id: 4, name: 'read_command_output',
                 arguments: { handle: initial.handle, offset: 0, maxBytes: 128 } }), /denied/);
             return { modelId: 'model', text: 'done' };
         }, dispose() {} };
@@ -621,10 +596,10 @@ test('Pi Work omits issued output handles from saved reasoning and final message
         await writeFile(join(workspace.root, 'AGENTS.md'), 'Use the approved Work tools and keep changes in the candidate.\n');
         await writeFile(join(workspace.root, 'sample-output.mjs'), "console.log('safe output');\n");
         const grant = selectedGrant(project, 'grant-handle', 'task-handle', 'model',
-            ['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output']);
+            ['read', 'ls', 'edit', 'run_command', 'read_command_output']);
         const host: any = { async start() {}, async runWork(_prompt: string,
             onTool: (call: any) => Promise<any>, onEvent: (event: any) => void) {
-            const result = await onTool({ id: 1, name: 'run_command',
+            const result = await brokerCall(onTool, { id: 1, name: 'run_command',
                 arguments: { kind: 'build', commandId: 'sample-output' } });
             assert.equal(result.status, 'completed');
             issuedHandle = JSON.parse(result.output).handle;

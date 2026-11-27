@@ -30,8 +30,9 @@ async function fixture(run: (root: string, workspace: ExecutionWorkspace, reques
         const grant = createDefaultExecutionGrant({ id: 'isolated-grant', revision: 0,
             taskId, acceptedAt: new Date().toISOString(), toolSelection: makeWorkToolSelection({
                 projectUri: pathToFileURL(root).toString(), taskId, grantRevision: 0,
+                grantId: 'isolated-grant', executionMode: 'isolated',
                 connectionId: 'local', modelId: 'model'
-            }, ['read_file', 'edit_file']) });
+            }, ['read', 'write', 'edit']) });
         const request = { projectRoot: root, executionRoot: workspace.root, grant, taskId,
             connectionId: 'local', registrationId: 'local', modelId: 'model', prompt: '', onEvent() {} };
         await run(root, workspace, request);
@@ -77,7 +78,8 @@ test('isolated denials leave no new parent and exact edits reject stale, duplica
     assert.equal((await op({ kind: 'write', path: 'new/deep/file.txt', content: 'bad' }, {
         ...request, grant: { ...request.grant, toolSelection: makeWorkToolSelection({
             projectUri: pathToFileURL(root).toString(), taskId: request.taskId, grantRevision: 0,
-            connectionId: 'local', modelId: 'model' }, ['read_file']) }
+            grantId: 'isolated-grant', executionMode: 'isolated',
+            connectionId: 'local', modelId: 'model' }, ['read']) }
     })).status, 'denied');
     assert.equal(existsSync(join(workspace.root, 'new')), false);
     await writeFile(join(workspace.root, 'duplicate.txt'), 'one one');

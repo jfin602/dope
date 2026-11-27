@@ -37,7 +37,7 @@ import type { AgentRuntimeService } from '@dope/contracts/lib/agent-runtime-serv
 import type { AgentRun, AgentTask } from '@dope/agent-core';
 import type { AIRegistryService } from '@dope/contracts/lib/ai-registry-service';
 import type { AIRolePolicyService } from '@dope/contracts/lib/ai-role-policy-service';
-import { EFFECT_KINDS, WORK_TOOL_CATALOG, workToolCatalogFor, verifiedNoEffectWorkSegment } from '@dope/agent-core';
+import { EFFECT_KINDS, workToolCatalogFor, verifiedNoEffectWorkSegment } from '@dope/agent-core';
 import { WorkToolPreferences, WORK_TOOL_PREFERENCES_KEY, hasApprovedWorkCommand } from './work-tool-preferences';
 import { AgentRunController } from './agent-run-controller';
 import type { HistoryFocusTarget } from '@dope/contracts/lib/history';
@@ -1576,7 +1576,7 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const label = document.createElement('label'); label.className = 'dope-work-tool-row';
             const box = document.createElement('input'); box.type = 'checkbox';
             box.checked = choice.groups.includes(group.id);
-            box.disabled = group.id === 'Commands' && !commandsAvailable;
+            box.disabled = group.id === 'Commands' && !commandsAvailable && !box.checked;
             box.onchange = () => {
                 const next = this.workTools.choice(project, taskKey);
                 next.groups = box.checked ? [...new Set([...next.groups, group.id])] :
@@ -1593,9 +1593,10 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
             const label = document.createElement('label'); label.className = 'dope-work-tool-row';
             const box = document.createElement('input'); box.type = 'checkbox';
             box.setAttribute('aria-label', `Add ${tool.id}`);
-            box.checked = resolved.tools.includes(tool.id) ||
+            box.checked = resolved.tools.some(id => id === tool.id) ||
                 choice.allow.includes(tool.id) && !choice.deny.includes(tool.id);
-            box.disabled = !tool.available && tool.unavailableReason !== 'Project observation consent is required';
+            box.disabled = !tool.available && !box.checked &&
+                tool.unavailableReason !== 'Project observation consent is required';
             box.onchange = () => {
                 const next = this.workTools.choice(project, taskKey);
                 if (box.checked) {
@@ -2794,18 +2795,21 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                             const modelStatus = document.createElement('p'); modelStatus.className = 'dope-work-detail';
                             modelStatus.textContent = controller.followUpTargetReason;
                             const tools = document.createElement('div'); tools.className = 'dope-work-tool-list';
-                            for (const tool of WORK_TOOL_CATALOG.filter(item =>
-                                !['read_file', 'list_files', 'edit_file'].includes(item.id))) {
+                            for (const tool of workToolCatalogFor({ locality: 'local',
+                                commandsAvailable: controller.selectedTask?.completion.validation.some(item =>
+                                    hasApprovedWorkCommand(item.command, item.kind)) ?? false,
+                                externalOffered: false, externalConsent: false })) {
                                 const label = document.createElement('label'); label.className = 'dope-work-tool-row';
                                 const check = document.createElement('input'); check.type = 'checkbox';
-                                check.checked = controller.followUpToolIds.includes(tool.id);
-                                check.disabled = tool.group === 'External';
-                                if (check.disabled) label.title = 'External observations are unavailable for Work conversation follow-ups.';
+                                check.checked = controller.followUpToolIds.some(id => id === tool.id);
+                                check.disabled = !tool.available && !check.checked;
+                                if (tool.unavailableReason) label.title = tool.unavailableReason;
                                 check.onchange = () => { controller.followUpToolIds = check.checked ?
-                                    [...controller.followUpToolIds, tool.id] :
+                                    [...controller.followUpToolIds, tool.id as typeof controller.followUpToolIds[number]] :
                                     controller.followUpToolIds.filter(id => id !== tool.id);
                                     this.render(); };
-                                label.append(check, ` ${tool.id}`); tools.append(label);
+                                label.append(check, ` ${tool.id}${tool.unavailableReason ? ` — ${tool.unavailableReason}` : ''}`);
+                                tools.append(label);
                             }
                             const toolHeading = document.createElement('h4');
                             toolHeading.textContent = 'Tools for this Work';

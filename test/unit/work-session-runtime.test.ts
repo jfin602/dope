@@ -80,11 +80,11 @@ test('real Work service presents Coral as history and Violet as the linked, ceil
         const grant = (id: string, taskId: string, tools: any[] = []) =>
             createDefaultExecutionGrant({ id, revision: 0, taskId, acceptedAt: new Date().toISOString(),
                 toolSelection: makeWorkToolSelection({ projectUri: uri, taskId, grantRevision: 0,
-                    connectionId: 'local', modelId: model.id }, tools) });
+                    grantId: id, executionMode: 'isolated', connectionId: 'local', modelId: model.id }, tools) });
         const coralObjective = 'Set the fixture headline to Coral.';
         await backend.createTask(handle, task('task-one', coralObjective,
             new Date(Date.now() - 2000).toISOString(), 'Change only src/main.ts to Coral.') as any);
-        const firstGrant = grant('grant-one', 'task-one', ['read_file']);
+        const firstGrant = grant('grant-one', 'task-one', ['read']);
         const first = await backend.startWorkSession(handle, uri, 'task-one', firstGrant, false);
         for (let n = 0; n < 300 && (await backend.readWorkSession(handle, first.id))?.status !== 'awaiting-input'; n++)
             await tick();
@@ -135,7 +135,7 @@ test('real Work service presents Coral as history and Violet as the linked, ceil
         const secondGrant = grant('grant-two', 'task-two', []);
         await assert.rejects(backend.continueWorkSession(handle, uri, first.id, first.id,
             'task-two', secondGrant, false, 'f'.repeat(40), false), /source HEAD changed/);
-        const expandedBase = grant('grant-expanded', 'task-two', ['read_file', 'edit_file']);
+        const expandedBase = grant('grant-expanded', 'task-two', ['read', 'edit']);
         const expandedGrant = parseExecutionGrant({ ...expandedBase, permissions: {
             ...expandedBase.permissions, 'workspace-write': false } });
         const second = await backend.continueWorkSession(handle, uri, first.id, first.id,
@@ -148,7 +148,7 @@ test('real Work service presents Coral as history and Violet as the linked, ceil
         assert.equal(linked?.toolSelectionHash, waiting?.toolSelectionHash);
         assert.equal(second.provenance?.modelId, first.provenance?.modelId);
         assert.deepEqual(linked?.segments[1].permissions, expandedGrant.permissions);
-        assert.deepEqual(second.toolSelection?.tools.map(tool => tool.id), ['read_file', 'edit_file']);
+        assert.deepEqual(second.toolSelection?.tools.map(tool => tool.id), ['read', 'edit']);
         for (let n = 0; n < 300 && (await backend.readWorkSession(handle, first.id))?.status !== 'awaiting-input'; n++)
             await tick();
         assert.equal((await backend.readWorkSession(handle, first.id))?.status, 'awaiting-input');
@@ -251,7 +251,7 @@ test('real Work service presents Coral as history and Violet as the linked, ceil
         // permits a fresh run in the same conversation without an uncertainty discard.
         await restartedStore.createTask(root, task('task-denied', 'Denied attempt',
             new Date().toISOString(), 'Try a read.') as any);
-        const deniedGrant = grant('grant-denied', 'task-denied', ['read_file']);
+        const deniedGrant = grant('grant-denied', 'task-denied', ['read']);
         const deniedAt = new Date().toISOString();
         const deniedPending: any = { version: 1, id: 'denied-run', taskId: 'task-denied',
             status: 'pending', grantId: deniedGrant.id, grantRevision: deniedGrant.revision,
@@ -285,7 +285,7 @@ test('real Work service presents Coral as history and Violet as the linked, ceil
         await backend.createTask(restartedHandle, task('task-after-denial', coralObjective,
             new Date().toISOString(), 'Continue after denied read.') as any);
         const afterDenial = await backend.continueWorkSession(restartedHandle, uri, first.id, deniedPending.id,
-            'task-after-denial', grant('grant-after-denial', 'task-after-denial', ['read_file']),
+            'task-after-denial', grant('grant-after-denial', 'task-after-denial', ['read']),
             false, head, false);
         const afterSession = (await backend.readWorkSession(restartedHandle, first.id))!;
         assert.equal(afterSession.id, first.id);

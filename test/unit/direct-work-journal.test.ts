@@ -35,7 +35,8 @@ async function fixture(body: (root: string, head: string) => Promise<void>): Pro
 const grant = (root: string) => createDefaultExecutionGrant({ id: 'grant-direct', revision: 1,
     taskId: 'task-direct', acceptedAt: new Date().toISOString(), toolSelection: makeWorkToolSelection({
         projectUri: pathToFileURL(root).href, taskId: 'task-direct', grantRevision: 1,
-        connectionId: 'local', modelId: 'model' }, ['edit_file']) });
+        grantId: 'grant-direct', executionMode: 'direct',
+        connectionId: 'local', modelId: 'model' }, ['write', 'edit']) });
 const create = (root: string, head: string, runId = 'run-direct') =>
     DirectWorkJournal.create(root, head, 'task-direct', runId, grant(root));
 async function waitFor(path: string): Promise<void> {
@@ -433,8 +434,8 @@ test('Direct broker mirrors nested whole writes and exact edits into the isolate
             const legacy = await broker.execute({ id: 'legacy', name: 'edit',
                 arguments: { operation: 'create', path: 'legacy/deep.txt', content: 'legacy' } },
                 new AbortController().signal);
-            assert.equal(legacy.status, 'completed');
-            assert.equal(await readFile(join(workspace.root, 'legacy/deep.txt'), 'utf8'), 'legacy');
+            assert.equal(legacy.status, 'denied');
+            await assert.rejects(readFile(join(workspace.root, 'legacy/deep.txt'), 'utf8'));
             const forged = localWorkspaceBroker({ ...request, grant: { ...offered,
                 toolSelection: { ...offered.toolSelection, tools: [] } } }, workspace, [], direct);
             assert.equal((await forged.executeFileOperation!({ id: 'forged', kind: 'write',

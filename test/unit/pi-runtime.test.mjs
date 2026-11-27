@@ -1678,7 +1678,7 @@ test('tool-call-like Local model output cannot execute a Pi tool', async () => {
   }
 });
 
-test('Pi Work exposes only Dope wrappers and relays a model tool call to the host', async () => {
+test('Pi Work exposes only selected registered tools and relays a model tool call to the host', async () => {
   const originalFetch = globalThis.fetch;
   const originalWrite = process.stdout.write;
   const cwd = await mkdtemp(join(tmpdir(), 'dope-pi-work-'));
@@ -1704,11 +1704,11 @@ test('Pi Work exposes only Dope wrappers and relays a model tool call to the hos
     globalThis.fetch = async (_url, options) => {
       const body = JSON.parse(options.body);
       assert.deepEqual(body.tools.map(item => item.function.name).sort(),
-        ['edit_file', 'list_files', 'read_command_output', 'read_file', 'run_command']);
+        ['ls', 'read', 'read_command_output', 'run_command', 'write']);
       assert.ok(!JSON.stringify(body.messages).includes(ORDINARY_CHAT_RESPONSE_INSTRUCTION));
       const response = ++turn === 1 ? [
         { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0, id: 'call-1', type: 'function',
-          function: { name: 'read_file', arguments: '{"path":"src/main.ts","maxBytes":100}' } }] }, finish_reason: null },
+          function: { name: 'read', arguments: '{"path":"src/main.ts"}' } }] }, finish_reason: null },
         { index: 0, delta: {}, finish_reason: 'tool_calls' }
       ] : [
         { index: 0, delta: { role: 'assistant', content: 'Candidate inspected.' }, finish_reason: null },
@@ -1722,12 +1722,12 @@ test('Pi Work exposes only Dope wrappers and relays a model tool call to the hos
         headers: { 'content-type': 'text/event-stream' } });
     };
     const opened = await dispatch({ type: 'open', mode: 'work', cwd, model,
-      workToolNames: ['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output'] });
-    assert.deepEqual(opened.tools.sort(), ['edit_file', 'list_files', 'read_command_output', 'read_file', 'run_command']);
+      workToolNames: ['read', 'ls', 'write', 'run_command', 'read_command_output'] });
+    assert.deepEqual(opened.tools.sort(), ['ls', 'read', 'read_command_output', 'run_command', 'write']);
     const answer = await dispatch({ type: 'work', id: 7, prompt: 'Inspect src/main.ts.' });
     assert.equal(answer.modelId, 'offline-fixture');
     assert.equal(seen.length, 1);
-    assert.deepEqual(seen[0].arguments, { path: 'src/main.ts', maxBytes: 100 });
+    assert.deepEqual(seen[0].arguments, { path: 'src/main.ts' });
     await assert.rejects(access(marker), { code: 'ENOENT' });
   } finally {
     process.stdout.write = originalWrite;
@@ -1785,14 +1785,14 @@ test('Pi Work registers pinned Pi schemas and relays only selected whole-operati
     const opened = await dispatch({ type: 'open', mode: 'work', cwd, model,
       workToolNames: ['read', 'write', 'edit', 'ls'] });
     assert.deepEqual(opened.tools.slice().sort(), ['edit', 'ls', 'read', 'write']);
-    assert.equal(opened.workCatalogRevision, 3);
+    assert.equal(opened.workCatalogRevision, 4);
     const answer = await dispatch({ type: 'work', id: 83, prompt: 'Write a file.' });
     assert.equal(answer.text, 'Done.');
     assert.equal(forwarded.length, 1);
     assert.equal(forwarded[0].name, 'write');
     assert.deepEqual(forwarded[0].arguments, { path: 'src/main.ts', content: 'const n = 1;\n' });
     assert.deepEqual(forwarded[0].contract, {
-      revision: 3, schemaHash: 'e98a2484f667cf7c22d76ca103bf2022bf9113dc63fe38b899e71c328cb1e833',
+      revision: 4, schemaHash: 'e98a2484f667cf7c22d76ca103bf2022bf9113dc63fe38b899e71c328cb1e833',
       piVersion: '1.4.0' });
   } finally {
     process.stdout.write = originalWrite;
@@ -1857,12 +1857,14 @@ test('Pi Work registers only selected tools and rejects stale or dependent choic
     assert.deepEqual(empty.tools, [], 'omitted selection cannot activate any Work tool');
     await dispatch({ type: 'close' });
     const opened = await dispatch({ type: 'open', mode: 'work', cwd, model,
-      workToolNames: ['read_file', 'list_files'] });
-    assert.deepEqual(opened.tools.slice().sort(), ['list_files', 'read_file']);
-    assert.equal(opened.workCatalogRevision, 3);
+      workToolNames: ['read', 'ls'] });
+    assert.deepEqual(opened.tools.slice().sort(), ['ls', 'read']);
+    assert.equal(opened.workCatalogRevision, 4);
     await dispatch({ type: 'close' });
     await assert.rejects(dispatch({ type: 'open', mode: 'work', cwd, model,
       workToolNames: ['future_tool'] }), /Invalid Pi Work tool selection/);
+    await assert.rejects(dispatch({ type: 'open', mode: 'work', cwd, model,
+      workToolNames: ['read_file'] }), /Invalid Pi Work tool selection/);
     await assert.rejects(dispatch({ type: 'open', mode: 'work', cwd, model,
       workToolNames: ['read_command_output'] }), /Invalid Pi Work tool selection/);
   } finally {
@@ -1884,10 +1886,10 @@ test('Pi Work compacts between distinct tool turns, then continues without repla
       try {
         const record = JSON.parse(String(chunk));
         if (record.tool) {
-          if (record.tool.name === 'read_file') reads++;
+          if (record.tool.name === 'read') reads++;
           if (record.tool.name === 'run_command') commandExecutions++;
           queueMicrotask(() => { void dispatch({ type: 'tool-result', requestId: record.id, toolId: record.tool.id,
-            result: { status: record.tool.name === 'read_file' && reads === 1 ? 'failed' : 'completed',
+            result: { status: record.tool.name === 'read' && reads === 1 ? 'failed' : 'completed',
               output: record.tool.name === 'run_command' ? 'command passed once' :
                 `read ${reads}: ${'distinct source line '.repeat(45)}` } }); });
           return true;
@@ -1906,7 +1908,7 @@ test('Pi Work compacts between distinct tool turns, then continues without repla
         { index: 0, delta: { role: 'assistant', tool_calls: [{ index: 0,
           id: `tool-${reads}`, type: 'function', function: reads === 0 && commandExecutions === 0 ?
             { name: 'run_command', arguments: '{"kind":"test","commandId":"approved-1"}' } :
-            { name: 'read_file', arguments: JSON.stringify({ path: `src/file-${reads}.ts` }) } }] }, finish_reason: null },
+            { name: 'read', arguments: JSON.stringify({ path: `src/file-${reads}.ts` }) } }] }, finish_reason: null },
         { index: 0, delta: {}, finish_reason: 'tool_calls' }
       ] : [
         { index: 0, delta: { role: 'assistant', content: 'Inspection complete after compaction.' }, finish_reason: null },
@@ -1917,7 +1919,7 @@ test('Pi Work compacts between distinct tool turns, then continues without repla
         'data: [DONE]\n\n', { status: 200, headers: { 'content-type': 'text/event-stream' } });
     };
     await dispatch({ type: 'open', mode: 'work', cwd, model,
-      workToolNames: ['read_file', 'run_command'] });
+      workToolNames: ['read', 'run_command'] });
     const anchor = 'DOPE CHECKED TASK RECOVERY\nOriginal accepted objective: Inspect distinct authorized sources.\n' +
       'Acceptance: one approved command, no replay.\nNext step: inspect current evidence.';
     const answer = await dispatch({ type: 'work', id: 77, prompt: 'Inspect distinct authorized sources.',

@@ -26,8 +26,8 @@ test('supervised Pi Work adapter queues during a brokered tool and retains the s
         seen.push(JSON.parse(body));
         const call = seen.length === 1;
         const choice = call ? { delta: { role: 'assistant', tool_calls: [{ index: 0,
-            id: 'read-first', type: 'function', function: { name: 'read_file',
-                arguments: JSON.stringify({ path: 'README.md', offset: 0, maxBytes: 2048 }) } }] },
+            id: 'read-first', type: 'function', function: { name: 'read',
+                arguments: JSON.stringify({ path: 'README.md', offset: 1, limit: 50 }) } }] },
             finish_reason: 'tool_calls' } : { delta: { role: 'assistant',
             content: seen.length === 2 ? 'First turn complete.' : 'Second turn complete.' }, finish_reason: 'stop' };
         const base = { id: `fixture-${seen.length}`, object: 'chat.completion.chunk', created: 1,
@@ -70,11 +70,12 @@ test('supervised Pi Work adapter queues during a brokered tool and retains the s
             'commit', '-qm', 'fixture']);
         workspace = await ExecutionWorkspace.create(project);
         const selection = makeWorkToolSelection({ projectUri: `file://${project}`, taskId: 'task-1',
-            grantRevision: 0, connectionId: 'local', modelId: model.id }, ['read_file']);
+            grantRevision: 0, grantId: 'grant-1', executionMode: 'isolated',
+            connectionId: 'local', modelId: model.id }, ['read']);
         const grant = createDefaultExecutionGrant({ id: 'grant-1', revision: 0, taskId: 'task-1',
             acceptedAt: new Date().toISOString(), toolSelection: selection });
         const bridge: any = { async bind(_selection: unknown, host: any, cwd: string, options: any) {
-            assert.deepEqual(options.workToolNames, ['read_file']);
+            assert.deepEqual(options.workToolNames, ['read']);
             await host.openWorkSession(model, cwd, undefined, undefined, false, [], options.workToolNames);
             return { endpoint: model.baseUrl, registryRevision: 1 };
         }, async assertWorkSelection() {} };
@@ -106,7 +107,7 @@ test('supervised Pi Work adapter queues during a brokered tool and retains the s
         assert.match(users(seen[2])[1], /Continue after reading/);
         assert.ok(seen[2].messages.some((message: any) => message.role === 'assistant' &&
             message.content === 'First turn complete.'));
-        assert.ok(events.some(event => event.kind === 'work-observation' && event.toolName === 'read_file' &&
+        assert.ok(events.some(event => event.kind === 'work-observation' && event.toolName === 'read' &&
             event.phase === 'completed' && event.brokerInvoked === true));
         handle.finishWorkSession!();
         await handle.result;

@@ -31,7 +31,8 @@ for (const mode of ['isolated', 'direct'] as const) test(`selected Pi file adapt
         const grant = createDefaultExecutionGrant({ id: 'pi-native-grant', revision: 0, taskId,
             acceptedAt: new Date().toISOString(), toolSelection: makeWorkToolSelection({
                 projectUri: pathToFileURL(root).href, taskId, grantRevision: 0,
-                connectionId: 'local', modelId: 'model' }, ['read', 'ls', 'write', 'edit']) });
+                connectionId: 'local', modelId: 'model', grantId: 'pi-native-grant',
+                executionMode: mode }, ['read', 'ls', 'write', 'edit']) });
         const journal = mode === 'direct' ? await DirectWorkJournal.create(root, head, taskId, runId, grant) : undefined;
         if (journal) workspace.bindDirectBasis(journal);
         const request: any = { projectRoot: root, executionRoot: workspace.root, executionMode: mode,
@@ -64,6 +65,15 @@ for (const mode of ['isolated', 'direct'] as const) test(`selected Pi file adapt
         assert.equal((await call({ id: 'unselected', kind: 'write', path: 'new/other.txt', content: 'x' },
             { ...request, grant: { ...grant, toolSelection: { ...grant.toolSelection,
                 tools: grant.toolSelection!.tools.filter(tool => tool.id !== 'write') } } })).status, 'denied');
+        const forged = { id: 'forged', kind: 'write', path: 'new/forged.txt', content: 'x' };
+        for (const selection of [
+            { ...grant.toolSelection, grantId: 'other-grant' },
+            { ...grant.toolSelection, executionMode: mode === 'direct' ? 'isolated' : 'direct' },
+            { ...grant.toolSelection, tools: grant.toolSelection!.tools.map(tool =>
+                tool.id === 'write' ? { ...tool, schemaHash: '0'.repeat(64) } : tool) }
+        ]) assert.equal((await call(forged, { ...request, grant: { ...grant,
+            toolSelection: selection } })).status, 'denied');
+        assert.equal(await readFile(join(workspace.root, 'new/forged.txt'), 'utf8').catch(() => ''), '');
         const aborted = new AbortController(); aborted.abort();
         assert.equal((await call({ id: 'stopped', kind: 'write', path: 'stopped/file', content: 'x' },
             request, aborted.signal)).status, 'cancelled');

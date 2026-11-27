@@ -22,18 +22,13 @@ import type { DocumentRead } from './work-document-routing';
 import { lstat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { parseWorkToolSelection, WORK_TOOL_CATALOG } from '@dope/agent-core/lib/work-tool-selection';
+import { parseWorkToolSelection, WORK_TOOL_REGISTRY, WORK_TOOL_CATALOG_REVISION,
+    WORK_PI_VERSION, workToolRegistration } from '@dope/agent-core/lib/work-tool-selection';
 
-const expectedTools: string[] = WORK_TOOL_CATALOG.filter(tool => tool.group !== 'External').map(tool => tool.id);
+const expectedTools: string[] = WORK_TOOL_REGISTRY.map(tool => tool.id);
 const workToolNames = { read_file: 'read', list_files: 'list', edit_file: 'edit',
     run_command: 'process', read_command_output: 'output' } as const;
 const nativeFileNames = new Set(['read', 'write', 'edit', 'ls']);
-const nativeSchemaHashes: Record<string, string> = {
-    read: '134f19bcabe3e29d63c5cebb38f1d2556759fd08adad6bc90a4b4d3cd1fb8441',
-    write: 'e98a2484f667cf7c22d76ca103bf2022bf9113dc63fe38b899e71c328cb1e833',
-    edit: '55866598f02c5e00ddfcbcae3df78081e3712de09a622bac7a6bc02ef2acc1bc',
-    ls: 'ad4ee18683e9c3d6bfa7969709a0683bc9f896099ed6a74db0b6c49444718a0c'
-};
 function parsePiFileOperation(id: number, name: string, value: unknown): PiFileOperation {
     if (!nativeFileNames.has(name) || !value || typeof value !== 'object' || Array.isArray(value))
         throw new Error('Invalid Pi file arguments');
@@ -183,7 +178,14 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
             request.connectionId !== request.registrationId) throw new Error('Invalid Pi Work request');
         const grant = parseExecutionGrant(request.grant);
         if (!grant.toolSelection) throw new Error('Local Pi Work requires a reviewed tool selection');
-        const selectedTools: string[] = parseWorkToolSelection(grant.toolSelection).tools.map(tool => tool.id);
+        const selection = parseWorkToolSelection(grant.toolSelection);
+        if (selection.catalogRevision !== WORK_TOOL_CATALOG_REVISION ||
+            selection.piVersion !== WORK_PI_VERSION || selection.grantId !== grant.id ||
+            selection.executionMode !== (request.executionMode ?? 'isolated') ||
+            selection.tools.some(tool => !workToolRegistration(tool.id) &&
+                tool.id !== 'mcp_godot_server_info'))
+            throw new Error('Work tool selection requires fresh Start Work approval');
+        const selectedTools: string[] = selection.tools.map(tool => tool.id);
         const selectedBuiltins = selectedTools.filter(name => expectedTools.includes(name));
         if (grant.mcpObservation &&
             !selectedTools.includes(reviewedMCPObservation(grant.mcpObservation.serverId,
@@ -346,6 +348,13 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     if (!Number.isSafeInteger(raw.id) || raw.id < 1 || seenTools.has(raw.id) || ++count > 32)
                         throw new Error('Invalid Pi Work tool event');
                     seenTools.add(raw.id);
+                    const liveGrant = parseExecutionGrant(request.grant);
+                    if (liveGrant.id !== grant.id || liveGrant.revision !== grant.revision ||
+                        JSON.stringify(liveGrant.toolSelection) !== JSON.stringify(selection) ||
+                        (request.executionMode ?? 'isolated') !== selection.executionMode ||
+                        request.projectRoot !== workspace.projectRoot || request.taskId !== selection.taskId ||
+                        request.connectionId !== selection.connectionId || request.modelId !== selection.modelId)
+                        throw new Error('Work tool approval changed');
                     if (!expectedTools.includes(raw.name) && !isMCP) throw new Error('Unsupported Pi Work tool');
                     if (isMCP && (!selectedTools.includes(raw.name) ||
                         !parseWorkToolSelection(request.grant.toolSelection).tools.some(tool => tool.id === raw.name)))
@@ -355,10 +364,15 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                         throw new Error('Work tool approval changed');
                     if (!isMCP && !selectedTools.some(name => name === raw.name))
                         throw new Error('Work tool was not selected for this run');
-                    if (nativeFileNames.has(raw.name)) {
-                        if (raw.contract?.revision !== 3 || raw.contract.piVersion !== '1.4.0' ||
-                            raw.contract.schemaHash !== nativeSchemaHashes[raw.name])
+                    if (!isMCP) {
+                        const registration = workToolRegistration(raw.name);
+                        if (!registration || raw.contract?.revision !== WORK_TOOL_CATALOG_REVISION ||
+                            raw.contract.piVersion !== WORK_PI_VERSION ||
+                            raw.contract.schemaHash !== registration.schemaHash ||
+                            selection.tools.find(tool => tool.id === raw.name)?.schemaHash !== registration.schemaHash)
                             throw new Error('Pi Work tool contract changed');
+                    }
+                    if (nativeFileNames.has(raw.name)) {
                         stage = 'request-parse';
                         const operation = parsePiFileOperation(raw.id, raw.name, raw.arguments);
                         stage = 'workspace-check';

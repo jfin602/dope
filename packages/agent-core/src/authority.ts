@@ -66,7 +66,8 @@ export function parseExecutionGrant(value: unknown): ExecutionGrant {
     }
     const acceptedAt = timestamp(x.acceptedAt);
     const toolSelection = x.toolSelection === undefined ? undefined : parseWorkToolSelection(x.toolSelection);
-    if (toolSelection && (toolSelection.taskId !== x.taskId || toolSelection.grantRevision !== x.revision))
+    if (toolSelection && (toolSelection.taskId !== x.taskId || toolSelection.grantRevision !== x.revision ||
+        toolSelection.catalogRevision === 4 && toolSelection.grantId !== x.id))
         throw new Error('Work tool selection does not match grant');
     let mcpObservation: WorkMCPObservationScope | undefined;
     if (x.mcpObservation !== undefined) {

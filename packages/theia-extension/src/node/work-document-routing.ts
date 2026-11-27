@@ -75,7 +75,7 @@ export class WorkDocumentRouting {
         if (!pointers.length) return '';
         return `Optional task documentation pointers (offered, not read or adopted):\n${pointers.map(pointer =>
             `- ${pointer.path}${pointer.section ? `#${pointer.section}` : ''} — ${pointer.question} (${pointer.role}; source unknown until read)`)
-            .join('\n')}\nUse read_file with offset 0 for a first page; continue with nextOffset and expectedSourceHash to reach late sections. Read only what the active implementation question needs. A read does not complete the task.`;
+            .join('\n')}\nIf the read tool is selected, use read with a relative path and optional one-based line offset and limit to reach relevant sections. Read only what the active implementation question needs. A read does not complete the task.`;
     }
 
     notice(): string { return this.format(this.pointers.filter(pointer => !this.priorReads.some(read =>

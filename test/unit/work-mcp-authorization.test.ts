@@ -35,18 +35,20 @@ test('default Work grant has no external observation authority; one reviewed cal
 
 test('current Work grants bind a selected external tool to the exact reviewed scope', () => {
     const selection = makeWorkToolSelection({ projectUri: 'file:///project', taskId: 'task-1',
-        grantRevision: 1, connectionId: scope.connectionId, modelId: scope.modelId },
-    ['read_file', 'mcp_godot_server_info']);
+        grantRevision: 1, grantId: 'grant-2', executionMode: 'isolated',
+        connectionId: scope.connectionId, modelId: scope.modelId },
+    ['read', 'mcp_godot_server_info']);
     const selected = createMCPObservationExecutionGrant({ id: 'grant-2', revision: 1,
         taskId: 'task-1', acceptedAt, toolSelection: selection, mcpObservation: scope });
-    assert.deepEqual(selected.toolSelection?.tools.map(tool => tool.id), ['read_file', 'mcp_godot_server_info']);
+    assert.deepEqual(selected.toolSelection?.tools.map(tool => tool.id), ['read', 'mcp_godot_server_info']);
     assert.throws(() => parseExecutionGrant({ ...selected, mcpObservation: undefined }));
     assert.throws(() => parseExecutionGrant({ ...selected, toolSelection: {
         ...selection, tools: selection.tools.filter(tool => tool.id !== 'mcp_godot_server_info') } }));
     assert.throws(() => parseExecutionGrant({ ...selected, mcpObservation: { ...scope, modelId: 'forged' } }));
     const historical = parseExecutionGrant({ ...selected, toolSelection: {
-        ...selection, catalogRevision: 1,
-        tools: selection.tools.filter(tool => tool.id !== 'mcp_godot_server_info') } });
+        catalogRevision: 1, projectUri: selection.projectUri, taskId: selection.taskId,
+        grantRevision: selection.grantRevision, connectionId: selection.connectionId,
+        modelId: selection.modelId, tools: [{ id: 'read_file', schemaRevision: 1 }] } });
     assert.equal(historical.toolSelection?.catalogRevision, 1);
     assert.deepEqual(historical.mcpObservation, scope);
 });

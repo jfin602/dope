@@ -230,10 +230,12 @@ export class AgentRunController {
             this.task = await this.runtime.createTask(this.handle, task);
             if (this.tools && toolChoice !== JSON.stringify(this.tools.choice(this.project, 'direct')))
                 throw new Error('Work tool selection changed. Review the tools and start again.');
-            const grantInput = { id: crypto.randomUUID(), revision: 1, taskId: task.id,
+            const grantId = crypto.randomUUID();
+            const grantInput = { id: grantId, revision: 1, taskId: task.id,
                 acceptedAt: new Date().toISOString(), ...(fresh.locality === 'local' && this.tools ?
                     { toolSelection: this.tools.snapshot(this.project, 'direct', task.id, 1, fresh,
-                        hasApprovedWorkCommand(this.validationCommand), !!mcpScope) } : {}) };
+                        hasApprovedWorkCommand(this.validationCommand), !!mcpScope, grantId,
+                        task.executionMode ?? 'direct') } : {}) };
             const grant = mcpScope ? createMCPObservationExecutionGrant({ ...grantInput,
                 mcpObservation: mcpScope }) : createDefaultExecutionGrant(grantInput);
             const start = fresh.locality === 'local' ? this.runtime.startWorkSession.bind(this.runtime) :

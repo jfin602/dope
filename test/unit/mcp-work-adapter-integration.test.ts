@@ -6,7 +6,8 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import test from 'node:test';
 import { createMCPObservationExecutionGrant } from '../../packages/agent-core/lib/authority.js';
-import { makeWorkToolSelection } from '../../packages/agent-core/lib/work-tool-selection.js';
+import { makeWorkToolSelection, WORK_TOOL_REGISTRY, WORK_TOOL_CATALOG_REVISION,
+    WORK_PI_VERSION } from '../../packages/agent-core/lib/work-tool-selection.js';
 import { ExecutionWorkspace } from '../../packages/agent-core/lib/node/execution-workspace.js';
 import { MCPServerRegistryStore } from '../../packages/theia-extension/lib/node/mcp-server-registry-store.js';
 import { MCPProjectPreferencesStore, mcpProjectKey } from '../../packages/theia-extension/lib/node/mcp-project-preferences-store.js';
@@ -96,8 +97,9 @@ for line in sys.stdin:
         const scope = await authority.offer(root, 'local', 'fixture-model');
         assert.ok(scope);
         const toolSelection = makeWorkToolSelection({ projectUri: 'file://' + root,
-            taskId: 'task', grantRevision: 1, connectionId: 'local', modelId: 'fixture-model' },
-            ['read_file', 'list_files', 'edit_file', 'mcp_godot_server_info']);
+            taskId: 'task', grantRevision: 1, grantId: 'grant', executionMode: 'isolated',
+            connectionId: 'local', modelId: 'fixture-model' },
+            ['read', 'ls', 'write', 'edit', 'mcp_godot_server_info']);
         const grant = createMCPObservationExecutionGrant({ id: 'grant', revision: 1,
             taskId: 'task', acceptedAt: new Date().toISOString(), mcpObservation: scope, toolSelection });
         workspace = await ExecutionWorkspace.create(root);
@@ -107,10 +109,12 @@ for line in sys.stdin:
             _credential: unknown, _thinking: unknown, _process: unknown, mcpTools: any[]) {
             openedTools = mcpTools.map(tool => tool.name);
             return { version: '1.4.0', resources: 'isolated', tools: [
-                'read_file', 'list_files', 'edit_file', 'read_command_output', ...openedTools] };
+                'read', 'ls', 'write', 'edit', ...openedTools], workCatalogRevision: WORK_TOOL_CATALOG_REVISION };
         }, async runWork(_prompt: string, onTool: (call: any) => Promise<any>) {
-            const edit = await onTool({ id: 1, name: 'edit_file', arguments: {
-                operation: 'modify', path: 'README.md', content: 'candidate change stays in review\n' } });
+            const edit = await onTool({ id: 1, name: 'write', arguments: {
+                path: 'README.md', content: 'candidate change stays in review\n' },
+                contract: { revision: WORK_TOOL_CATALOG_REVISION, piVersion: WORK_PI_VERSION,
+                    schemaHash: WORK_TOOL_REGISTRY.find(tool => tool.id === 'write')!.schemaHash } });
             assert.equal(edit.status, 'completed');
             callResult = await onTool({ id: 2, name: 'mcp_godot_server_info', arguments: {} });
             return { modelId: 'fixture-model', text: 'Observed external information.' };
@@ -288,7 +292,8 @@ for line in sys.stdin:
         await rm(join(installRoot, 'bin', 'mode'));
         const expired = createMCPObservationExecutionGrant({ id: 'expired', revision: 1, taskId: 'task',
             acceptedAt: new Date(Date.now() - 120_000).toISOString(),
-            mcpObservation: { ...scope, expiresAt: new Date(Date.now() - 60_000).toISOString() }, toolSelection });
+            mcpObservation: { ...scope, expiresAt: new Date(Date.now() - 60_000).toISOString() },
+            toolSelection: { ...toolSelection, grantId: 'expired' } });
         await assert.rejects(adapter.start({ ...request, grant: expired }), /scope unavailable/);
         const beforeDisable = events.length;
         host.runWork = async (_prompt: string, onTool: (call: any) => Promise<any>) => {

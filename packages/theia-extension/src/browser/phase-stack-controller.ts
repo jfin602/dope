@@ -303,10 +303,12 @@ export class PhaseStackController {
                 { validation: [{ kind: 'test', label: 'phase-stack', command }], requireValidationPass: true });
             if (this.tools && toolChoice !== JSON.stringify(this.tools.choice(this.project!, `sequence:${id}`)))
                 throw new Error('Work tool selection changed. Review the tools and start again.');
-            const grant = createDefaultExecutionGrant({ id: crypto.randomUUID(), revision: 1, taskId: task.id,
+            const grantId = crypto.randomUUID();
+            const grant = createDefaultExecutionGrant({ id: grantId, revision: 1, taskId: task.id,
                 acceptedAt: new Date().toISOString(),
                 ...(shown?.locality === 'local' && this.tools ? { toolSelection: this.tools.snapshot(this.project!,
-                    `sequence:${id}`, task.id, 1, shown, hasApprovedWorkCommand(command)) } : {}) });
+                    `sequence:${id}`, task.id, 1, shown, hasApprovedWorkCommand(command), false,
+                    grantId, task.executionMode ?? 'isolated') } : {}) });
             this.acceptedGrant = false;
             this.run = await this.runtime.startSequence(this.handle!, this.project!, id, grant,
                 shown?.locality === 'hosted' && this.hostedProjectDataAuthorized);

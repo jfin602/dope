@@ -25,7 +25,7 @@ function fixture() {
         credential: async () => undefined });
     const host = { async openNoToolSession(...args: any[]) { calls.push(args); return { version: '1.4.0', tools: [], resources: 'isolated' }; },
         async openWorkSession(...args: any[]) { calls.push(args); return { version: '1.4.0',
-            tools: args[6] ?? [], resources: 'isolated', workCatalogRevision: 3 }; },
+            tools: args[6] ?? [], resources: 'isolated', workCatalogRevision: 4 }; },
         async openChatToolsSession(...args: any[]) { calls.push(args); return { version: '1.4.0',
             tools: args[5] === true ? args[6] === true ? ['roadmap_phase'] :
                 ['roadmap_phase', 'roadmap_finish'] :
@@ -337,23 +337,23 @@ test('Pi Work binding attests exactly one optional MCP descriptor alongside fixe
     f.host.openWorkSession = async (...args: any[]) => {
         f.calls.push(args);
         return { version: '1.4.0', resources: 'isolated',
-            workCatalogRevision: 3, tools: ['edit_file', 'list_files', 'read_command_output', 'read_file',
+            workCatalogRevision: 4, tools: ['read', 'ls', 'write',
                 ...args[5].map((tool: any) => tool.name)] };
     };
     await f.bridge.bind({ connectionId: 'desk', modelId: 'exact-model' }, f.host as any, '/tmp',
         { tools: true, workProcessAvailable: false,
-            workToolNames: ['edit_file', 'list_files', 'read_command_output', 'read_file'],
+            workToolNames: ['read', 'ls', 'write'],
             mcpTools: [descriptor] });
     assert.deepEqual(f.calls[0][5], [descriptor]);
     await assert.rejects(f.bridge.bind({ connectionId: 'desk', modelId: 'exact-model' }, f.host as any, '/tmp',
         { tools: true, workProcessAvailable: false,
-            workToolNames: ['edit_file', 'list_files', 'read_command_output', 'read_file'],
+            workToolNames: ['read', 'ls', 'write'],
             mcpTools: [descriptor, { ...descriptor, name: 'mcp_godot_scene_write' }] }), /boundary/);
-    f.host.openWorkSession = async () => ({ version: '1.4.0', resources: 'isolated', workCatalogRevision: 3,
-        tools: ['edit_file', 'list_files', 'read_command_output', 'read_file'] });
+    f.host.openWorkSession = async () => ({ version: '1.4.0', resources: 'isolated', workCatalogRevision: 4,
+        tools: ['read', 'ls', 'write'] });
     await assert.rejects(f.bridge.bind({ connectionId: 'desk', modelId: 'exact-model' }, f.host as any, '/tmp',
         { tools: true, workProcessAvailable: false,
-            workToolNames: ['edit_file', 'list_files', 'read_command_output', 'read_file'],
+            workToolNames: ['read', 'ls', 'write'],
             mcpTools: [descriptor] }), /boundary/);
 });
 

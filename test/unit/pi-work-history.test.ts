@@ -63,8 +63,9 @@ test('Work stores one factual MCP receipt without promoting the candidate or awa
         const grant = createMCPObservationExecutionGrant({ id: 'mcp-receipt-grant', revision: 1,
             taskId, acceptedAt: new Date().toISOString(), mcpObservation: scope,
             toolSelection: makeWorkToolSelection({ projectUri: 'file://' + root, taskId,
-                grantRevision: 1, connectionId: 'local', modelId: 'fixture-model' },
-            ['read_file', 'mcp_godot_server_info']) });
+                grantRevision: 1, grantId: 'mcp-receipt-grant', executionMode: 'isolated',
+                connectionId: 'local', modelId: 'fixture-model' },
+            ['read', 'mcp_godot_server_info']) });
         let runRuntime: AgentExecutionRuntime;
         const adapter = { id: 'pi-local-work', async start(request: any) {
             const result = Promise.resolve().then(async () => {
@@ -154,7 +155,8 @@ test('two fresh Pi-mapped Work candidates retain transcript and History identiti
                 const grant = createDefaultExecutionGrant({ id: `grant-${decision}`, revision: 0,
                     taskId, acceptedAt: now,
                     toolSelection: makeWorkToolSelection({ projectUri: 'file://' + root, taskId,
-                        grantRevision: 0, connectionId: 'local', modelId: 'fixture-model' }, ['read_file']) });
+                        grantRevision: 0, grantId: `grant-${decision}`, executionMode: 'isolated',
+                        connectionId: 'local', modelId: 'fixture-model' }, ['read']) });
                 runRuntime = runtime(store, adapter);
                 const started = await runRuntime.start(root, new URL(`file://${root}`).href, taskId, grant, false);
                 const held = await runRuntime.waitForRun(root, started.id);

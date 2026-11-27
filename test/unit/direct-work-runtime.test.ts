@@ -28,26 +28,26 @@ for (const ownerDirty of [false, true]) test(`runtime Direct mode performs broke
         const broker = localWorkspaceBroker(request, workspace, [], direct);
         return { result: (async () => {
             await broker.assertActive();
-            const edit = { id: 'edit-1', name: 'edit' as const,
-                arguments: { operation: 'modify' as const, path: 'src/old.txt', content: 'direct\n' } };
+            const edit = { id: 'edit-1', kind: 'write' as const,
+                path: 'src/old.txt', content: 'direct\n' };
             const forged = { ...request, grant: { ...request.grant,
                 toolSelection: { ...request.grant.toolSelection, tools: [] } } };
             const bypass = localWorkspaceBroker(forged, workspace, [], direct);
-            assert.equal((await bypass.execute(edit, new AbortController().signal)).status, 'denied');
+            assert.equal((await bypass.executePiFileOperation!(edit, new AbortController().signal)).status, 'denied');
             const reserved = localWorkspaceBroker({ ...request, reservedPaths: ['src/old.txt'] }, workspace, [], direct);
-            assert.equal((await reserved.execute(edit, new AbortController().signal)).status, 'denied');
+            assert.equal((await reserved.executePiFileOperation!(edit, new AbortController().signal)).status, 'denied');
             assert.equal(await readFile(join(root, 'src', 'old.txt'), 'utf8'), ownerDirty ? 'owner before\n' : 'before\n');
             const stop = new AbortController();
             if (!ownerDirty) {
                 const journal = direct!.journal as any;
-                const write = journal.edit.bind(journal);
-                journal.edit = async (...args: unknown[]) => {
+                const write = journal.write.bind(journal);
+                journal.write = async (...args: unknown[]) => {
                     const applied = await write(...args);
                     stop.abort(); // Stop after canonical write, before candidate mirror.
                     return applied;
                 };
             }
-            resultStatus = (await broker.execute(edit, stop.signal)).status;
+            resultStatus = (await broker.executePiFileOperation!(edit, stop.signal)).status;
             if (resultStatus !== 'completed') throw new Error('Direct broker denied selected edit');
             if (!ownerDirty) {
                 assert.equal(stop.signal.aborted, true);
@@ -97,8 +97,9 @@ for (const ownerDirty of [false, true]) test(`runtime Direct mode performs broke
                 { kind: 'test', label: 'unit', command: 'node --test' } ], requireValidationPass: true } });
         const grant = createDefaultExecutionGrant({ id: 'direct-grant', revision: 0, taskId,
             acceptedAt: new Date().toISOString(), toolSelection: makeWorkToolSelection({
-                projectUri: uri, taskId, grantRevision: 0, connectionId: 'local', modelId: 'model' },
-            ['edit_file']) });
+                projectUri: uri, taskId, grantRevision: 0, grantId: 'direct-grant',
+                executionMode: 'direct', connectionId: 'local', modelId: 'model' },
+            ['write', 'edit']) });
         const accepted = ownerDirty ? (await backend.previewWorktree(handle)).fingerprint : undefined;
         const started = await backend.start(handle, uri, taskId, grant, false, accepted);
         const run = await runtime.waitForRun(root, started.id).catch(async error => {

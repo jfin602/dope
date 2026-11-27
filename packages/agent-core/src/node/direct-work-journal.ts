@@ -535,10 +535,12 @@ export class DirectWorkJournal {
     async edit(operation: 'create' | 'modify', path: string, content: string,
         unsaved: (path: string) => Promise<boolean>, signal?: AbortSignal,
         expectedBefore?: string, fault?: 'pause-after-parent' | 'pause-after-temp' | 'after-temp' | 'after-file',
-        expectedState?: { identity: FileIdentity | null }, toolIdentity: 'write' | 'edit' | 'edit_file' = 'edit_file'): Promise<DirectChange> {
+        expectedState?: { identity: FileIdentity | null }, toolIdentity?: 'write' | 'edit' | 'edit_file'): Promise<DirectChange> {
         if (this.writing) throw new Error('Concurrent Direct Work operation conflict');
         this.writing = true;
-        try { return await this.performEdit(operation, path, content, unsaved, signal, expectedBefore, fault, expectedState, toolIdentity); }
+        const selectedIdentity = toolIdentity ?? (this.grant.toolSelection?.catalogRevision === 4 &&
+            this.grant.toolSelection.tools.some(tool => tool.id === 'write') ? 'write' : 'edit_file');
+        try { return await this.performEdit(operation, path, content, unsaved, signal, expectedBefore, fault, expectedState, selectedIdentity); }
         finally { this.writing = false; }
     }
     private async performEdit(operation: 'create' | 'modify', path: string, content: string,

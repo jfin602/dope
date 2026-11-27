@@ -353,7 +353,7 @@ test('completed local Work follow-up creates a new exact-model task and fresh ce
     controller.openFollowUp(); controller.followUpInstructions = 'Next bounded turn';
     await Promise.resolve();
     controller.followUpTarget = controller.followUpTargets.find(target => target.modelId === 'other-model');
-    controller.followUpToolIds = ['read_file', 'list_files'];
+    controller.followUpToolIds = ['read', 'ls'];
     controller.followUpPermissions = { ...permissions, network: true };
     const result = await controller.continueSession();
     assert.equal(result?.id, 'run-two');
@@ -363,7 +363,7 @@ test('completed local Work follow-up creates a new exact-model task and fresh ce
     assert.equal(continuation[3], run.id);
     assert.equal(continuation[4], created.id);
     assert.equal(continuation[5].taskId, created.id);
-    assert.deepEqual(continuation[5].toolSelection.tools.map((tool: any) => tool.id), ['read_file', 'list_files']);
+    assert.deepEqual(continuation[5].toolSelection.tools.map((tool: any) => tool.id), ['read', 'ls']);
     assert.equal(continuation[5].permissions.network, false, 'the new grant retains the saved ceiling');
     assert.equal(continuation[6], false);
     assert.equal(continuation[7], run.basis.head);

@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import type { ConversationRequest } from '@dope/contracts/lib/model-runtime';
+import { WORK_TOOL_REGISTRY, WORK_TOOL_CATALOG_REVISION, WORK_PI_VERSION } from '@dope/agent-core/lib/work-tool-selection';
 
 export interface PiRuntimeDiagnostics {
     version: string;
@@ -102,12 +103,8 @@ const failureOrigins = new Set(['tool_budget', 'model_call_budget', 'generation_
     'invalid_final_tool_call', 'invalid_final_assistant']);
 const boundedCount = (value: unknown): value is number =>
     Number.isSafeInteger(value) && (value as number) >= 0 && (value as number) <= 1_000_000;
-const piWorkSchemaHashes: Record<string, string> = {
-    read: '134f19bcabe3e29d63c5cebb38f1d2556759fd08adad6bc90a4b4d3cd1fb8441',
-    write: 'e98a2484f667cf7c22d76ca103bf2022bf9113dc63fe38b899e71c328cb1e833',
-    edit: '55866598f02c5e00ddfcbcae3df78081e3712de09a622bac7a6bc02ef2acc1bc',
-    ls: 'ad4ee18683e9c3d6bfa7969709a0683bc9f896099ed6a74db0b6c49444718a0c'
-};
+const piWorkSchemaHashes: Record<string, string> = Object.fromEntries(
+    WORK_TOOL_REGISTRY.map(tool => [tool.id, tool.schemaHash]));
 const offeredToolNames = new Set(['read', 'write', 'edit', 'ls', 'read_file', 'list_files', 'search_paths', 'search_text',
     'run_command', 'edit_file', 'read_command_output', 'roadmap_read', 'roadmap_stage',
     'roadmap_cancel', 'roadmap_phase', 'roadmap_finish', 'proposal_status',
@@ -142,6 +139,7 @@ export class PiRuntimeHost {
     private lastConfirmed?: PiToolFailureDetail['lastConfirmed'];
     private paused?: { id: number; segmentIndex: number; maxOutputTokens: number; text: string };
     private mcpToolNames = new Set<string>();
+    private workSessionTools?: Set<string>;
 
     constructor(private readonly workerPath = resolvePiWorkerPath(),
         private readonly executable = process.execPath) {}
@@ -189,6 +187,7 @@ export class PiRuntimeHost {
     openNoToolSession(model: { baseUrl: string; [key: string]: unknown }, cwd: string, credential?: string,
         thinkingLevel?: string):
         Promise<{ version: string; tools: string[]; resources: string }> {
+        this.workSessionTools = undefined;
         return this.request({ type: 'open', model, cwd, ...(credential ? { credential } : {}), thinkingLevel });
     }
 
@@ -203,10 +202,11 @@ export class PiRuntimeHost {
             return Promise.reject(new Error('Invalid MCP Work manifest'));
         this.mcpToolNames = new Set(mcpTools.map(tool => tool.name));
         if (workToolNames && (new Set(workToolNames).size !== workToolNames.length ||
-            workToolNames.some(name => !['read', 'write', 'edit', 'ls', 'read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output'].includes(name)) ||
+            workToolNames.some(name => !Object.hasOwn(piWorkSchemaHashes, name)) ||
             (!processAvailable && workToolNames.some(name => ['run_command', 'read_command_output'].includes(name))) ||
             workToolNames.includes('read_command_output') && !workToolNames.includes('run_command')))
             return Promise.reject(new Error('Invalid selected Pi Work tools'));
+        this.workSessionTools = new Set(workToolNames ?? []);
         return this.request({ type: 'open', mode: 'work', model, cwd,
             ...(credential ? { credential } : {}), thinkingLevel, workProcessAvailable: processAvailable,
             ...(workToolNames ? { workToolNames } : {}),
@@ -219,6 +219,7 @@ export class PiRuntimeHost {
         planTools = false, directProposalTools = false,
         mcpTools: NonNullable<NonNullable<ConversationRequest['projectTools']>['mcpTools']> = []):
         Promise<{ version: string; tools: string[]; resources: string }> {
+        this.workSessionTools = undefined;
         if (mcpTools.length > 8 || mcpTools.some(tool => !/^mcp_[a-z][a-z0-9_]{0,79}$/u.test(tool.name) ||
             offeredToolNames.has(tool.name) || tool.description.length > 300 ||
             JSON.stringify(tool.parameters) !== JSON.stringify({ type: 'object', properties: {}, additionalProperties: false })) ||
@@ -433,8 +434,12 @@ export class PiRuntimeHost {
                         typeof record.tool.name !== 'string') throw new PiWorkerFailure('tool_reply_invalid');
                     if (!offeredToolNames.has(record.tool.name) && !this.mcpToolNames.has(record.tool.name))
                         throw new PiWorkerFailure('model_tool_call_invalid');
+                    if (this.workSessionTools && !this.workSessionTools.has(record.tool.name) &&
+                        !this.mcpToolNames.has(record.tool.name))
+                        throw new PiWorkerFailure('model_tool_call_invalid');
                     if (Object.hasOwn(piWorkSchemaHashes, record.tool.name) &&
-                        (record.tool.contract?.revision !== 3 || record.tool.contract.piVersion !== '1.4.0' ||
+                        (record.tool.contract?.revision !== WORK_TOOL_CATALOG_REVISION ||
+                            record.tool.contract.piVersion !== WORK_PI_VERSION ||
                             record.tool.contract.schemaHash !== piWorkSchemaHashes[record.tool.name]))
                         throw new PiWorkerFailure('tool_reply_invalid');
                     if (this.seenToolIds.has(record.tool.id)) throw new PiWorkerFailure('tool_reply_duplicate');
@@ -497,8 +502,10 @@ export class PiRuntimeHost {
                             (event.kind === 'message_accepted' ?
                                 typeof event.messageId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,119}$/u.test(event.messageId) :
                                 event.messageId !== undefined) ||
-                            (event.toolName !== undefined && (!['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output']
-                                .includes(event.toolName) || !event.kind.startsWith('tool_execution_'))) ||
+                            (event.toolName !== undefined &&
+                                (!WORK_TOOL_REGISTRY.some(tool => tool.id === event.toolName) &&
+                                    event.toolName !== 'mcp_godot_server_info' ||
+                                    !event.kind.startsWith('tool_execution_'))) ||
                             (event.kind.startsWith('tool_execution_') !== (event.toolName !== undefined)) ||
                             (event.kind === 'reasoning' ? typeof event.text !== 'string' ||
                                 Buffer.byteLength(event.text, 'utf8') > 8000 ||

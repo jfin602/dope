@@ -1,6 +1,8 @@
-/** Fixed Dope-owned Pi Work catalog. Bump a schema revision whenever the worker's
- * corresponding argument contract or effect changes. Saved approvals then fail closed. */
-export const WORK_TOOL_CATALOG_REVISION = 3;
+/** Trusted Work registration. Each eligible definition has a broker implementation;
+ * the hashes are independently checked against the pinned Pi/adapter schemas by
+ * the worker and again on every broker call. Historical IDs remain parseable. */
+export const WORK_TOOL_CATALOG_REVISION = 4;
+export const WORK_PI_VERSION = '1.4.0';
 export const WORK_TOOL_CATALOG = [
     { id: 'read_file', group: 'Inspect', name: 'Read file', description: 'Read a candidate file in the isolated Work workspace.', effect: 'workspace-read', schemaRevision: 1 },
     { id: 'list_files', group: 'Inspect', name: 'List files', description: 'List a candidate directory in the isolated Work workspace.', effect: 'workspace-read', schemaRevision: 1 },
@@ -13,6 +15,21 @@ export const WORK_TOOL_CATALOG = [
     { id: 'read_command_output', group: 'Commands', name: 'Read command output', description: 'Read output from a completed approved command.', effect: 'workspace-process', schemaRevision: 1, requires: 'run_command' },
     { id: 'mcp_godot_server_info', group: 'External', name: 'Godot server information', description: 'Observe the reviewed Godot server method after project activation and per-call approval.', effect: 'workspace-read', schemaRevision: 1, serverId: 'godot', toolName: 'godot_get_server_info' }
 ] as const;
+export const WORK_TOOL_REGISTRY = [
+    { id: 'read', schemaHash: '134f19bcabe3e29d63c5cebb38f1d2556759fd08adad6bc90a4b4d3cd1fb8441', origin: 'pi', broker: 'file-read' },
+    { id: 'ls', schemaHash: 'ad4ee18683e9c3d6bfa7969709a0683bc9f896099ed6a74db0b6c49444718a0c', origin: 'pi', broker: 'directory-list' },
+    { id: 'write', schemaHash: 'e98a2484f667cf7c22d76ca103bf2022bf9113dc63fe38b899e71c328cb1e833', origin: 'pi', broker: 'whole-write' },
+    { id: 'edit', schemaHash: '55866598f02c5e00ddfcbcae3df78081e3712de09a622bac7a6bc02ef2acc1bc', origin: 'pi', broker: 'whole-exact-edit' },
+    { id: 'run_command', schemaHash: '1899c5839e68fff80875e8fac665418167014806c11b9d01b175985ae3f917f7', origin: 'bounded-adapter', broker: 'approved-test-build' },
+    { id: 'read_command_output', schemaHash: 'e348a67f7d8edb7f5559b125ff141746efac1299b9dd6d3cd83ce2cb4afce07c', origin: 'bounded-adapter', broker: 'retained-output' }
+] as const;
+export const WORK_TOOL_UNAVAILABLE = [
+    { id: 'find', name: 'Find', description: 'Pi path glob search', unavailableReason: 'No qualified bounded Dope glob operation' },
+    { id: 'grep', name: 'Grep', description: 'Pi content search', unavailableReason: 'Pi implementation can spawn rg outside the Work broker' },
+    { id: 'bash', name: 'Bash', description: 'Pi shell command', unavailableReason: 'Unrestricted shell cannot meet the fixed Work effect ceiling' },
+    { id: 'powershell', name: 'PowerShell', description: 'Pi shell command', unavailableReason: 'Unrestricted shell cannot meet the fixed Work effect ceiling' }
+] as const;
+export const workToolRegistration = (id: string) => WORK_TOOL_REGISTRY.find(tool => tool.id === id);
 export type WorkToolId = typeof WORK_TOOL_CATALOG[number]['id'];
 export type WorkToolGroup = 'Inspect' | 'Edit' | 'Commands' | 'External';
 export interface WorkToolCatalogContext {
@@ -23,7 +40,7 @@ export interface WorkToolCatalogContext {
 }
 /** Only registrations with an explicit Dope Work broker mapping appear here. */
 export function workToolCatalogFor(context: WorkToolCatalogContext) {
-    return WORK_TOOL_CATALOG.filter(tool => !['read_file', 'list_files', 'edit_file'].includes(tool.id)).map(tool => {
+    const eligible = WORK_TOOL_CATALOG.filter(tool => !['read_file', 'list_files', 'edit_file'].includes(tool.id)).map(tool => {
         const unavailableReason = context.locality !== 'local' ?
             'Individual tools are enforceable only for the local Pi provider' :
             tool.group === 'Commands' && !context.commandsAvailable ?
@@ -37,13 +54,19 @@ export function workToolCatalogFor(context: WorkToolCatalogContext) {
                 'activated-project' as const : 'isolated-candidate' as const,
             available: unavailableReason === undefined, unavailableReason };
     });
+    return [...eligible, ...WORK_TOOL_UNAVAILABLE.map(tool => ({ ...tool, group: 'Unavailable' as const,
+        effect: 'unavailable' as const, schemaRevision: 0, catalogRevision: WORK_TOOL_CATALOG_REVISION,
+        provider: 'local-pi' as const, projectScope: 'isolated-candidate' as const,
+        available: false }))];
 }
 export interface WorkToolChoice { groups: string[]; allow: string[]; deny: string[] }
 export interface WorkToolCustomGroup { id: string; name: string; tools: string[] }
 export interface WorkToolSelection {
     catalogRevision: number; projectUri: string; taskId: string; grantRevision: number;
     connectionId: string; modelId: string;
-    tools: { id: WorkToolId; schemaRevision: number }[];
+    /** Revision 4 binds a new Start Work decision to its exact grant and mode. */
+    piVersion?: string; executionMode?: 'direct' | 'isolated'; grantId?: string;
+    tools: { id: WorkToolId; schemaRevision: number; schemaHash?: string }[];
 }
 const ids = new Set<string>(WORK_TOOL_CATALOG.map(tool => tool.id));
 const unique = (items: readonly string[]) => [...new Set(items)];
@@ -78,18 +101,27 @@ export function resolveWorkTools(choice: WorkToolChoice, customGroups: readonly 
         (externalAvailable || tool.group !== 'External') &&
         (tool.id !== 'read_command_output' || selected.has('run_command'))).map(tool => tool.id), unavailable };
 }
-export function makeWorkToolSelection(input: Omit<WorkToolSelection, 'catalogRevision' | 'tools'>,
+export function makeWorkToolSelection(input: Omit<WorkToolSelection, 'catalogRevision' | 'tools' | 'piVersion'>,
     toolIds: readonly WorkToolId[]): WorkToolSelection {
+    if (!input.grantId || !['direct', 'isolated'].includes(input.executionMode ?? ''))
+        throw new Error('New Work tool selection requires grant and execution mode');
     return parseWorkToolSelection({ ...input, catalogRevision: WORK_TOOL_CATALOG_REVISION,
+        piVersion: WORK_PI_VERSION,
         tools: WORK_TOOL_CATALOG.filter(tool => toolIds.includes(tool.id)).map(tool =>
-            ({ id: tool.id, schemaRevision: tool.schemaRevision })) });
+            ({ id: tool.id, schemaRevision: tool.schemaRevision,
+                ...(workToolRegistration(tool.id) ? { schemaHash: workToolRegistration(tool.id)!.schemaHash } : {}) })) });
 }
 export function parseWorkToolSelection(value: unknown): WorkToolSelection {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid Work tool selection');
     const x = value as Record<string, unknown>;
-    if (Object.keys(x).sort().join(',') !==
-        'catalogRevision,connectionId,grantRevision,modelId,projectUri,taskId,tools' ||
-        ![1, 2, WORK_TOOL_CATALOG_REVISION].includes(x.catalogRevision as number) ||
+    const current = x.catalogRevision === WORK_TOOL_CATALOG_REVISION;
+    if (Object.keys(x).sort().join(',') !== (current ?
+        'catalogRevision,connectionId,executionMode,grantId,grantRevision,modelId,piVersion,projectUri,taskId,tools' :
+        'catalogRevision,connectionId,grantRevision,modelId,projectUri,taskId,tools') ||
+        ![1, 2, 3, WORK_TOOL_CATALOG_REVISION].includes(x.catalogRevision as number) ||
+        current && (x.piVersion !== WORK_PI_VERSION ||
+            !['direct', 'isolated'].includes(x.executionMode as string) ||
+            typeof x.grantId !== 'string' || !x.grantId) ||
         typeof x.projectUri !== 'string' || !x.projectUri.startsWith('file:///') ||
         typeof x.taskId !== 'string' || !x.taskId ||
         !Number.isSafeInteger(x.grantRevision) || (x.grantRevision as number) < 0 ||
@@ -101,12 +133,19 @@ export function parseWorkToolSelection(value: unknown): WorkToolSelection {
     for (const item of x.tools) {
         if (!item || typeof item !== 'object' || Array.isArray(item)) throw new Error('Invalid Work tool identity');
         const entry = item as Record<string, unknown>;
-        const current = WORK_TOOL_CATALOG.find(tool => tool.id === entry.id);
-        if (!current || Object.keys(entry).sort().join(',') !== 'id,schemaRevision' ||
-            entry.schemaRevision !== current.schemaRevision || tools.some(tool => tool.id === entry.id) ||
-            (x.catalogRevision !== 3 && ['read', 'ls', 'write', 'edit'].includes(current.id)))
+        const definition = WORK_TOOL_CATALOG.find(tool => tool.id === entry.id);
+        const registration = workToolRegistration(entry.id as string);
+        if (!definition || Object.keys(entry).sort().join(',') !== (current && registration ?
+            'id,schemaHash,schemaRevision' : 'id,schemaRevision') ||
+            entry.schemaRevision !== definition.schemaRevision ||
+            current && (!registration && definition.group !== 'External' ||
+                registration && entry.schemaHash !== registration.schemaHash ||
+                ['read_file', 'list_files', 'edit_file'].includes(definition.id)) ||
+            tools.some(tool => tool.id === entry.id) ||
+            (x.catalogRevision !== 3 && !current && ['read', 'ls', 'write', 'edit'].includes(definition.id)))
             throw new Error('Unknown or changed Work tool');
-        tools.push({ id: current.id, schemaRevision: current.schemaRevision });
+        tools.push({ id: definition.id, schemaRevision: definition.schemaRevision,
+            ...(current && registration ? { schemaHash: registration.schemaHash } : {}) });
     }
     if (x.catalogRevision === 1 && tools.some(tool => tool.id === 'mcp_godot_server_info'))
         throw new Error('External Work tool requires current catalog');
@@ -114,5 +153,7 @@ export function parseWorkToolSelection(value: unknown): WorkToolSelection {
         throw new Error('Work command output requires run_command');
     return { catalogRevision: x.catalogRevision as number, projectUri: x.projectUri,
         taskId: x.taskId, grantRevision: x.grantRevision as number,
-        connectionId: x.connectionId, modelId: x.modelId, tools };
+        connectionId: x.connectionId, modelId: x.modelId,
+        ...(current ? { piVersion: WORK_PI_VERSION, executionMode: x.executionMode as 'direct' | 'isolated',
+            grantId: x.grantId as string } : {}), tools };
 }

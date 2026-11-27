@@ -566,7 +566,8 @@ export class WorkSelectionController {
         const segment = this.session.segments.at(-1)!;
         this.followUpTarget = undefined;
         this.followUpTargets = [];
-        this.followUpToolIds = this.selectedRun.toolSelection?.tools.map(tool => tool.id) ?? [];
+        this.followUpToolIds = this.selectedRun.toolSelection?.catalogRevision === 4 ?
+            this.selectedRun.toolSelection.tools.map(tool => tool.id) : [];
         this.followUpPermissions = { ...(segment.permissions ?? this.session.permissionCeiling) };
         void this.refreshFollowUpTargets();
         this.changed();
@@ -669,10 +670,12 @@ export class WorkSelectionController {
                 executionMode: selectedMode,
                 modelPolicy: { kind: 'exact', connectionId: target.target.connectionId,
                     modelId: target.target.modelId } });
+            const grantId = crypto.randomUUID();
             const selection = makeWorkToolSelection({ projectUri: project, taskId: newTask.id,
-                grantRevision: 1, connectionId: target.target.connectionId, modelId: target.target.modelId },
+                grantRevision: 1, connectionId: target.target.connectionId, modelId: target.target.modelId,
+                grantId, executionMode: selectedMode },
                 selectedToolIds);
-            const base = createDefaultExecutionGrant({ id: crypto.randomUUID(), revision: 1,
+            const base = createDefaultExecutionGrant({ id: grantId, revision: 1,
                 taskId: newTask.id, acceptedAt: new Date().toISOString(), toolSelection: selection });
             const priorPermissions = freshSession.segments.at(-1)?.permissions ?? freshSession.permissionCeiling;
             const grant = parseExecutionGrant({ ...base, permissions: priorPermissions });
@@ -890,11 +893,13 @@ export class WorkSelectionController {
                 throw new Error('Work tool selection changed; review continuation again.');
             const newTask = parseAgentTask({ ...task, id: crypto.randomUUID(), createdAt: new Date().toISOString(),
                 executionMode: task.executionMode ?? 'isolated' });
-            const grant = createDefaultExecutionGrant({ id: crypto.randomUUID(), revision: 1,
+            const grantId = crypto.randomUUID();
+            const grant = createDefaultExecutionGrant({ id: grantId, revision: 1,
                 taskId: newTask.id, acceptedAt: new Date().toISOString(),
                 ...(target.locality === 'local' && this.tools ? { toolSelection: this.tools.snapshot(project,
                     `resume:${run.id}`, newTask.id, 1, target,
-                    newTask.completion.validation.some(item => hasApprovedWorkCommand(item.command, item.kind))) } : {}) });
+                    newTask.completion.validation.some(item => hasApprovedWorkCommand(item.command, item.kind)), false,
+                    grantId, newTask.executionMode ?? 'isolated') } : {}) });
             const newRun = await this.runtime.resumeCandidate(handle, project, run.id,
                 preview.candidateFingerprint!, newTask, grant,
                 target.locality === 'hosted' && this.resumeHostedAuthorized);
@@ -1018,11 +1023,13 @@ export class WorkSelectionController {
             }
             if (this.tools && toolChoice !== JSON.stringify(this.tools.choice(project, `task:${shown.id}`)))
                 throw new Error('Work tool selection changed. Review the tools and start again.');
-            const grantInput = { id: crypto.randomUUID(), revision: 1, taskId: task.id,
+            const grantId = crypto.randomUUID();
+            const grantInput = { id: grantId, revision: 1, taskId: task.id,
                 acceptedAt: new Date().toISOString(),
                 ...(shownTarget.locality === 'local' && this.tools ? { toolSelection: this.tools.snapshot(project,
                     `task:${task.id}`, task.id, 1, shownTarget,
-                    task.completion.validation.some(item => hasApprovedWorkCommand(item.command, item.kind)), !!offered) } : {}) };
+                    task.completion.validation.some(item => hasApprovedWorkCommand(item.command, item.kind)), !!offered,
+                    grantId, task.executionMode ?? 'isolated') } : {}) };
             const grant = offered ? createMCPObservationExecutionGrant({ ...grantInput, mcpObservation: offered }) :
                 createDefaultExecutionGrant(grantInput);
             // Consume separate hosted and MCP consent before the RPC.

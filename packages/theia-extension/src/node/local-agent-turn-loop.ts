@@ -3,6 +3,8 @@ import type { AIInventoryState } from '@dope/contracts/lib/ai-registry-service';
 import { ModelRuntimeFailure } from '@dope/contracts/lib/model-runtime';
 import type { AgentExecutionEvent, AgentExecutionRequest } from '@dope/agent-core/lib/execution';
 import { parseExecutionGrant } from '@dope/agent-core/lib/authority';
+import { parseWorkToolSelection, WORK_TOOL_CATALOG_REVISION,
+    WORK_PI_VERSION } from '@dope/agent-core/lib/work-tool-selection';
 import type { LocalToolRequest, LocalToolResult } from '@dope/agent-core/lib/node/local-tool-contracts';
 import { parseLocalToolRequests, parseLocalToolResult } from '@dope/agent-core/lib/node/local-tool-contracts';
 import { brokerLocalRead, brokerLocalEdit, brokerLocalProcess } from '@dope/agent-core/lib/node/local-tool-broker';
@@ -60,16 +62,24 @@ export async function brokerPiFileOperation(request: AgentExecutionRequest, work
         id: /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/u.test(input?.id ?? '') ? input.id : 'invalid',
         name: input?.kind === 'ls' ? 'list' : input?.kind === 'read' ? 'read' : 'edit',
         status, output, truncated: false });
+    let approved = false;
+    try {
+        const grant = parseExecutionGrant(request.grant);
+        const selection = parseWorkToolSelection(grant.toolSelection);
+        approved = selection.catalogRevision === WORK_TOOL_CATALOG_REVISION &&
+            selection.piVersion === WORK_PI_VERSION && selection.grantId === grant.id &&
+            selection.executionMode === (request.executionMode ?? 'isolated') &&
+            selection.tools.some(tool => tool.id === input.kind);
+    } catch { /* A changed or historical approval cannot authorize a new Pi operation. */ }
     if (signal.aborted) return denied('cancelled');
     const path = input?.kind === 'ls' ? input.path ?? '.' : input?.path;
     if (!path || !['read', 'ls', 'write', 'edit'].includes(input.kind) ||
-        !request.grant.toolSelection?.tools.some(tool => tool.id === input.kind) ||
-        request.grant.toolSelection.catalogRevision !== 3 ||
-        request.grant.toolSelection.projectUri !== pathToFileURL(request.projectRoot).href ||
-        request.grant.toolSelection.taskId !== request.taskId ||
-        request.grant.toolSelection.grantRevision !== request.grant.revision ||
-        request.grant.toolSelection.connectionId !== request.connectionId ||
-        request.grant.toolSelection.modelId !== request.modelId ||
+        !approved ||
+        request.grant.toolSelection?.projectUri !== pathToFileURL(request.projectRoot).href ||
+        request.grant.toolSelection?.taskId !== request.taskId ||
+        request.grant.toolSelection?.grantRevision !== request.grant.revision ||
+        request.grant.toolSelection?.connectionId !== request.connectionId ||
+        request.grant.toolSelection?.modelId !== request.modelId ||
         request.authorizedPaths && !request.authorizedPaths.some(allowed =>
             path === allowed || path.startsWith(`${allowed}/`)) ||
         request.reservedPaths?.some(reserved => path === reserved || path.startsWith(`${reserved}/`) ||

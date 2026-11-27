@@ -26,8 +26,9 @@ const grant = () => createDefaultExecutionGrant({ id: 'grant-1', revision: 0, ta
 const piGrant = (root: string, id: string, taskId: string, revision = 0) =>
     createDefaultExecutionGrant({ id, revision, taskId, acceptedAt: new Date().toISOString(),
         toolSelection: makeWorkToolSelection({ projectUri: pathToFileURL(root).href, taskId,
-            grantRevision: revision, connectionId: 'local-1', modelId: 'local-model' },
-        ['read_file', 'list_files', 'edit_file', 'run_command', 'read_command_output']) });
+            grantRevision: revision, connectionId: 'local-1', modelId: 'local-model',
+            grantId: id, executionMode: 'isolated' },
+        ['read', 'ls', 'write', 'edit', 'run_command', 'read_command_output']) });
 
 class FakeAdapter {
     id = 'fake-codex'; starts: any[] = []; cancels = 0; disposals = 0;

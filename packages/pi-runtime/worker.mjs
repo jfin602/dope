@@ -264,22 +264,24 @@ function isolatedExtension() {
         { systemPrompt: `${event.systemPrompt}\n\n${workRecoveryAnchor}` } : undefined]]]),
     tools: new Map(), messageRenderers: new Map(), commands: new Map(), flags: new Map(), shortcuts: new Map() };
 }
+// Bounded Pi-compatible adapters. Pi Bash is deliberately not registered: its
+// unrestricted command schema cannot satisfy the Work effect ceiling.
 const WORK_TOOLS = {
-  read_file: { path: Type.String(), maxBytes: Type.Optional(Type.Integer()), offset: Type.Optional(Type.Integer()),
-    expectedSourceHash: Type.Optional(Type.String()) },
-  list_files: { path: Type.String(), maxEntries: Type.Integer() },
-  edit_file: { operation: Type.Union([Type.Literal('create'), Type.Literal('modify')]),
-    path: Type.String(), content: Type.String() },
   run_command: { kind: Type.Union([Type.Literal('test'), Type.Literal('build')]), commandId: Type.String() },
   read_command_output: { handle: Type.String(), offset: Type.Integer(), maxBytes: Type.Integer() }
 };
-const WORK_CATALOG_REVISION = 3;
+const WORK_CATALOG_REVISION = 4;
 const PI_WORK_SCHEMA_HASHES = Object.freeze({
   read: '134f19bcabe3e29d63c5cebb38f1d2556759fd08adad6bc90a4b4d3cd1fb8441',
   write: 'e98a2484f667cf7c22d76ca103bf2022bf9113dc63fe38b899e71c328cb1e833',
   edit: '55866598f02c5e00ddfcbcae3df78081e3712de09a622bac7a6bc02ef2acc1bc',
   ls: 'ad4ee18683e9c3d6bfa7969709a0683bc9f896099ed6a74db0b6c49444718a0c'
 });
+const WORK_ADAPTER_SCHEMA_HASHES = Object.freeze({
+  run_command: '1899c5839e68fff80875e8fac665418167014806c11b9d01b175985ae3f917f7',
+  read_command_output: 'e348a67f7d8edb7f5559b125ff141746efac1299b9dd6d3cd83ce2cb4afce07c'
+});
+const WORK_REGISTRATION_HASHES = Object.freeze({ ...PI_WORK_SCHEMA_HASHES, ...WORK_ADAPTER_SCHEMA_HASHES });
 const PI_WORK_DEFINITIONS = Object.freeze(Object.fromEntries([
   createReadToolDefinition('/dope-broker-only'), createWriteToolDefinition('/dope-broker-only'),
   createEditToolDefinition('/dope-broker-only'), createLsToolDefinition('/dope-broker-only')
@@ -600,13 +602,19 @@ function workTools() {
       'Run an approved test or build command by its granted commandId in the authorized candidate workspace. kind must be test or build.'),
     parameters: Type.Object(properties, { additionalProperties: false }),
     async execute(_toolCallId, params, signal) {
-      if (!workMode || signal?.aborted) throw new Error('Dope Work tool unavailable');
+      const isMCP = mcpChatTools.some(tool => tool.name === name);
+      if (!workMode || signal?.aborted || !isMCP && !selectedWorkToolNames.includes(name))
+        throw new Error('Dope Work tool unavailable');
+      if (!isMCP && hash(JSON.stringify(Type.Object(properties, { additionalProperties: false }))) !==
+          WORK_ADAPTER_SCHEMA_HASHES[name]) throw new Error('Dope Work adapter schema changed');
       const id = ++nextToolId;
       const answer = new Promise((resolve, reject) => pendingTools.set(id,
         { resolve, reject, requestId: workRequestId, name }));
       const onAbort = () => { pendingTools.get(id)?.reject(new Error('Dope Work tool cancelled')); pendingTools.delete(id); };
       signal?.addEventListener('abort', onAbort, { once: true });
-      process.stdout.write(`${JSON.stringify({ id: workRequestId, tool: { id, name, arguments: params } })}\n`);
+      process.stdout.write(`${JSON.stringify({ id: workRequestId, tool: { id, name, arguments: params,
+        ...(!isMCP ? { contract: { revision: WORK_CATALOG_REVISION, schemaHash: WORK_ADAPTER_SCHEMA_HASHES[name],
+          piVersion: version } } : {}) } })}\n`);
       try {
         const result = await answer;
         // A brokered refusal is tool feedback. The broker has already prevented
@@ -767,8 +775,7 @@ export async function dispatch(message) {
         throw new Error('Invalid Pi Work process availability');
       if (message.workToolNames !== undefined && (message.mode !== 'work' ||
           !Array.isArray(message.workToolNames) || new Set(message.workToolNames).size !== message.workToolNames.length ||
-          message.workToolNames.some(name => !Object.hasOwn(WORK_TOOLS, name) &&
-            !Object.hasOwn(PI_WORK_SCHEMA_HASHES, name) ||
+          message.workToolNames.some(name => !Object.hasOwn(WORK_REGISTRATION_HASHES, name) ||
             message.workProcessAvailable === false && ['run_command', 'read_command_output'].includes(name)) ||
           message.workToolNames.includes('read_command_output') && !message.workToolNames.includes('run_command')))
         throw new Error('Invalid Pi Work tool selection');
@@ -795,8 +802,11 @@ export async function dispatch(message) {
         workMode = message.mode === 'work';
         workProcessAvailable = message.workProcessAvailable !== false;
         selectedWorkToolNames = message.workToolNames ?? [];
-        for (const name of selectedWorkToolNames) if (Object.hasOwn(PI_WORK_SCHEMA_HASHES, name))
-          attestPiWorkDefinition(name);
+        for (const name of selectedWorkToolNames) {
+          if (Object.hasOwn(PI_WORK_SCHEMA_HASHES, name)) attestPiWorkDefinition(name);
+          else if (hash(JSON.stringify(Type.Object(WORK_TOOLS[name], { additionalProperties: false }))) !==
+              WORK_ADAPTER_SCHEMA_HASHES[name]) throw new Error('Dope Work adapter schema changed');
+        }
         chatToolsMode = message.mode === 'chat-tools';
         roadmapToolsMode = chatToolsMode && message.roadmapTools === true;
         roadmapGenerationMode = chatToolsMode && message.roadmapGeneration === true && !roadmapToolsMode;

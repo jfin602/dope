@@ -20,6 +20,8 @@ test('optional pointers are task relevant, path only, and absent for no-referenc
     const notice = new WorkDocumentRouting(task, instructions).notice();
     assert.match(notice, /offered, not read or adopted/);
     assert.match(notice, /source unknown until read/);
+    assert.match(notice, /use read with a relative path and optional one-based line offset/i);
+    assert.doesNotMatch(notice, /read_file|expectedSourceHash/);
     assert.doesNotMatch(notice, /billing|private|secrets|outside/);
 });
 

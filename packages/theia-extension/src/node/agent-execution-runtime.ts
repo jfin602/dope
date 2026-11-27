@@ -477,7 +477,7 @@ export class AgentExecutionRuntime {
             observation.kind.startsWith('command-') ? 'process' : observation.kind === 'authority-denied' ?
                 'authority' : 'message';
         const observedSummary = 'summary' in observation ? observation.summary : '';
-        const piSummary = (/^Pi (?:session (?:started|ended|settled|aborted)|model turn (?:running|ended)|(?:read_file|list_files|edit_file|run_command|dope_(?:read|list|edit|process)) (?:started|ended|failed)|Work tool stopped at (?:request-check|request-parse|workspace-check|model-check|candidate-check|broker-execute))$/u
+        const piSummary = (/^Pi (?:session (?:started|ended|settled|aborted)|model turn (?:running|ended)|(?:read|write|edit|ls|run_command|read_command_output|read_file|list_files|edit_file|dope_(?:read|list|edit|process)) (?:started|ended|failed)|Work tool stopped at (?:request-check|request-parse|workspace-check|model-check|candidate-check|broker-execute))$/u
             .test(observedSummary) ||
             /^Context compacted \((?:threshold|overflow|manual) trigger; estimated context \d+ → (?:\d+|unavailable) tokens; \d+ summary bytes; \d+ ms(?:; \d+ provider reported summarization tokens)?\)$/u
                 .test(observedSummary) ||
@@ -934,7 +934,10 @@ export class AgentExecutionRuntime {
                 throw new Error('Direct Work requires Dope-owned validation');
             if (followUp && selected.adapter.id !== 'pi-local-work')
                 throw new Error('A new Work segment requires an eligible local Pi model');
-            if (selected.adapter.id === 'pi-local-work' && !grant.toolSelection)
+            if (selected.adapter.id === 'pi-local-work' && (!grant.toolSelection ||
+                grant.toolSelection.catalogRevision !== 4 ||
+                grant.toolSelection.grantId !== grant.id ||
+                grant.toolSelection.executionMode !== executionMode))
                 throw new Error('Local Pi Work requires a reviewed tool selection');
             if (grant.toolSelection && (selected.provenance.runtimeKind !== 'local' ||
                 grant.toolSelection.projectUri !== folderUri || grant.toolSelection.taskId !== task.id ||

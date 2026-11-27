@@ -38,7 +38,9 @@ test('groups, individual overrides and command dependency resolve with denial pr
 test('trusted Work catalog includes the reviewed MCP observation with project and consent reasons', () => {
     const unavailable = workToolCatalogFor({ locality: 'local', commandsAvailable: false,
         externalOffered: false, externalConsent: false });
-    assert.equal(unavailable.length, 7);
+    assert.equal(unavailable.length, 11);
+    for (const id of ['find', 'grep', 'bash', 'powershell'])
+        assert.ok(unavailable.find(tool => tool.id === id)?.unavailableReason);
     assert.equal(unavailable.find(tool => tool.id === 'mcp_godot_server_info')?.available, false);
     assert.match(unavailable.find(tool => tool.id === 'mcp_godot_server_info')?.unavailableReason ?? '',
         /inactive for this project/);
@@ -90,20 +92,25 @@ test('a saved legacy file choice requires review before a new Work approval', ()
 
 test('saved approval freezes identities and rejects stale catalog, unknown tools and grant drift', () => {
     const frozen = makeWorkToolSelection({ projectUri: project, taskId: 'task-a', grantRevision: 1,
-        ...target }, ['read_file']);
+        ...target, grantId: 'grant-a', executionMode: 'isolated' }, ['read']);
     const grant = createDefaultExecutionGrant({ id: 'grant-a', revision: 1, taskId: 'task-a',
         acceptedAt: new Date().toISOString(), toolSelection: frozen });
-    assert.deepEqual(grant.toolSelection?.tools.map(tool => tool.id), ['read_file']);
+    assert.deepEqual(grant.toolSelection?.tools.map(tool => tool.id), ['read']);
     assert.throws(() => parseWorkToolSelection({ ...frozen, catalogRevision: 999 }));
     assert.throws(() => parseWorkToolSelection({ ...frozen, tools: [{ id: 'future_tool', schemaRevision: 1 }] }));
-    assert.throws(() => parseWorkToolSelection({ ...frozen, tools: [{ id: 'read_file', schemaRevision: 2 }] }));
+    assert.throws(() => parseWorkToolSelection({ ...frozen, tools: [{ id: 'read', schemaRevision: 2 }] }));
     assert.throws(() => parseExecutionGrant({ ...grant, revision: 2 }));
     assert.throws(() => parseWorkToolSelection({ ...frozen, tools: [
         { id: 'read_command_output', schemaRevision: 1 }] }));
-    assert.deepEqual(parseWorkToolSelection({ ...frozen, catalogRevision: 1 }).tools,
-        frozen.tools, 'historical built-in selections remain readable');
-    assert.throws(() => parseWorkToolSelection({ ...frozen, catalogRevision: 1,
+    assert.throws(() => parseWorkToolSelection({ ...frozen, catalogRevision: 1 }));
+    const old = { catalogRevision: 1, projectUri: project, taskId: 'task-a', grantRevision: 1,
+        ...target, tools: [{ id: 'read_file', schemaRevision: 1 }] };
+    assert.deepEqual(parseWorkToolSelection(old).tools, old.tools,
+        'historical built-in selections remain readable');
+    assert.throws(() => parseWorkToolSelection({ ...old,
         tools: [{ id: 'mcp_godot_server_info', schemaRevision: 1 }] }));
+    assert.throws(() => parseExecutionGrant({ ...grant, id: 'other-grant' }),
+        'a selection is bound to the exact internal grant');
 });
 
 test('a removed group cannot silently expand a draft or produce an approved run', () => {
@@ -113,4 +120,35 @@ test('a removed group cannot silently expand a draft or produce an approved run'
     prefs.deleteGroup('custom');
     assert.match(prefs.resolve(project, 'retry:1', true).unavailable[0], /unknown or changed tool/);
     assert.throws(() => prefs.snapshot(project, 'retry:1', 'new-task', 2, target, true));
+});
+
+test('legacy saved defaults require explicit task review and cannot expand across projects', () => {
+    const storage = memory();
+    storage.setItem('dope.work-tool-selection.v1', JSON.stringify({ revision: 1,
+        groups: [], defaults: { [project]: { groups: ['Inspect', 'Edit'], allow: [], deny: [] } },
+        drafts: {} }));
+    const prefs = new WorkToolPreferences(storage);
+    assert.match(prefs.resolve(project, 'new-task', true).unavailable.join(' '), /fresh tool review/);
+    assert.throws(() => prefs.snapshot(project, 'new-task', 'task-a', 1, target, true,
+        false, 'grant-a', 'isolated'), /Review unavailable/);
+    assert.deepEqual(prefs.resolve('file:///tmp/other', 'new-task', true).tools,
+        ['read', 'ls', 'write', 'edit']);
+    prefs.saveChoice(project, 'new-task', { groups: ['Inspect'], allow: [], deny: ['ls'] });
+    const approved = prefs.snapshot(project, 'new-task', 'task-a', 1, target, true,
+        false, 'grant-a', 'isolated');
+    assert.deepEqual(approved.tools.map(tool => tool.id), ['read']);
+    assert.match(prefs.resolve(project, 'another-task', true).unavailable.join(' '), /fresh tool review/);
+});
+
+test('current selection fails on duplicate, removed, changed schema, mode and Pi identity', () => {
+    const selection = makeWorkToolSelection({ projectUri: project, taskId: 'task-a',
+        grantRevision: 1, ...target, grantId: 'grant-a', executionMode: 'direct' }, ['read', 'write']);
+    assert.throws(() => parseWorkToolSelection({ ...selection, tools: [
+        ...selection.tools, selection.tools[0]] }), /Unknown or changed/);
+    assert.throws(() => parseWorkToolSelection({ ...selection, tools: [
+        { id: 'removed', schemaRevision: 1, schemaHash: '0'.repeat(64) }] }), /Unknown or changed/);
+    assert.throws(() => parseWorkToolSelection({ ...selection, tools: [
+        { ...selection.tools[0], schemaHash: '0'.repeat(64) }] }), /Unknown or changed/);
+    assert.throws(() => parseWorkToolSelection({ ...selection, piVersion: '1.5.0' }), /Invalid/);
+    assert.throws(() => parseWorkToolSelection({ ...selection, executionMode: 'other' }), /Invalid/);
 });
