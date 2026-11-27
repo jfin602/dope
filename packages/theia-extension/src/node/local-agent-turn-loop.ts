@@ -9,6 +9,8 @@ import { brokerLocalRead, brokerLocalEdit, brokerLocalProcess } from '@dope/agen
 import type { LocalProcessCommand } from '@dope/agent-core/lib/node/local-tool-broker';
 import { ExecutionWorkspace } from '@dope/agent-core/lib/node/execution-workspace';
 import { DirectWorkJournal } from '@dope/agent-core/lib/node/direct-work-journal';
+import { brokerIsolatedFileOperation } from '@dope/agent-core/lib/node/isolated-file-operations';
+import { pathToFileURL } from 'node:url';
 import { LocalContextBudget } from './local-context-budget';
 import { LocalToolTurnTransport } from './local-tool-turn';
 import type { LocalTurnMessage, LocalToolTurnRequest } from './local-tool-turn';
@@ -38,6 +40,62 @@ export interface LocalTurnLoopInput {
 export interface LocalTurnLoopBroker {
     execute(call: LocalToolRequest, signal: AbortSignal): Promise<LocalToolResult>;
     assertActive(): Promise<void>;
+    executeFileOperation?(operation: DirectFileOperation, signal: AbortSignal): Promise<LocalToolResult>;
+}
+
+/** Internal P3 whole-operation seam. P4 binds selected Pi file contracts to this broker. */
+export type DirectFileOperation = { id: string; kind: 'write'; path: string; content: string } |
+    { id: string; kind: 'edit'; path: string; edits: readonly { oldText: string; newText: string }[] };
+
+export async function brokerDirectFileOperation(request: AgentExecutionRequest, workspace: ExecutionWorkspace,
+    direct: { journal: DirectWorkJournal; unsaved(path: string): Promise<boolean>;
+        refresh(path: string): Promise<boolean> }, input: DirectFileOperation,
+    signal: AbortSignal): Promise<LocalToolResult> {
+    const outcome = (status: LocalToolResult['status'], output = '') => parseLocalToolResult({
+        id: typeof input?.id === 'string' && /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/u.test(input.id) ?
+            input.id : 'invalid', name: 'edit', status, output, truncated: false });
+    if (signal.aborted || request.executionMode !== 'direct' || !request.runId ||
+        typeof input?.id !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/u.test(input.id) ||
+        !(workspace instanceof ExecutionWorkspace) || request.executionRoot !== workspace.root ||
+        request.projectRoot !== workspace.projectRoot ||
+        !direct.journal.matches(request.taskId, request.runId, request.projectRoot, request.grant) ||
+        !request.grant.toolSelection?.tools.some(tool => tool.id === 'edit_file') ||
+        request.grant.toolSelection?.projectUri !== pathToFileURL(request.projectRoot).href ||
+        request.grant.toolSelection?.taskId !== request.taskId ||
+        request.grant.toolSelection?.grantRevision !== request.grant.revision ||
+        request.grant.toolSelection?.connectionId !== request.connectionId ||
+        request.grant.toolSelection?.modelId !== request.modelId ||
+        !input || !['write', 'edit'].includes(input.kind) || typeof input.path !== 'string' ||
+        request.authorizedPaths && !request.authorizedPaths.some(path =>
+            input.path === path || input.path.startsWith(`${path}/`)) ||
+        request.reservedPaths?.some(path => input.path === path || input.path.startsWith(`${path}/`) ||
+            path.startsWith(`${input.path}/`)))
+        return outcome('denied');
+    const prior = direct.journal.changes.length;
+    try {
+        await workspace.assertActiveBasis(request.projectRoot, request.executionRoot);
+        const change = input.kind === 'write' ?
+            await direct.journal.write(input.path, input.content, direct.unsaved, signal) :
+            await direct.journal.exactEdit(input.path, input.edits, direct.unsaved, signal);
+        // This second effect is confined to the disposable candidate. The canonical write
+        // has already been journaled; P2's whole operation also handles missing parents.
+        const mirror = await brokerIsolatedFileOperation({ ...request, executionMode: 'isolated' }, workspace,
+            { kind: 'write', path: change.path,
+                content: Buffer.from(change.afterBytes, 'base64').toString('utf8'),
+                expectedSourceHash: change.before });
+        if (mirror.status !== 'completed') return outcome('failed', 'DIRECT_EDIT_APPLIED_MODEL_VIEW_UNAVAILABLE');
+        try { await direct.refresh(change.path); } catch { /* Saved editor refresh is best effort. */ }
+        return outcome('completed');
+    } catch (error) {
+        const effects = direct.journal.changes.slice(prior);
+        if (effects.some(change => change.result === 'completed'))
+            return outcome('failed', 'DIRECT_EDIT_APPLIED_MODEL_VIEW_UNAVAILABLE');
+        if (effects.some(change => change.result === 'prepared' || change.result === 'uncertain'))
+            return outcome('failed', 'DIRECT_EDIT_RECONCILE_REQUIRED');
+        if (error instanceof Error && /conflict|source changed|owner edit|unsaved editor|dirty/iu.test(error.message))
+            return outcome('failed', 'DIRECT_EDIT_SOURCE_CONFLICT');
+        return outcome(signal.aborted ? 'cancelled' : 'denied');
+    }
 }
 
 /** Binds P3–P5's guarded broker to the same candidate workspace for the whole run. */
@@ -48,6 +106,8 @@ export function localWorkspaceBroker(request: AgentExecutionRequest, workspace: 
     if (!(workspace instanceof ExecutionWorkspace)) throw fail('Local execution workspace unavailable');
     return {
         assertActive: () => workspace.assertActiveBasis(request.projectRoot, request.executionRoot),
+        executeFileOperation: direct ? (operation, signal) =>
+            brokerDirectFileOperation(request, workspace, direct, operation, signal) : undefined,
         execute: (call, signal) => call.name === 'read' || call.name === 'list' ?
             brokerLocalRead(request, call, signal, workspace) : call.name === 'edit' ?
                 direct ? directEdit(call, signal) : brokerLocalEdit(request, workspace, call, signal) :
@@ -57,7 +117,13 @@ export function localWorkspaceBroker(request: AgentExecutionRequest, workspace: 
         if (call.name !== 'edit') throw fail('Invalid Direct Work edit');
         if (signal.aborted || request.executionMode !== 'direct' || !request.runId ||
             direct!.journal.changes.some(change => change.runId !== request.runId) ||
+            !direct!.journal.matches(request.taskId, request.runId, request.projectRoot, request.grant) ||
             !request.grant.toolSelection?.tools.some(tool => tool.id === 'edit_file') ||
+            request.grant.toolSelection?.projectUri !== pathToFileURL(request.projectRoot).href ||
+            request.grant.toolSelection?.taskId !== request.taskId ||
+            request.grant.toolSelection?.grantRevision !== request.grant.revision ||
+            request.grant.toolSelection?.connectionId !== request.connectionId ||
+            request.grant.toolSelection?.modelId !== request.modelId ||
             request.authorizedPaths && !request.authorizedPaths.some(path =>
                 call.arguments.path === path || call.arguments.path.startsWith(`${path}/`)) ||
             request.reservedPaths?.some(path => call.arguments.path === path ||
@@ -66,10 +132,12 @@ export function localWorkspaceBroker(request: AgentExecutionRequest, workspace: 
         const priorChanges = direct!.journal.changes.length;
         try {
             await direct!.journal.edit(call.arguments.operation, call.arguments.path,
-                call.arguments.content, direct!.unsaved);
+                call.arguments.content, direct!.unsaved, signal);
             // Once canonical source changed, Stop must not cancel this safe candidate
             // mirror and turn a recorded effect into a reported denial.
-            const mirrored = await brokerLocalEdit(request, workspace, call);
+            const mirrored = await brokerIsolatedFileOperation({ ...request, executionMode: 'isolated' }, workspace,
+                { kind: 'write', path: call.arguments.path, content: call.arguments.content,
+                    expectedSourceHash: direct!.journal.changes.at(-1)!.before });
             if (mirrored.status !== 'completed') throw new Error('Direct Work model view could not mirror canonical write');
             try {
                 if (!await direct!.refresh(call.arguments.path)) request.onEvent({ kind: 'warning',
@@ -77,8 +145,9 @@ export function localWorkspaceBroker(request: AgentExecutionRequest, workspace: 
             } catch {
                 request.onEvent({ kind: 'warning', summary: 'Open editor could not refresh after Direct Work edit' });
             }
-            return mirrored;
-        } catch {
+            return parseLocalToolResult({ id: call.id, name: call.name, status: 'completed',
+                output: '', truncated: false });
+        } catch (error) {
             const changes = direct!.journal.changes.slice(priorChanges);
             if (changes.some(change => change.result === 'completed')) {
                 request.onEvent({ kind: 'warning',
@@ -92,6 +161,9 @@ export function localWorkspaceBroker(request: AgentExecutionRequest, workspace: 
                 return parseLocalToolResult({ id: call.id, name: call.name, status: 'failed',
                     output: 'DIRECT_EDIT_RECONCILE_REQUIRED', truncated: false });
             }
+            if (error instanceof Error && /conflict|source changed|owner edit|unsaved editor|dirty/iu.test(error.message))
+                return parseLocalToolResult({ id: call.id, name: call.name, status: 'failed',
+                    output: 'DIRECT_EDIT_SOURCE_CONFLICT', truncated: false });
             return parseLocalToolResult({ id: call.id, name: call.name, status: 'denied', output: '', truncated: false });
         }
     }

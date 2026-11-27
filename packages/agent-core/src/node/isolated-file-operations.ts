@@ -9,7 +9,7 @@ import { launchLocalSandboxedTool } from './local-tool-sandbox';
 
 export type IsolatedFileOperation =
     | { kind: 'read'; path: string; offset?: number; maxBytes?: number; expectedSourceHash?: string }
-    | { kind: 'write'; path: string; content: string }
+    | { kind: 'write'; path: string; content: string; expectedSourceHash?: string | null }
     | { kind: 'edit'; path: string; edits: readonly { oldText: string; newText: string }[] };
 
 export interface IsolatedFileResult {
@@ -34,6 +34,10 @@ root=None; dirs=[]; made=[]; made_names=[]; temp=None; committed=False; status='
 try:
  payload=json.loads(base64.b64decode(encoded,validate=True))
  if kind=='write':
+  if isinstance(payload,dict) and set(payload)==set(('content','expectedSourceHash')):
+   expected=payload['expectedSourceHash']; payload=payload['content']
+   if expected is not None and (not isinstance(expected,str) or len(expected)!=64): raise ValueError()
+  else: expected='unbound'
   if not isinstance(payload,str): raise ValueError()
   data=payload.encode('utf-8')
   if len(data)>int(limit): raise ValueError()
@@ -62,12 +66,14 @@ try:
    if not stat.S_ISREG(info.st_mode) or info.st_size>33554432: raise ValueError()
    before=(info.st_dev,info.st_ino,info.st_size,info.st_mtime_ns,info.st_ctime_ns)
    mode=stat.S_IMODE(info.st_mode)
-   if kind=='edit':
+   if kind=='edit' or kind=='write' and expected!='unbound':
     original=os.read(fd,info.st_size+1)
     if len(original)!=info.st_size: raise ValueError()
   finally: os.close(fd)
  except FileNotFoundError:
   if kind=='edit': raise ValueError()
+ if kind=='write' and expected!='unbound':
+  if expected is None and before is not None or expected is not None and (before is None or hashlib.sha256(original).hexdigest()!=expected): raise ValueError()
  if kind=='edit':
   raw=original.decode('utf-8')
   bom='\\ufeff' if raw.startswith('\\ufeff') else ''
@@ -184,9 +190,13 @@ export async function brokerIsolatedFileOperation(request: AgentExecutionRequest
                 payload.some(edit => !edit || !validText(edit.oldText) || !validText(edit.newText) ||
                     !edit.oldText) ||
                 Buffer.byteLength(JSON.stringify(payload), 'utf8') > LOCAL_TOOL_LIMITS.jsonBytes)) return denied();
+        if (input.kind === 'write' && input.expectedSourceHash !== undefined &&
+            input.expectedSourceHash !== null && !/^[a-f0-9]{64}$/u.test(input.expectedSourceHash)) return denied();
+        const wirePayload = input.kind === 'write' && input.expectedSourceHash !== undefined ?
+            { content: input.content, expectedSourceHash: input.expectedSourceHash } : payload;
         const sandbox = await launchLocalSandboxedTool({ workspaceRoot: workspace.root },
             ['/usr/bin/python3', '-c', ISOLATED_FILE_SCRIPT, input.kind, path,
-                Buffer.from(JSON.stringify(payload), 'utf8').toString('base64'), String(LOCAL_TOOL_LIMITS.editBytes)],
+                Buffer.from(JSON.stringify(wirePayload), 'utf8').toString('base64'), String(LOCAL_TOOL_LIMITS.editBytes)],
             5000, signal);
         if (sandbox.cancelled || signal?.aborted || sandbox.timedOut || sandbox.exitCode !== 0)
             return denied('recovery-required');

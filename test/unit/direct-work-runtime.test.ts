@@ -135,7 +135,7 @@ for (const ownerDirty of [false, true]) test(`runtime Direct mode performs broke
         interrupted.changes[0].result = 'prepared';
         await writeFile(journalPath, JSON.stringify(interrupted));
         await runtime.reconcile(root);
-        assert.equal(JSON.parse(await readFile(journalPath, 'utf8')).changes[0].result, 'not-applied');
+        assert.equal(JSON.parse(await readFile(journalPath, 'utf8')).changes[0].result, 'uncertain');
     } finally { backend.dispose(); await runtime.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
@@ -185,7 +185,8 @@ test(`restart reconciles a ${preclassified ? 'previously classified' : 'prepared
         await new Promise<void>(resolve => child.once('exit', () => resolve()));
         await runtime.reconcile(root);
         assert.equal((await store.readRun(root, runId))?.status, 'interrupted');
-        assert.equal(JSON.parse(await readFile(join(root, journalPath), 'utf8')).changes[0].result, 'not-applied');
+        assert.equal(JSON.parse(await readFile(join(root, journalPath), 'utf8')).changes[0].result,
+            preclassified ? 'not-applied' : 'uncertain');
         assert.equal(await readFile(join(root, 'src/old.txt'), 'utf8'), 'before\n');
         const transcript = await store.readTranscript(root, runId, 0, 100);
         const edit = transcript.entries.findLast(entry => entry.kind === 'work');

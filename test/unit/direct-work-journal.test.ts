@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, mkdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
+import { link, lstat, mkdtemp, mkdir, readFile, rename, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -14,6 +14,7 @@ import { DirectWorkJournal } from '../../packages/agent-core/lib/node/direct-wor
 import { captureDirtyBasis } from '../../packages/agent-core/lib/node/dirty-basis.js';
 import { ExecutionWorkspace } from '../../packages/agent-core/lib/node/execution-workspace.js';
 import { launchLocalSandboxedTool } from '../../packages/agent-core/lib/node/local-tool-sandbox.js';
+import { localWorkspaceBroker } from '../../packages/theia-extension/lib/node/local-agent-turn-loop.js';
 
 const exec = promisify(execFile);
 const digest = (value: string) => createHash('sha256').update(value).digest('hex');
@@ -37,6 +38,20 @@ const grant = (root: string) => createDefaultExecutionGrant({ id: 'grant-direct'
         connectionId: 'local', modelId: 'model' }, ['edit_file']) });
 const create = (root: string, head: string, runId = 'run-direct') =>
     DirectWorkJournal.create(root, head, 'task-direct', runId, grant(root));
+async function waitFor(path: string): Promise<void> {
+    for (let attempt = 0; attempt < 100; attempt++) {
+        try { await lstat(path); return; } catch { await new Promise(resolve => setTimeout(resolve, 10)); }
+    }
+    throw new Error('Timed out waiting for Direct writer test seam');
+}
+async function waitForPreparedTemp(journal: DirectWorkJournal): Promise<string> {
+    for (let attempt = 0; attempt < 100; attempt++) {
+        const saved = JSON.parse(await readFile(journal.path, 'utf8'));
+        if (saved.changes[0]?.tempPath) return saved.changes[0].tempPath;
+        await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    throw new Error('Timed out waiting for Direct journal plan');
+}
 
 test('Direct writer enforces sealed tool selection and delegated scope', async () => fixture(async (root, head) => {
     const unselected = await DirectWorkJournal.create(root, head, 'task-direct', 'unselected',
@@ -161,7 +176,7 @@ test('Direct Work denies owner edits, dirty/untracked targets, unsaved editors, 
 test('Direct Work records a completed first file when a second file fails, and detects later conflicts', async () => fixture(async (root, head) => {
     const journal = await create(root, head);
     await journal.edit('modify', 'src/old.txt', 'agent first\n', async () => false);
-    await assert.rejects(journal.edit('create', 'src/missing/second.txt', 'bad', async () => false));
+    await assert.rejects(journal.edit('create', 'src/.dope/second.txt', 'bad', async () => false));
     assert.equal(journal.changes.length, 1);
     assert.equal(journal.changes[0].result, 'completed');
     await writeFile(join(root, 'src', 'old.txt'), 'owner after agent\n');
@@ -253,6 +268,179 @@ test('restart reconciliation distinguishes completed, absent and uncertain prepa
     await writeFile(journal.path, JSON.stringify(next));
     assert.equal((await DirectWorkJournal.reconcile(root, journal.path))[0].result, 'uncertain');
 }));
+
+test('Direct whole write creates nested parents, rewrites its file, exact edits, and removes only empty attributed parents',
+    async () => fixture(async (root, head) => {
+        const journal = await create(root, head);
+        const first = await journal.write('new/deep/file.txt', '\ufeffalpha\r\n', async () => false);
+        assert.deepEqual(first.parents?.filter(parent => parent.before === 'absent').map(parent => parent.path),
+            ['new', 'new/deep']);
+        assert.equal(first.result, 'completed');
+        await journal.write('new/deep/file.txt', '\ufeffalpha\r\nbeta\r\n', async () => false);
+        const edited = await journal.exactEdit('new/deep/file.txt', [{ oldText: 'beta', newText: 'gamma' }],
+            async () => false);
+        assert.equal(edited.before, digest('\ufeffalpha\r\nbeta\r\n'));
+        assert.equal(await readFile(join(root, 'new/deep/file.txt'), 'utf8'), '\ufeffalpha\r\ngamma\r\n');
+        assert.deepEqual((await DirectWorkJournal.review(root, journal.path)).conflicts, []);
+        assert.equal((await DirectWorkJournal.revert(root, journal.path, ['new/deep/file.txt'], async () => false))[0].result,
+            'reverted');
+        await assert.rejects(readFile(join(root, 'new/deep/file.txt')), /ENOENT/);
+        await assert.rejects(readFile(join(root, 'new/deep')), /ENOENT|EISDIR/);
+        await assert.rejects(readFile(join(root, 'new')), /ENOENT|EISDIR/);
+    }));
+
+test('Direct nested revert retains an owner-used directory and mixed safe/unsafe files',
+    async () => fixture(async (root, head) => {
+        const journal = await create(root, head);
+        await journal.write('new/deep/safe.txt', 'safe', async () => false);
+        await journal.write('new/deep/unsafe.txt', 'unsafe', async () => false);
+        await writeFile(join(root, 'new/deep/owner.txt'), 'owner');
+        await writeFile(join(root, 'new/deep/unsafe.txt'), 'owner changed');
+        const result = await DirectWorkJournal.revert(root, journal.path,
+            ['new/deep/safe.txt', 'new/deep/unsafe.txt'], async () => false);
+        assert.deepEqual(result.map(item => item.result), ['reverted', 'conflict']);
+        assert.equal(await readFile(join(root, 'new/deep/owner.txt'), 'utf8'), 'owner');
+        assert.equal(await readFile(join(root, 'new/deep/unsafe.txt'), 'utf8'), 'owner changed');
+        await assert.rejects(readFile(join(root, 'new/deep/safe.txt')), /ENOENT/);
+    }));
+
+test('Direct write treats saved tabs as writable and unsaved tabs and stale exact edits as conflicts',
+    async () => fixture(async (root, head) => {
+        const journal = await create(root, head);
+        await journal.write('src/old.txt', 'saved tab\n', async () => false);
+        await assert.rejects(journal.write('src/old.txt', 'bad', async () => true), /Unsaved editor/);
+        await assert.rejects(journal.exactEdit('src/old.txt', [{ oldText: 'missing', newText: 'bad' }],
+            async () => false), /match conflict/);
+        assert.equal(await readFile(join(root, 'src/old.txt'), 'utf8'), 'saved tab\n');
+    }));
+
+test('Direct parent and file fault receipts block replay and preserve outside symlink targets',
+    async () => fixture(async (root, head) => {
+        const journal = await create(root, head);
+        await assert.rejects(journal.edit('create', 'new/partial.txt', 'partial', async () => false,
+            undefined, undefined, 'after-file'), /uncertain/);
+        assert.equal(await readFile(join(root, 'new/partial.txt'), 'utf8'), 'partial');
+        assert.equal((await DirectWorkJournal.reconcile(root, journal.path))[0].result, 'uncertain');
+        await assert.rejects(journal.write('new/partial.txt', 'replay', async () => false), /reconciliation/);
+        await assert.rejects(DirectWorkJournal.revert(root, journal.path, ['new/partial.txt'], async () => false),
+            /uncertain/);
+        const other = await create(root, head, 'other');
+        await symlink('src', join(root, 'link'));
+        await assert.rejects(other.write('link/bad.txt', 'bad', async () => false), /Unsafe direct parent/);
+        await assert.rejects(readFile(join(root, 'src/bad.txt')), /ENOENT/);
+    }));
+
+test('Direct pre-commit owner replacement is a conflict and does not overwrite owner bytes',
+    async () => fixture(async (root, head) => {
+        const journal = await create(root, head);
+        const operation = journal.edit('modify', 'src/old.txt', 'agent', async () => false,
+            undefined, undefined, 'pause-after-temp');
+        const temp = await waitForPreparedTemp(journal);
+        await waitFor(join(root, 'src', temp));
+        await writeFile(join(root, 'src/owner-replacement.txt'), 'owner');
+        await rename(join(root, 'src/owner-replacement.txt'), join(root, 'src/old.txt'));
+        await assert.rejects(operation, /source conflict/);
+        assert.equal(await readFile(join(root, 'src/old.txt'), 'utf8'), 'owner');
+        assert.equal((await DirectWorkJournal.reconcile(root, journal.path))[0].result, 'not-applied');
+    }));
+
+test('Direct cancellation after parent creation retains a prepared receipt and prevents replay',
+    async () => fixture(async (root, head) => {
+        const journal = await create(root, head);
+        const controller = new AbortController();
+        const operation = journal.edit('create', 'cancel/child.txt', 'agent', async () => false,
+            controller.signal, undefined, 'pause-after-parent');
+        await waitFor(join(root, 'cancel'));
+        controller.abort();
+        await assert.rejects(operation);
+        assert.equal((await DirectWorkJournal.reconcile(root, journal.path))[0].result, 'uncertain');
+        await assert.rejects(journal.write('cancel/child.txt', 'retry', async () => false),
+            /reconciliation|journal changed/);
+        await assert.rejects(readFile(join(root, 'cancel/child.txt')), /ENOENT/);
+    }));
+
+test('Direct mid-file fault rolls back its temporary file and new parents with a verified no-effect receipt',
+    async () => fixture(async (root, head) => {
+        const journal = await create(root, head);
+        await assert.rejects(journal.edit('create', 'partial/deep/file.txt', 'agent', async () => false,
+            undefined, undefined, 'after-temp'), /write denied/);
+        assert.equal(journal.changes[0].result, 'not-applied');
+        await assert.rejects(lstat(join(root, 'partial')), /ENOENT/);
+        assert.equal((await DirectWorkJournal.reconcile(root, journal.path))[0].result, 'not-applied');
+        await journal.write('partial/deep/file.txt', 'retry', async () => false);
+        assert.equal(await readFile(join(root, 'partial/deep/file.txt'), 'utf8'), 'retry');
+    }));
+
+test('Direct exact edit rejects a same-byte identity swap during editor preflight',
+    async () => fixture(async (root, head) => {
+        const journal = await create(root, head);
+        await assert.rejects(journal.exactEdit('src/old.txt',
+            [{ oldText: 'original', newText: 'agent' }], async () => {
+                await writeFile(join(root, 'src/replacement.txt'), 'original\n');
+                await rename(join(root, 'src/replacement.txt'), join(root, 'src/old.txt'));
+                return false;
+            }), /identity conflict/);
+        assert.equal(await readFile(join(root, 'src/old.txt'), 'utf8'), 'original\n');
+        assert.equal(journal.changes.length, 0);
+    }));
+
+test('Direct rapid same-file calls serialize and never journal a second overlapping effect',
+    async () => fixture(async (root, head) => {
+        const journal = await create(root, head);
+        const first = journal.edit('modify', 'src/old.txt', 'first', async () => false);
+        await assert.rejects(journal.edit('modify', 'src/old.txt', 'second', async () => false),
+            /Concurrent Direct Work operation/);
+        await first;
+        await journal.write('src/old.txt', 'second', async () => false);
+        assert.equal(await readFile(join(root, 'src/old.txt'), 'utf8'), 'second');
+        assert.deepEqual(journal.changes.map(change => change.result), ['completed', 'completed']);
+    }));
+
+test('Direct denies ignored and hardlinked targets before any canonical mutation',
+    async () => fixture(async (root, head) => {
+        await writeFile(join(root, '.gitignore'), 'ignored/\n');
+        const journal = await DirectWorkJournal.create(root, head, 'task-direct', 'ignored', grant(root),
+            undefined, undefined, await captureDirtyBasis(root));
+        await assert.rejects(journal.write('ignored/nested/file.txt', 'bad', async () => false), /Ignored project path/);
+        await link(join(root, 'src/old.txt'), join(root, 'src/hardlink.txt'));
+        await assert.rejects(journal.write('src/old.txt', 'bad', async () => false), /Unsafe direct target/);
+        await assert.rejects(readFile(join(root, 'ignored/nested/file.txt')), /ENOENT/);
+        assert.equal(journal.changes.length, 0);
+    }));
+
+test('Direct broker mirrors nested whole writes and exact edits into the isolated model view',
+    async () => fixture(async (root, head) => {
+        const workspace = await ExecutionWorkspace.create(root);
+        try {
+            const offered = grant(root);
+            const journal = await DirectWorkJournal.create(root, head, 'task-direct', 'run-direct', offered);
+            workspace.bindDirectBasis(journal);
+            const request: any = { projectRoot: root, executionRoot: workspace.root, grant: offered,
+                taskId: 'task-direct', runId: 'run-direct', executionMode: 'direct',
+                connectionId: 'local', registrationId: 'local', modelId: 'model', prompt: '', onEvent() {} };
+            const direct = { journal, unsaved: async () => false, refresh: async () => true };
+            const broker = localWorkspaceBroker(request, workspace, [], direct);
+            const execute = (input: any) => broker.executeFileOperation!(input, new AbortController().signal);
+            const first = await execute({ id: 'one', kind: 'write', path: 'new/deep/file.txt', content: 'alpha' });
+            assert.equal(first.status, 'completed', JSON.stringify(first));
+            assert.equal((await execute({ id: 'two', kind: 'write', path: 'new/deep/file.txt', content: 'alpha beta' })).status,
+                'completed');
+            assert.equal((await execute({ id: 'three', kind: 'edit', path: 'new/deep/file.txt', edits: [
+                { oldText: 'beta', newText: 'gamma' }] })).status, 'completed');
+            assert.equal(await readFile(join(root, 'new/deep/file.txt'), 'utf8'), 'alpha gamma');
+            assert.equal(await readFile(join(workspace.root, 'new/deep/file.txt'), 'utf8'), 'alpha gamma');
+            assert.equal(journal.changes.length, 3);
+            const legacy = await broker.execute({ id: 'legacy', name: 'edit',
+                arguments: { operation: 'create', path: 'legacy/deep.txt', content: 'legacy' } },
+                new AbortController().signal);
+            assert.equal(legacy.status, 'completed');
+            assert.equal(await readFile(join(workspace.root, 'legacy/deep.txt'), 'utf8'), 'legacy');
+            const forged = localWorkspaceBroker({ ...request, grant: { ...offered,
+                toolSelection: { ...offered.toolSelection, tools: [] } } }, workspace, [], direct);
+            assert.equal((await forged.executeFileOperation!({ id: 'forged', kind: 'write',
+                path: 'new/deep/file.txt', content: 'bad' }, new AbortController().signal)).status, 'denied');
+        } finally { await workspace.dispose(); }
+    }));
 
 test('historical AgentTask and AgentRun records remain isolated when mode is absent', () => {
     const task = parseAgentTask({ version: 1, id: 'old-task', createdAt: '2026-11-25T00:00:00Z',
