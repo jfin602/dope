@@ -39,6 +39,7 @@ interface Active {
     wakeWait?: () => void;
     commands: Map<string, { command: string; started: number }>;
     transcriptCommands: Set<string>; lastMessage?: string; transcriptAt?: string; transcriptIncomplete?: boolean;
+    workCalls: Map<string, { name: string; phase: string }>;
     workSessionId?: string;
     directJournal?: DirectWorkJournal;
 }
@@ -524,6 +525,10 @@ export class AgentExecutionRuntime {
             } else if (observation.kind === 'reasoning' && observation.text) {
                 await this.transcript(active, { kind: 'reasoning', at: '', text: observation.text });
             } else if (observation.kind === 'work-observation') {
+                const prior = active.workCalls.get(observation.toolId);
+                if (prior && ['completed', 'failed', 'recoverable', 'denied', 'cancelled', 'interrupted'].includes(prior.phase))
+                    return;
+                active.workCalls.set(observation.toolId, { name: observation.toolName, phase: observation.phase });
                 await this.transcript(active, { kind: 'work', at: '', toolId: observation.toolId,
                     toolName: observation.toolName, phase: observation.phase,
                     ...(observation.detail === undefined ? {} : { detail: observation.detail }),
@@ -686,7 +691,7 @@ export class AgentExecutionRuntime {
                 for (const entry of batch.entries) {
                     if (entry.kind === 'message') lines.push({ at: entry.at,
                         text: `UNVERIFIED model output from ${segment.runId}: ${entry.text.slice(0, 350)}` });
-                    if (entry.kind === 'work' && ['completed', 'denied', 'failed'].includes(entry.phase))
+                    if (entry.kind === 'work' && ['completed', 'denied', 'failed', 'recoverable', 'cancelled', 'interrupted'].includes(entry.phase))
                         lines.push({ at: entry.at,
                             text: `SAVED broker tool receipt from ${segment.runId}: ${entry.toolName} ${entry.phase}` });
                 }
@@ -698,7 +703,8 @@ export class AgentExecutionRuntime {
             const run = await this.store.readRun(root, segment.runId);
             if (run?.endedAt) lines.push({ at: run.endedAt,
                 text: `SAVED run result ${run.id}: ${run.status}; candidate ${run.reviewDecision?.kind ??
-                    (run.candidateReview ? 'pending review' : 'none recorded')}; ` +
+                    (run.executionMode === 'direct' ? 'direct applied source' :
+                        run.candidateReview ? 'pending review' : 'none recorded')}; ` +
                     `applied files ${run.appliedFiles?.length ?? 0}; validation ` +
                     run.validationResults.filter(result => result.owner === 'dope').slice(0, 3)
                         .map(result => `${result.label}: ${result.status}`).join(', ') });
@@ -802,7 +808,8 @@ export class AgentExecutionRuntime {
         const active: Active = { root, ready: new Promise(resolve => { releaseReady = resolve; }), releaseReady: () => releaseReady(),
             finished: new Promise(resolve => { releaseFinished = resolve; }), releaseFinished: () => releaseFinished(),
             tail: Promise.resolve(), sequence: 0, observations: 0,
-            stopping: false, denied: false, interruptionFailed: false, commands: new Map(), transcriptCommands: new Set() };
+            stopping: false, denied: false, interruptionFailed: false, commands: new Map(), transcriptCommands: new Set(),
+            workCalls: new Map() };
         this.active.set(root, active);
         try {
             const existing = await this.store.listRuns(root);
@@ -915,7 +922,7 @@ export class AgentExecutionRuntime {
                 (task.reviewPolicy?.kind !== 'required' ||
                     task.completion.requireValidationPass !== !!task.completion.validation.length ||
                     task.completion.validation.some(target => !target.command?.trim())))
-                throw new Error('Direct Work validation or candidate review is invalid');
+                throw new Error('Direct Work validation or applied-source review is invalid');
             const grant = parseExecutionGrant(offeredGrant);
             if (grant.taskId !== task.id || grant.projectRoot !== task.projectRoot ||
                 grant.acceptedAt < task.createdAt || resume && sourceRun &&
@@ -1282,7 +1289,8 @@ export class AgentExecutionRuntime {
             try {
                 const handle = await retryAdapter.start({ ...request,
                     prompt: `CAPACITY RETRY CONTINUATION\nA previous attempt of this same AgentTask stopped because the model was at capacity. ` +
-                        `Inspect the current ExecutionWorkspace and continue from its partial candidate state.\n\n${request.prompt}` });
+                        `Inspect the current ExecutionWorkspace and continue from its ${active.directJournal ?
+                            'verified Direct source state' : 'partial candidate state'}.\n\n${request.prompt}` });
                 active.handle = handle;
                 if (active.stopping) void this.interrupt(active);
                 result = handle.result;
@@ -1420,15 +1428,25 @@ export class AgentExecutionRuntime {
                 }
                 if (error instanceof PromotionFailure) await this.serial(active, () => this.update(active, run => ({ ...run,
                     authorityDecision: { allowed: true, blocked: [] }, appliedFiles: error.appliedFiles })));
-                await this.event(active, 'authority', reviewHoldError ? `Candidate review hold failed at ${reviewStage}` :
-                    'Candidate classification or promotion failed');
+                await this.event(active, 'authority', active.directJournal ?
+                    'Direct applied-source review or validation failed' : reviewHoldError ?
+                    `Candidate review hold failed at ${reviewStage}` : 'Candidate classification or promotion failed');
             }
         }
-        const status = active.denied || validationMissing || promotionBlocked || active.directJournal && failed ? 'failed' : promotionSucceeded ? 'completed' : active.stopping ?
+        const status = active.denied || validationMissing || promotionBlocked ? 'failed' : promotionSucceeded ? 'completed' : active.stopping ?
             active.interruptionFailed ? 'interrupted' : 'cancelled' : failed ? 'failed' : 'completed';
         const code = active.denied || reviewScopeDenied ? 'authority-denied' : candidateChanged || validationMissing ? 'validation-failed' : promotionError ? 'other' : promotionBlocked ? 'authority-denied' : promotionSucceeded ? undefined : active.stopping ?
             active.interruptionFailed ? 'interrupted' : 'cancelled' : capacityExhausted ? 'capacity-exhausted' : failed ? 'provider-error' : undefined;
-        await this.finish(active, status, code, candidateChanged ? 'Frozen candidate changed after validation' :
+        const directChanges = active.directJournal ? directApplied(active.directJournal.changes) : [];
+        const directSummary = active.directJournal ?
+            `Direct Work: ${directChanges.filter(change => change.result === 'applied').length} applied file(s), ` +
+            `${directChanges.filter(change => change.result === 'uncertain').length} uncertain file(s); ` +
+            (candidateChanged ? 'source changed before validation' :
+                validationMissing ? 'required validation did not pass' : promotionError ?
+                    'applied-source review failed' : active.denied ? 'authority denied' :
+                    active.stopping ? 'run stopped; review applied changes' : failed ?
+                        'run failed; review applied changes' : 'run completed; review applied changes') : undefined;
+        await this.finish(active, status, code, directSummary ?? (candidateChanged ? 'Frozen candidate changed after validation' :
             reviewHoldError ? reviewScopeDenied ? 'Candidate exceeds delegation or execution authority' :
                 'Candidate review hold failed; inspect run evidence' :
             promotionError ? 'Candidate promotion failed; inspect applied files' :
@@ -1438,7 +1456,7 @@ export class AgentExecutionRuntime {
                 capacityExhausted ? 'Model capacity retries exhausted' :
                 compactionFailed ? 'Context could not be compacted; inspect candidate and tool evidence before another run' :
                 capacityFailure ? 'Model capacity stopped execution; inspect candidate and tool evidence before another run' :
-                'Agent execution failed');
+                'Agent execution failed'));
     }
 
     private async finish(active: Active, status: 'completed' | 'cancelled' | 'failed' | 'interrupted',
@@ -1454,7 +1472,9 @@ export class AgentExecutionRuntime {
                         { version: AGENT_SCHEMA_VERSION, kind: target.kind, label: target.label,
                             command: target.command ?? target.label, owner: 'dope',
                             status: active.stopping ? 'cancelled' : 'not-started',
-                            reason: active.stopping ? 'Validation cancelled' : 'Provider or candidate did not reach validation' }] }));
+                            reason: active.stopping ? 'Validation cancelled' : active.directJournal ?
+                                'Provider or applied source did not reach validation' :
+                                'Provider or candidate did not reach validation' }] }));
                 }
                 let finalStatus = status, finalCode = code, finalSummary = summary;
                 let evidence: Awaited<ReturnType<typeof captureGitFinal>> | undefined;
@@ -1473,10 +1493,19 @@ export class AgentExecutionRuntime {
                     await this.transcript(active, { kind: 'command-finish', at: '', commandId, status: 'interrupted' });
                 }
                 active.transcriptCommands.clear();
+                for (const [toolId, call] of active.workCalls) {
+                    if (['completed', 'failed', 'recoverable', 'denied', 'cancelled', 'interrupted'].includes(call.phase)) continue;
+                    await this.transcript(active, { kind: 'work', at: '', toolId, toolName: call.name,
+                        phase: 'interrupted', code: active.directJournal ? 'EFFECT_REVIEW_REQUIRED' : 'TOOL_INTERRUPTED',
+                        detail: 'The tool did not return before the run ended; review recorded effects.' });
+                    active.workCalls.set(toolId, { ...call, phase: 'interrupted' });
+                }
                 await this.transcript(active, { kind: 'marker', at: '', code: 'run-ended' });
                 const applied = active.directJournal ? directApplied(active.directJournal.changes) : undefined;
                 await this.update(active, run => ({ ...run, status: finalStatus, endedAt: new Date().toISOString(),
-                    ...(applied ? { directApplied: applied } : {}),
+                    ...(applied ? { directApplied: applied,
+                        appliedFiles: [...new Set(active.directJournal!.changes.filter(change =>
+                            change.result === 'completed').map(change => change.path))].sort() } : {}),
                     ...(evidence ? { finalGit: evidence.final, changedFiles: evidence.changedFiles,
                         changeSummary: evidence.changeSummary } : {}),
                     ...(finalCode ? { outcome: { code: finalCode, summary: finalSummary } } : {}) }));
@@ -1600,10 +1629,9 @@ export class AgentExecutionRuntime {
                             await this.store.appendTranscript(root, run.id, { kind: 'work', at,
                                 toolId, toolName: call.name, phase: 'interrupted',
                                 detail: 'Backend stopped before the tool returned; inspect the journal before another run.' });
-                        if (![...workCalls.values()].some(call => call.name === 'edit_file' &&
-                            ['requested', 'validating', 'executing'].includes(call.phase)))
+                        if (![...workCalls.values()].some(call => ['write', 'edit', 'edit_file'].includes(call.name)))
                             for (const change of preparedCalls) await this.store.appendTranscript(root, run.id,
-                                { kind: 'work', at, toolId: change.id, toolName: 'edit_file', phase: 'interrupted',
+                                { kind: 'work', at, toolId: change.id, toolName: 'unknown', phase: 'interrupted',
                                     detail: JSON.stringify({ path: change.path, operation: change.operation }),
                                     stage: 'journal-recovered', brokerInvoked: true,
                                     ...(change.result === 'not-applied' ? { effectExecuted: false } : {}) });

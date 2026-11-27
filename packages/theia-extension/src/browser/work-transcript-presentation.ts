@@ -52,7 +52,7 @@ function metadata(detail?: string): Record<string, unknown> {
 }
 export function workToolStatus(phase: WorkToolEntry['phase']): string {
     return ({ requested: 'Running', validating: 'Validating', executing: 'Running', completed: 'Completed',
-        failed: 'Failed', recoverable: 'Invalid arguments', denied: 'Authority denied', cancelled: 'Cancelled',
+        failed: 'Failed', recoverable: 'Needs action', denied: 'Authority denied', cancelled: 'Cancelled',
         interrupted: 'Interrupted' })[phase];
 }
 

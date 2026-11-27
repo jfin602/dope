@@ -2946,6 +2946,8 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     if (session.status === 'recovery-required') runDetail(
                         verifiedNoEffectWorkSegment(run, session) ?
                             'Saved Git and effect receipts verify no effect from this authority denial. A new segment can be reviewed here.' :
+                            run.executionMode === 'direct' ?
+                            'Recovery required. In-flight delivery and Direct effects need source and journal review. Applied changes remain in the project; a new segment needs fresh authority.' :
                             'Recovery required. In-flight delivery and candidate effects cannot be assumed safe. ' +
                             'A reviewed recovery discards uncertain effects and keeps only messages still Queued.',
                         verifiedNoEffectWorkSegment(run, session) ? 'dope-work-detail' : 'dope-work-warning');
@@ -3158,7 +3160,9 @@ export class ChatPanelWidget extends BaseWidget implements StatefulWidget {
                     const title = document.createElement('summary'); title.textContent = `Map impact · ${impact.paths.length} changed paths`;
                     section.append(title);
                     const notice = document.createElement('p'); notice.className = 'dope-work-detail';
-                    notice.textContent = 'Recorded after candidate promotion. Re-analysis needed; canonical Architecture is unchanged.';
+                    notice.textContent = run.executionMode === 'direct' ?
+                        'Recorded after applied Direct changes. Re-analysis needed; canonical Architecture is unchanged.' :
+                        'Recorded after candidate promotion. Re-analysis needed; canonical Architecture is unchanged.';
                     section.append(notice);
                     for (const path of impact.paths) {
                         const item = document.createElement('p'); item.className = 'dope-work-detail';

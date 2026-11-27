@@ -15,13 +15,17 @@ import { AgentRuntimeBackend } from '../../packages/theia-extension/lib/node/age
 import { localWorkspaceBroker } from '../../packages/theia-extension/lib/node/local-agent-turn-loop.js';
 
 const exec = promisify(execFile);
-for (const ownerDirty of [false, true]) test(`runtime Direct mode performs brokered canonical edits with ${ownerDirty ? 'reviewed owner source' : 'clean source'}`,
+for (const [ownerDirty, providerFails, validationFails, stopAfterWrite] of [[false, false, false, false],
+    [true, false, false, false], [false, true, false, false], [false, false, true, false],
+    [true, false, false, true]] as const)
+test(`runtime Direct mode performs brokered canonical edits with ${ownerDirty ? 'reviewed owner source' : 'clean source'}${providerFails ? ' and a failed provider' : validationFails ? ' and failed validation' : stopAfterWrite ? ' and Stop after the write' : ''}`,
     { timeout: 30_000 }, async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-direct-runtime-'));
     const store = new AgentStore();
     let runtime!: AgentExecutionRuntime;
     let resultStatus = '';
     let refreshedPath = '';
+    let cancelWait: (() => void) | undefined;
     const adapter = { id: 'pi-local-work', dispose() {}, async start(request: any) {
         const workspace = runtime.localWorkspace(request);
         const direct = runtime.localDirect(request);
@@ -30,6 +34,7 @@ for (const ownerDirty of [false, true]) test(`runtime Direct mode performs broke
             await broker.assertActive();
             const edit = { id: 'edit-1', kind: 'write' as const,
                 path: 'src/old.txt', content: 'direct\n' };
+            request.onEvent({ kind: 'work-observation', toolId: 'pi-1', toolName: 'write', phase: 'requested' });
             const forged = { ...request, grant: { ...request.grant,
                 toolSelection: { ...request.grant.toolSelection, tools: [] } } };
             const bypass = localWorkspaceBroker(forged, workspace, [], direct);
@@ -48,12 +53,18 @@ for (const ownerDirty of [false, true]) test(`runtime Direct mode performs broke
                 };
             }
             resultStatus = (await broker.executePiFileOperation!(edit, stop.signal)).status;
+            request.onEvent({ kind: 'work-observation', toolId: 'pi-1', toolName: 'write', phase: 'completed',
+                brokerInvoked: true, effectExecuted: true });
             if (resultStatus !== 'completed') throw new Error('Direct broker denied selected edit');
+            if (providerFails) throw new Error('Provider failed after applied edit');
+            if (stopAfterWrite) await new Promise<void>((_resolve, reject) => {
+                cancelWait = () => reject(new Error('Stopped after applied Direct write'));
+            });
             if (!ownerDirty) {
                 assert.equal(stop.signal.aborted, true);
                 assert.equal(await readFile(join(workspace.root, 'src', 'old.txt'), 'utf8'), 'direct\n');
             }
-        })(), async cancel() {} };
+        })(), async cancel() { cancelWait?.(); } };
     } };
     const inventory: any = { registry: { version: 1, revision: 1, connections: [{ version: 1,
         id: 'local', alias: 'Local', lifecycle: 'enabled',
@@ -68,7 +79,8 @@ for (const ownerDirty of [false, true]) test(`runtime Direct mode performs broke
             const evidence = { version: 1, kind: input.target.kind, label: input.target.label,
                 command: input.target.command, owner: 'dope', candidateFingerprint: input.candidateFingerprint,
                 workspaceId: 'direct-validation-fixture', durationMs: 1, exitCode: 0,
-                stdout: '', stderr: '', stdoutTruncated: false, stderrTruncated: false, status: 'passed' };
+                stdout: '', stderr: '', stdoutTruncated: false, stderrTruncated: false,
+                status: validationFails ? 'failed' : 'passed' };
             await persist(evidence); return evidence;
         } } as any, undefined, async () => ({ available: true }));
     const backend = new AgentRuntimeBackend(store, { notifyAgentStateChanged() {},
@@ -102,6 +114,12 @@ for (const ownerDirty of [false, true]) test(`runtime Direct mode performs broke
             ['write', 'edit']) });
         const accepted = ownerDirty ? (await backend.previewWorktree(handle)).fingerprint : undefined;
         const started = await backend.start(handle, uri, taskId, grant, false, accepted);
+        if (stopAfterWrite) {
+            for (let attempt = 0; !cancelWait && attempt < 300; attempt++)
+                await new Promise(resolve => setTimeout(resolve, 10));
+            assert.ok(cancelWait);
+            await backend.stop(handle, started.id);
+        }
         const run = await runtime.waitForRun(root, started.id).catch(async error => {
             throw new Error(`${error instanceof Error ? error.message : String(error)}: ` +
                 JSON.stringify({ saved: await store.readRun(root, started.id), resultStatus }));
@@ -109,8 +127,23 @@ for (const ownerDirty of [false, true]) test(`runtime Direct mode performs broke
         assert.equal(resultStatus, 'completed');
         assert.equal(refreshedPath, pathToFileURL(join(root, 'src', 'old.txt')).toString());
         assert.equal(run.executionMode, 'direct');
-        assert.equal(run.status, 'completed', JSON.stringify({ outcome: run.outcome,
+        assert.equal(run.status, stopAfterWrite ? 'cancelled' : providerFails || validationFails ? 'failed' : 'completed', JSON.stringify({ outcome: run.outcome,
             delta: run.candidateDelta, applied: run.appliedFiles }));
+        assert.deepEqual(run.appliedFiles, ['src/old.txt']);
+        const transcript = await store.readTranscript(root, run.id, 0, 100);
+        assert.equal(transcript.entries.filter(entry => entry.kind === 'work' && entry.toolId === 'pi-1' &&
+            ['completed', 'failed', 'denied', 'recoverable', 'cancelled', 'interrupted'].includes(entry.phase)).length, 1);
+        assert.equal(transcript.entries.at(-1)?.kind, 'marker');
+        assert.doesNotMatch(run.outcome?.summary ?? '', /Candidate promotion|Accept Candidate/u);
+        if (providerFails || validationFails || stopAfterWrite) {
+            assert.equal(await readFile(join(root, 'src', 'old.txt'), 'utf8'), 'direct\n');
+            if (ownerDirty) assert.equal(await readFile(join(root, 'src', 'owner.txt'), 'utf8'), 'untracked owner\n');
+            const failedReview = await backend.reviewDirectWork(handle, run.id);
+            assert.deepEqual(failedReview.files.map(file => file.path), ['src/old.txt']);
+            assert.equal(failedReview.validationCurrent, false);
+            if (validationFails) assert.match(run.outcome?.summary ?? '', /required validation did not pass/u);
+            return;
+        }
         assert.equal(run.validationBasis, 'direct-applied-snapshot');
         assert.deepEqual(run.directApplied?.map(item => [item.path, item.result]), [['src/old.txt', 'applied']]);
         const review = await backend.reviewDirectWork(handle, run.id);
@@ -140,8 +173,8 @@ for (const ownerDirty of [false, true]) test(`runtime Direct mode performs broke
     } finally { backend.dispose(); await runtime.dispose(); await rm(root, { recursive: true, force: true }); }
 });
 
-for (const recordedRequest of [false, true]) for (const preclassified of [false, true])
-test(`restart reconciles a ${preclassified ? 'previously classified' : 'prepared'} Direct call through a killed writer lock with ${recordedRequest ? 'saved' : 'missing'} tool request`, async () => {
+for (const recordedRequest of [false, true, 'native'] as const) for (const preclassified of [false, true])
+test(`restart reconciles a ${preclassified ? 'previously classified' : 'prepared'} Direct call through a killed writer lock with ${recordedRequest === 'native' ? 'native' : recordedRequest ? 'saved legacy' : 'missing'} tool request`, async () => {
     const root = await mkdtemp(join(tmpdir(), 'dope-direct-restart-'));
     const store = new AgentStore();
     const runtime = new AgentExecutionRuntime(store, { async resolve() { throw new Error('unused'); } } as any,
@@ -169,7 +202,7 @@ test(`restart reconciles a ${preclassified ? 'previously classified' : 'prepared
         await store.updateRun(root, pending, { ...pending, status: 'running', startedAt });
         await store.appendTranscript(root, runId, { kind: 'marker', at: startedAt, code: 'run-started' });
         if (recordedRequest) await store.appendTranscript(root, runId, { kind: 'work', at: startedAt,
-            toolId: 'edit-1', toolName: 'edit_file', phase: 'requested' });
+            toolId: 'edit-1', toolName: recordedRequest === 'native' ? 'write' : 'edit_file', phase: 'requested' });
         const digest = (value: string) => createHash('sha256').update(value).digest('hex');
         await mkdir(join(root, '.dope/agent/direct-journals'));
         await writeFile(join(root, journalPath), JSON.stringify({ version: 1, id: journalId, root, head, taskId, runId,
@@ -193,6 +226,8 @@ test(`restart reconciles a ${preclassified ? 'previously classified' : 'prepared
         const edit = transcript.entries.findLast(entry => entry.kind === 'work');
         assert.equal(edit?.phase, 'interrupted');
         assert.equal(edit?.toolId, recordedRequest ? 'edit-1' : 'change-1');
+        assert.equal(transcript.entries.filter(entry => entry.kind === 'work' &&
+            ['completed', 'failed', 'denied', 'recoverable', 'cancelled', 'interrupted'].includes(entry.phase)).length, 1);
         if (!recordedRequest && edit?.kind === 'work') assert.equal(edit.brokerInvoked, true);
         assert.equal(transcript.entries.at(-1)?.kind, 'marker');
         await assert.rejects(readFile(lock), { code: 'ENOENT' });

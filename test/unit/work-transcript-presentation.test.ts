@@ -154,7 +154,7 @@ test('Work tool calls show validated arguments and withhold unavailable values',
     assert.equal(workToolCall([events[0], { ...base, phase: 'denied', code: 'INVALID_OR_UNAUTHORIZED_ARGUMENTS' }]),
         'read_file({ path: [withheld], offset: [withheld] })');
     assert.doesNotMatch(workToolCall(events), /grantRevision|contentSha256/u);
-    assert.equal(workToolStatus('recoverable'), 'Invalid arguments');
+    assert.equal(workToolStatus('recoverable'), 'Needs action');
     assert.equal(workToolStatus('denied'), 'Authority denied');
     assert.equal(workToolStatus('cancelled'), 'Cancelled');
     assert.equal(workToolStatus('interrupted'), 'Interrupted');

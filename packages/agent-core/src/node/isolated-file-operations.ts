@@ -26,11 +26,11 @@ kind,path,encoded,limit=sys.argv[1:]
 def private(part):
  p=part.lower()
  return p in ('.git','.dope','.codex','.agents','.ssh','.aws','.config','.gnupg','.kube','.docker','.azure','.npmrc','.yarnrc','.yarnrc.yml','.netrc','.pypirc','.gitconfig','.git-credentials','id_rsa','id_ed25519','credentials.json','secrets','secret','credentials','private','node_modules') or p=='.env' or p.startswith('.env.') or p.endswith(('.pem','.key','.p12','.pfx')) or p.startswith(('secret.','token.','credential.'))
-def emit(status): print(json.dumps({'status':status}))
+def emit(status,code=''): print(json.dumps({'status':status,'code':code}))
 parts=path.split('/')
 if not parts or any(not p or p in ('.','..') or private(p) for p in parts):
  emit('denied'); sys.exit(0)
-root=None; dirs=[]; made=[]; made_names=[]; temp=None; committed=False; status='denied'; data=b''
+root=None; dirs=[]; made=[]; made_names=[]; temp=None; committed=False; status='denied'; code=''; data=b''
 try:
  payload=json.loads(base64.b64decode(encoded,validate=True))
  if kind=='write':
@@ -71,9 +71,10 @@ try:
     if len(original)!=info.st_size: raise ValueError()
   finally: os.close(fd)
  except FileNotFoundError:
-  if kind=='edit': raise ValueError()
+   if kind=='edit': raise FileNotFoundError()
  if kind=='write' and expected!='unbound':
-  if expected is None and before is not None or expected is not None and (before is None or hashlib.sha256(original).hexdigest()!=expected): raise ValueError()
+  if expected is None and before is not None: raise FileExistsError()
+  if expected is not None and (before is None or hashlib.sha256(original).hexdigest()!=expected): raise ValueError('stale_source')
  if kind=='edit':
   raw=original.decode('utf-8')
   bom='\\ufeff' if raw.startswith('\\ufeff') else ''
@@ -84,10 +85,10 @@ try:
   for edit in payload:
    old=edit['oldText'].replace('\\r\\n','\\n').replace('\\r','\\n')
    new=edit['newText'].replace('\\r\\n','\\n').replace('\\r','\\n')
-   if not old or base.count(old)!=1: raise ValueError()
+   if not old or base.count(old)!=1: raise ValueError('edit_match')
    matches.append((base.index(old),len(old),new))
   matches.sort()
-  if any(matches[i-1][0]+matches[i-1][1]>matches[i][0] for i in range(1,len(matches))): raise ValueError()
+  if any(matches[i-1][0]+matches[i-1][1]>matches[i][0] for i in range(1,len(matches))): raise ValueError('edit_match')
   updated=base
   for pos,length,new in reversed(matches): updated=updated[:pos]+new+updated[pos+length:]
   if updated==base: raise ValueError()
@@ -114,7 +115,12 @@ try:
   finally: os.close(fd)
   os.replace(temp,leaf,src_dir_fd=parent,dst_dir_fd=parent)
  committed=True; status='completed'
-except (OSError,ValueError,UnicodeError,TypeError,OverflowError): status='denied'
+except FileNotFoundError: status='failed'; code='MISSING_FILE'
+except FileExistsError: status='failed'; code='EXISTING_TARGET'
+except ValueError as error:
+ status='failed' if str(error) in ('edit_match','stale_source') else 'denied'
+ code={'edit_match':'EDIT_MATCH_CONFLICT','stale_source':'STALE_SOURCE'}.get(str(error),'')
+except (OSError,UnicodeError,TypeError,OverflowError): status='denied'
 finally:
  if temp is not None and dirs:
   try: os.unlink(temp,dir_fd=dirs[-1])
@@ -128,7 +134,7 @@ finally:
     os.rmdir(part,dir_fd=parent)
    except OSError: status='recovery-required'; break
  for fd in reversed(dirs): os.close(fd)
-print(json.dumps({'status':status,'createdDirectories':made_names if status=='completed' else [],'bytesWritten':len(data) if status=='completed' else 0}))
+print(json.dumps({'status':status,'code':code,'createdDirectories':made_names if status=='completed' else [],'bytesWritten':len(data) if status=='completed' else 0}))
 `;
 
 const denied = (status: IsolatedFileResult['status'] = 'denied'): IsolatedFileResult =>
@@ -210,13 +216,16 @@ export async function brokerIsolatedFileOperation(request: AgentExecutionRequest
             return denied('recovery-required');
         const wire: unknown = JSON.parse(sandbox.stdout);
         if (!wire || typeof wire !== 'object') return denied('recovery-required');
-        const response = wire as { status?: unknown; createdDirectories?: unknown; bytesWritten?: unknown };
+        const response = wire as { status?: unknown; code?: unknown; createdDirectories?: unknown; bytesWritten?: unknown };
         if (response.status === 'completed' && Array.isArray(response.createdDirectories) &&
             response.createdDirectories.every(dir => typeof dir === 'string' &&
                 path.startsWith(`${dir}/`)) && Number.isSafeInteger(response.bytesWritten) &&
             (response.bytesWritten as number) >= 0 && (response.bytesWritten as number) <= LOCAL_TOOL_LIMITS.editBytes)
             return { status: 'completed', output: '', createdDirectories: response.createdDirectories,
                 bytesWritten: response.bytesWritten as number };
+        if (response.status === 'failed' && ['MISSING_FILE', 'EXISTING_TARGET',
+            'EDIT_MATCH_CONFLICT', 'STALE_SOURCE'].includes(String(response.code)))
+            return { status: 'failed', output: String(response.code) };
         return response.status === 'denied' ? denied() : denied('recovery-required');
     } catch { return denied(signal?.aborted ? 'recovery-required' : 'denied'); }
 }

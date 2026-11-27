@@ -59,6 +59,7 @@ type Pending = { resolve(value: unknown): void; reject(error: Error): void; time
     onEvent?: (event: { type: 'delta'; text: string } | { type: 'reset' } |
         { type: 'activity'; kind: 'thinking' | 'provisional'; text: string } | PiWorkEvent) => void;
     onTool?: (call: { id: number; name: string; arguments: unknown;
+        piCallIdHash?: string; argumentError?: boolean;
         contract?: { revision: number; schemaHash: string; piVersion: string } }) => Promise<unknown> };
 
 export type PiWorkerFailureCode = 'session_init' | 'provider_http' | 'provider_connection' |
@@ -136,6 +137,7 @@ export class PiRuntimeHost {
     private readonly seenToolIds = new Set<number>();
     private readonly toolReplyRequestIds = new Set<number>();
     private readonly activeTools = new Map<number, { requestId: number; name: string; startedAt: number }>();
+    private readonly workToolDeliveries = new Set<Promise<void>>();
     private lastConfirmed?: PiToolFailureDetail['lastConfirmed'];
     private paused?: { id: number; segmentIndex: number; maxOutputTokens: number; text: string };
     private mcpToolNames = new Set<string>();
@@ -233,14 +235,20 @@ export class PiRuntimeHost {
             ...(credential ? { credential } : {}), thinkingLevel });
     }
 
-    runWork(prompt: string, onTool: NonNullable<Pending['onTool']>, onEvent?: (event: PiWorkEvent) => void,
+    async runWork(prompt: string, onTool: NonNullable<Pending['onTool']>, onEvent?: (event: PiWorkEvent) => void,
         recoveryContext?: string, messageId?: string):
         Promise<{ text: string; textTruncated?: boolean; modelId: string; usage?: PiTokenUsage; compaction?: PiContextRecord }> {
-        return this.request({ type: 'work', prompt, ...(recoveryContext ? { recoveryContext } : {}),
-            ...(messageId ? { messageId } : {}) }, event => {
-            if (event.type !== 'work') throw new Error('Invalid Pi Work stream event');
-            onEvent?.(event);
-        }, onTool);
+        try {
+            return await this.request({ type: 'work', prompt, ...(recoveryContext ? { recoveryContext } : {}),
+                ...(messageId ? { messageId } : {}) }, event => {
+                if (event.type !== 'work') throw new Error('Invalid Pi Work stream event');
+                onEvent?.(event);
+            }, onTool);
+        } finally {
+            // A stopped worker can finish its journal operation as the turn settles.
+            // Drain callbacks before the Work runtime seals its transcript.
+            await Promise.allSettled([...this.workToolDeliveries]);
+        }
     }
 
     closeSession(): Promise<{ closed: boolean }> {
@@ -402,6 +410,7 @@ export class PiRuntimeHost {
                     event?: { type: 'delta'; text: string } | { type: 'reset' } |
                         { type: 'activity'; kind: 'thinking' | 'provisional'; text: string } | PiWorkEvent;
                     tool?: { id: number; name: string; arguments: unknown;
+                        piCallIdHash?: string; argumentError?: boolean;
                         contract?: { revision: number; schemaHash: string; piVersion: string } } };
                 const pending = this.pending.get(record.id);
                 if (!pending) throw new PiWorkerFailure(this.toolReplyRequestIds.has(record.id) ?
@@ -431,7 +440,11 @@ export class PiRuntimeHost {
                 }
                 if (record.tool) {
                     if (!pending.onTool || !Number.isSafeInteger(record.tool.id) || record.tool.id < 1 ||
-                        typeof record.tool.name !== 'string') throw new PiWorkerFailure('tool_reply_invalid');
+                        typeof record.tool.name !== 'string' ||
+                        record.tool.piCallIdHash !== undefined &&
+                            !/^[a-f0-9]{64}$/u.test(record.tool.piCallIdHash) ||
+                        record.tool.argumentError !== undefined && typeof record.tool.argumentError !== 'boolean')
+                        throw new PiWorkerFailure('tool_reply_invalid');
                     if (!offeredToolNames.has(record.tool.name) && !this.mcpToolNames.has(record.tool.name))
                         throw new PiWorkerFailure('model_tool_call_invalid');
                     if (this.workSessionTools && !this.workSessionTools.has(record.tool.name) &&
@@ -450,7 +463,7 @@ export class PiRuntimeHost {
                         console.info('[dope-pi-continuation]', JSON.stringify({ at: new Date().toISOString(),
                             stage: 'broker-received', requestId: record.id, toolId: record.tool.id,
                             toolName: record.tool.name }));
-                    void pending.onTool(record.tool).then(result => {
+                    const delivery = pending.onTool(record.tool).then(result => {
                         if (!this.pending.has(record.id)) return;
                         if (!result || typeof result !== 'object' ||
                             !['completed', 'failed', 'denied'].includes((result as { status?: string }).status ?? '') ||
@@ -487,6 +500,8 @@ export class PiRuntimeHost {
                         });
                     }).catch(error => this.fail(error instanceof PiWorkerFailure ? error :
                         new PiWorkerFailure('tool_reply_delivery_failed')));
+                    this.workToolDeliveries.add(delivery);
+                    void delivery.finally(() => this.workToolDeliveries.delete(delivery));
                     continue;
                 }
                 if (record.event) {

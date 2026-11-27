@@ -10,6 +10,7 @@ import { createDefaultExecutionGrant } from '../../packages/agent-core/lib/autho
 import { makeWorkToolSelection } from '../../packages/agent-core/lib/work-tool-selection.js';
 import { ExecutionWorkspace } from '../../packages/agent-core/lib/node/execution-workspace.js';
 import { DirectWorkJournal } from '../../packages/agent-core/lib/node/direct-work-journal.js';
+import { brokerIsolatedFileOperation } from '../../packages/agent-core/lib/node/isolated-file-operations.js';
 import { brokerPiFileOperation } from '../../packages/theia-extension/lib/node/local-agent-turn-loop.js';
 
 const exec = promisify(execFile);
@@ -41,8 +42,20 @@ for (const mode of ['isolated', 'direct'] as const) test(`selected Pi file adapt
         const direct = journal ? { journal, unsaved: async () => false, refresh: async () => true } : undefined;
         const call = (operation: any, req = request, signal = new AbortController().signal) =>
             brokerPiFileOperation(req, workspace!, direct, operation, signal);
+        if (direct) {
+            const unsaved = await brokerPiFileOperation(request, workspace, { ...direct,
+                unsaved: async () => true }, { id: 'buffer', kind: 'write', path: 'src/base.txt',
+                content: 'replacement\n' }, new AbortController().signal);
+            assert.equal(unsaved.status, 'failed');
+            assert.match(unsaved.output, /^SOURCE_CONFLICT:/);
+            assert.equal(await readFile(join(root, 'src/base.txt'), 'utf8'), '\ufeffone\r\ntwo\r\n');
+        }
         assert.match((await call({ id: 'r1', kind: 'read', path: 'src/base.txt' })).output, /one\r\ntwo/);
         assert.equal((await call({ id: 'r2', kind: 'read', path: 'src/sensitive.txt' })).status, 'denied');
+        assert.match((await call({ id: 'missing', kind: 'read', path: 'src/missing.txt' })).output,
+            /^MISSING_FILE:/);
+        assert.match((await call({ id: 'missing-dir', kind: 'ls', path: 'absent' })).output,
+            /^MISSING_DIRECTORY:/);
         assert.match((await call({ id: 'l1', kind: 'ls', path: 'src' })).output, /base\.txt/);
         assert.equal((await call({ id: 'w1', kind: 'write', path: 'new/deep.txt', content: 'first\n' })).status,
             'completed');
@@ -55,7 +68,15 @@ for (const mode of ['isolated', 'direct'] as const) test(`selected Pi file adapt
             { oldText: 'one\ntwo', newText: 'red\nblue' }] })).status, 'completed');
         assert.equal(await readFile(join(workspace.root, 'src/base.txt'), 'utf8'), '\ufeffred\r\nblue\r\n');
         assert.equal((await call({ id: 'bad1', kind: 'edit', path: 'src/base.txt', edits: [
-            { oldText: 'absent', newText: 'x' }] })).status, mode === 'direct' ? 'failed' : 'denied');
+            { oldText: 'absent', newText: 'x' }] })).status, 'failed');
+        assert.match((await call({ id: 'bad1-feedback', kind: 'edit', path: 'src/base.txt', edits: [
+            { oldText: 'absent', newText: 'x' }] })).output, /^EDIT_MATCH_CONFLICT:/);
+        if (mode === 'isolated') {
+            assert.equal((await brokerIsolatedFileOperation(request, workspace, { kind: 'write',
+                path: 'src/base.txt', content: 'x', expectedSourceHash: null })).output, 'EXISTING_TARGET');
+            assert.equal((await brokerIsolatedFileOperation(request, workspace, { kind: 'write',
+                path: 'src/base.txt', content: 'x', expectedSourceHash: '0'.repeat(64) })).output, 'STALE_SOURCE');
+        }
         assert.equal((await call({ id: 'bad2', kind: 'write', path: '.git/config', content: 'x' })).status,
             'denied');
         assert.equal((await call({ id: 'bad3', kind: 'write', path: '../escape', content: 'x' })).status,

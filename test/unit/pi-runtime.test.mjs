@@ -248,6 +248,38 @@ test('host correlates acknowledged tool results and rejects a replay before a se
   } finally { host.dispose(); }
 });
 
+test('Work waits for a journal-completing broker call when the session result arrives first', async () => {
+  const host = new PiRuntimeHost('/unused');
+  let completeEffect;
+  const effect = new Promise(resolve => { completeEffect = resolve; });
+  let observed = 0;
+  host.child = { exitCode: null, killed: false, kill() { this.killed = true; },
+    stdin: { writableLength: 0, write(_line, callback) { callback?.(); return true; } } };
+  try {
+    let settled = false;
+    const turn = host.runWork('fixture', async call => {
+      assert.equal(call.id, 1);
+      assert.equal(call.piCallIdHash, 'a'.repeat(64));
+      await effect; // The Dope journal completes after the worker reports a stopped turn.
+      observed++;
+      return { status: 'completed', output: 'applied' };
+    }).then(result => { settled = true; return result; });
+    const requestId = host.nextId;
+    host.acceptOutput(JSON.stringify({ id: requestId, tool: { id: 1, name: 'read',
+      arguments: { path: 'fixture.txt' }, piCallIdHash: 'a'.repeat(64),
+      contract: { revision: 4,
+        schemaHash: '134f19bcabe3e29d63c5cebb38f1d2556759fd08adad6bc90a4b4d3cd1fb8441',
+        piVersion: '1.4.0' } } }) + '\n');
+    host.acceptOutput(JSON.stringify({ id: requestId, ok: true,
+      data: { text: 'stopped', modelId: 'fixture' } }) + '\n');
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(settled, false);
+    completeEffect();
+    assert.equal((await turn).text, 'stopped');
+    assert.equal(observed, 1);
+  } finally { host.dispose(); }
+});
+
 test('host rejects malformed broker replies without reporting an acknowledgement', async () => {
   const host = new PiRuntimeHost('/unused');
   host.child = { exitCode: null, killed: false, kill() { this.killed = true; },

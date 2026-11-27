@@ -601,7 +601,7 @@ function workTools() {
       name === 'read_command_output' ? 'Read a retained page of a completed approved command result by its returned handle. offset is a nonnegative UTF-8 byte offset; maxBytes is an integer from 1 to 4096. This does not rerun the command.' :
       'Run an approved test or build command by its granted commandId in the authorized candidate workspace. kind must be test or build.'),
     parameters: Type.Object(properties, { additionalProperties: false }),
-    async execute(_toolCallId, params, signal) {
+    async execute(piToolCallId, params, signal) {
       const isMCP = mcpChatTools.some(tool => tool.name === name);
       if (!workMode || signal?.aborted || !isMCP && !selectedWorkToolNames.includes(name))
         throw new Error('Dope Work tool unavailable');
@@ -613,6 +613,7 @@ function workTools() {
       const onAbort = () => { pendingTools.get(id)?.reject(new Error('Dope Work tool cancelled')); pendingTools.delete(id); };
       signal?.addEventListener('abort', onAbort, { once: true });
       process.stdout.write(`${JSON.stringify({ id: workRequestId, tool: { id, name, arguments: params,
+        piCallIdHash: hash(String(piToolCallId ?? id)),
         ...(!isMCP ? { contract: { revision: WORK_CATALOG_REVISION, schemaHash: WORK_ADAPTER_SCHEMA_HASHES[name],
           piVersion: version } } : {}) } })}\n`);
       try {
@@ -622,7 +623,7 @@ function workTools() {
         if (!['completed', 'failed', 'denied'].includes(result.status))
           throw new Error(`Dope Work tool ${result.status}`);
         return { content: [{ type: 'text', text: `status: ${result.status}\n${result.output ||
-          (result.status === 'denied' ? 'The request was blocked by Work authority. Check the path and tool arguments, then choose an authorized next step.' : '')}` }] };
+          (result.status === 'denied' ? 'Work authority denied this call.' : '')}` }] };
       } finally { signal?.removeEventListener('abort', onAbort); pendingTools.delete(id); }
     }
   }));
@@ -637,17 +638,20 @@ function workTools() {
           `${definition.description} Use a relative project path; Dope checks and records the whole operation.`,
         promptSnippet: definition.promptSnippet,
         promptGuidelines: [...(definition.promptGuidelines ?? [])],
-        async execute(_toolCallId, untrusted, signal) {
+        async execute(piToolCallId, untrusted, signal) {
           if (!workMode || signal?.aborted || !selectedWorkToolNames.includes(name))
             throw new Error('Dope Work tool unavailable');
           attestPiWorkDefinition(name);
-          const params = checkedPiWorkArgs(name, untrusted);
+          let params, argumentError = false;
+          try { params = checkedPiWorkArgs(name, untrusted); }
+          catch { params = {}; argumentError = true; }
           const id = ++nextToolId;
           const answer = new Promise((resolve, reject) => pendingTools.set(id,
             { resolve, reject, requestId: workRequestId, name }));
           const onAbort = () => { pendingTools.get(id)?.reject(new Error('Dope Work tool cancelled')); pendingTools.delete(id); };
           signal?.addEventListener('abort', onAbort, { once: true });
           process.stdout.write(`${JSON.stringify({ id: workRequestId, tool: { id, name, arguments: params,
+            piCallIdHash: hash(String(piToolCallId ?? id)), argumentError,
             contract: { revision: WORK_CATALOG_REVISION, schemaHash: PI_WORK_SCHEMA_HASHES[name],
               piVersion: version } } })}\n`);
           try {

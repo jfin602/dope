@@ -91,6 +91,7 @@ test(`Pi native selected file calls traverse the ${mode} Work bridge`, async () 
             edit: '55866598f02c5e00ddfcbcae3df78081e3712de09a622bac7a6bc02ef2acc1bc',
             ls: 'ad4ee18683e9c3d6bfa7969709a0683bc9f896099ed6a74db0b6c49444718a0c'
         };
+        const observations: any[] = [];
         const host: any = { async start() {}, async runWork(_prompt: string,
             onTool: (call: any) => Promise<any>) {
             let id = 0;
@@ -104,6 +105,7 @@ test(`Pi native selected file calls traverse the ${mode} Work bridge`, async () 
             assert.match((await call('edit', { path: 'src/nested/new.txt', edits: [
                 { oldText: 'two', newText: 'three' }] })).output, /Successfully edited/);
             assert.match((await call('ls', { path: 'src/nested' })).output, /new.txt/);
+            assert.equal((await call('write', { path: '.git/private-secret', content: 'x' })).status, 'denied');
             return { modelId: 'model', text: 'Native calls completed.' };
         }, dispose() {} };
         const adapter = new PiWorkExecutionAdapter({ async bind() {
@@ -114,8 +116,12 @@ test(`Pi native selected file calls traverse the ${mode} Work bridge`, async () 
         const run = await adapter.start({ projectRoot: project, executionRoot: workspace.root,
             executionMode: mode, grant, taskId: 'native-task', runId: 'native-run',
             connectionId: 'local', registrationId: 'local', modelId: 'model',
-            prompt: 'Use native file tools.', onEvent() {} });
+            prompt: 'Use native file tools.', onEvent(event: unknown) { observations.push(event); } });
         await run.result;
+        for (let id = 1; id <= 6; id++) assert.equal(observations.filter(event =>
+            event.kind === 'work-observation' && event.toolId === `pi-${id}` &&
+            ['completed', 'failed', 'recoverable', 'denied', 'cancelled'].includes(event.phase)).length, 1);
+        assert.doesNotMatch(JSON.stringify(observations), /private-secret/u);
         assert.equal(await readFile(join(workspace.root, 'src/nested/new.txt'), 'utf8'), 'three\n');
         assert.equal(await readFile(join(project, 'src/nested/new.txt'), 'utf8').catch(() => ''),
             mode === 'direct' ? 'three\n' : '');
@@ -258,7 +264,7 @@ test('Pi Work model-selected read/edit/test stays in a disposable candidate unti
         assert.ok(events.some(event => event.kind === 'command-completed' && event.status === 'completed'));
         assert.ok(events.some(event => event.kind === 'command-completed' && event.status === 'failed'));
         assert.ok(events.some(event => event.kind === 'warning' &&
-            event.summary === 'Approved candidate tool failed'));
+            event.summary === 'Approved Work tool failed'));
         assert.equal(events.some(event => event.kind === 'authority-denied'), false);
         assert.ok(events.some(event => event.summary === 'Pi session started'));
         assert.ok(events.some(event => event.summary === 'Pi model turn running'));
@@ -371,7 +377,10 @@ test('Pi Work rejects a revoked callback and ignores late Pi events after cancel
         stream!({ type: 'work', sequence: 1, kind: 'agent_start' });
         await assert.rejects(brokerCall(callTool!, { id: 2, name: 'read', arguments: { path: 'README.md' } }),
             /stopped/);
-        assert.equal(events.length, count);
+        assert.equal(events.filter(event => event.kind === 'work-observation' && event.toolId === 'pi-2' &&
+            ['completed', 'failed', 'recoverable', 'denied', 'cancelled'].includes(event.phase)).length, 1);
+        assert.equal(events.filter(event => event.kind === 'provider-event' && event.summary === 'Pi session started').length, 0);
+        assert.equal(events.length, count + 2);
         adapter.dispose();
     } finally {
         await workspace?.dispose();
@@ -387,6 +396,7 @@ test('Pi Work returns broker denials to the model and permits a corrected tool c
     let reply: any;
     let listDenied: any;
     let listRetry: any;
+    let parseReply: any;
     const host: any = { async start() {}, async runWork(_prompt: string, tool: (call: any) => Promise<any>) {
         reply = await brokerCall(tool, { id: 1, name: 'read', arguments: {
             path: 'missing-source.txt' } });
@@ -394,6 +404,8 @@ test('Pi Work returns broker denials to the model and permits a corrected tool c
             path: 'missing-directory', limit: 100 } });
         listRetry = await brokerCall(tool, { id: 3, name: 'ls', arguments: {
             path: '.', limit: 100 } });
+        parseReply = await brokerCall(tool, { id: 4, name: 'read', arguments: {},
+            argumentError: true, piCallIdHash: 'a'.repeat(64) });
         return { modelId: 'fixture-model', text: 'No file content read' };
     }, dispose() {} };
     const factory: any = { create() { return host; }, release() {} };
@@ -409,12 +421,21 @@ test('Pi Work returns broker denials to the model and permits a corrected tool c
             grant, taskId: 'task-source-hash', connectionId: 'local', registrationId: 'local',
             modelId: 'fixture-model', prompt: 'Read README', onEvent: event => events.push(event) });
         await handle.result;
-        assert.equal(reply.status, 'denied');
-        assert.equal(listDenied.status, 'denied');
+        assert.equal(reply.status, 'failed');
+        assert.match(reply.output, /^MISSING_FILE:/);
+        assert.equal(listDenied.status, 'failed');
+        assert.match(listDenied.output, /^MISSING_DIRECTORY:/);
         assert.equal(listRetry.status, 'completed');
+        assert.match(parseReply.output, /^INVALID_ARGUMENTS:/);
+        const call = events.filter(event => event.kind === 'work-observation' && event.toolId === 'pi-4');
+        assert.equal(call.filter(event => ['completed', 'failed', 'recoverable', 'denied', 'cancelled'].includes(event.phase)).length, 1);
+        assert.match(call[0].detail, /"piCallIdHash":"a{64}"/);
+        for (let id = 1; id <= 4; id++) assert.equal(events.filter(event =>
+            event.kind === 'work-observation' && event.toolId === `pi-${id}` &&
+            ['completed', 'failed', 'recoverable', 'denied', 'cancelled'].includes(event.phase)).length, 1);
         assert.equal(events.some(event => event.kind === 'authority-denied'), false);
         assert.ok(events.some(event => event.kind === 'work-observation' && event.toolName === 'read' &&
-            event.phase === 'denied' &&
+            event.phase === 'recoverable' && event.code === 'MISSING_FILE' &&
             event.brokerInvoked === true && event.effectExecuted === false));
     } finally {
         await workspace?.dispose();
@@ -501,7 +522,8 @@ test('Pi Work native list handles missing and file targets before a directory re
             grant, taskId: 'task-list-recovery', connectionId: 'local', registrationId: 'local',
             modelId: 'fixture-model', prompt: 'List the candidate.', onEvent: event => events.push(event) });
         await handle.result;
-        assert.deepEqual(replies.map(reply => reply.status), ['denied', 'failed', 'completed']);
+        assert.deepEqual(replies.map(reply => reply.status), ['failed', 'failed', 'completed']);
+        assert.match(replies[0].output, /^MISSING_DIRECTORY:/);
         assert.match(replies[2].output, /README\.md/);
         assert.ok(events.some(event => event.kind === 'work-observation' &&
             event.toolName === 'ls' && event.phase === 'completed' && event.brokerInvoked === true));
@@ -547,6 +569,11 @@ test('Pi Work retains sanitized command pages without rerunning the approved com
             assert.doesNotMatch(initial.text + page.text, /hidden-value/);
             assert.equal(page.nextOffset, null);
             assert.equal(await readFile(join(workspace!.root, 'command-count'), 'utf8'), '1');
+            const unavailable = await brokerCall(onTool, { id: 5, name: 'run_command',
+                arguments: { kind: 'build', commandId: 'unapproved-command' } });
+            assert.equal(unavailable.status, 'failed');
+            assert.match(unavailable.output, /^COMMAND_UNAVAILABLE:/);
+            assert.equal(await readFile(join(workspace!.root, 'command-count'), 'utf8'), '1');
             const now = Date.now;
             Date.now = () => now() + 120_001;
             try {
@@ -580,6 +607,9 @@ test('Pi Work retains sanitized command pages without rerunning the approved com
         assert.ok(observations.some(event => event.kind === 'work-observation' &&
             event.toolName === 'read_command_output' && event.phase === 'denied' &&
             event.stage === 'workspace-check'));
+        assert.ok(observations.some(event => event.kind === 'work-observation' &&
+            event.toolName === 'run_command' && event.phase === 'recoverable' &&
+            event.code === 'COMMAND_UNAVAILABLE' && event.effectExecuted === false));
         assert.doesNotMatch(JSON.stringify(observations), /"handle"\s*:/);
     } finally { await workspace?.dispose(); await rm(parent, { recursive: true, force: true }); }
 });

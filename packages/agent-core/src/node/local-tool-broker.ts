@@ -134,6 +134,8 @@ try:
     entries.append({'name':entry.name,'kind':kind})
   entries.sort(key=lambda item:item['name'])
   print(json.dumps({'status':'completed','entries':entries,'truncated':truncated}))
+except FileNotFoundError:
+ print(json.dumps({'status':'missing'}))
 except (OSError,ValueError): denied()
 finally:
  for fd in reversed(fds): os.close(fd)
@@ -229,6 +231,8 @@ export async function brokerLocalRead(request: AgentExecutionRequest, untrusted:
         const response: unknown = JSON.parse(sandbox.stdout);
         if (!response || typeof response !== 'object') return result(call, 'failed');
         const wire = response as Record<string, unknown>;
+        if (wire.status === 'missing') return result(call, 'failed',
+            call.name === 'list' ? 'MISSING_DIRECTORY' : 'MISSING_FILE');
         if (wire.status === 'denied') return result(call, 'denied');
         if (wire.status === 'not-directory' && call.name === 'list')
             return result(call, 'failed', 'NOT_A_DIRECTORY: list_files expects a directory. Use read_file for a file.');

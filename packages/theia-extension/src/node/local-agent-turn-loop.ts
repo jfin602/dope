@@ -54,6 +54,25 @@ export type PiFileOperation =
     { id: string; kind: 'ls'; path?: string; limit?: number } |
     DirectFileOperation;
 
+const fileFeedback: Record<string, string> = {
+    MISSING_FILE: 'MISSING_FILE: Check the path with ls, then use an existing file or write to create one.',
+    MISSING_DIRECTORY: 'MISSING_DIRECTORY: List an existing parent or create the directory through an authorized write.',
+    EXISTING_TARGET: 'EXISTING_TARGET: Read the current file before replacing it.',
+    EDIT_MATCH_CONFLICT: 'EDIT_MATCH_CONFLICT: Read the file again and supply one unique exact match.',
+    STALE_SOURCE: 'STALE_SOURCE: Read the current file and retry against its latest contents.',
+    SOURCE_HASH_MISMATCH: 'STALE_SOURCE: Read the current file and retry against its latest contents.',
+    DIRECT_EDIT_SOURCE_CONFLICT: 'SOURCE_CONFLICT: The file or editor buffer changed. Save or review it before retrying.',
+    DIRECT_EDIT_APPLIED_MODEL_VIEW_UNAVAILABLE: 'APPLIED_REVIEW_REQUIRED: A project edit was applied, but the model view did not update. Stop and review changes.',
+    DIRECT_EDIT_RECONCILE_REQUIRED: 'EFFECT_UNCERTAIN: The file effect needs journal review before further Work.',
+    RECONCILE_CANDIDATE: 'EFFECT_UNCERTAIN: The candidate effect needs review before further Work.'
+};
+export function piFileFeedback(output: string): string {
+    if (output.startsWith('SOURCE_HASH_MISMATCH:')) return fileFeedback.SOURCE_HASH_MISMATCH;
+    if (output.startsWith('NOT_A_DIRECTORY:'))
+        return 'NOT_A_DIRECTORY: Read this file, or list one of its parent directories.';
+    return fileFeedback[output] ?? output;
+}
+
 export async function brokerPiFileOperation(request: AgentExecutionRequest, workspace: ExecutionWorkspace,
     direct: { journal: DirectWorkJournal; unsaved(path: string): Promise<boolean>;
         refresh(path: string): Promise<boolean> } | undefined,
@@ -91,18 +110,19 @@ export async function brokerPiFileOperation(request: AgentExecutionRequest, work
         if (request.executionMode === 'direct') {
             if (!direct) return denied();
             const result = await brokerDirectFileOperation(request, workspace, direct, input, signal);
-            return result.status === 'completed' ? denied('completed', success) : result;
+            return result.status === 'completed' ? denied('completed', success) :
+                denied(result.status, piFileFeedback(result.output));
         }
         const result = await brokerIsolatedFileOperation(request, workspace, input, signal);
         return denied(result.status === 'recovery-required' ? 'failed' : result.status,
-            result.status === 'completed' ? success : result.output);
+            result.status === 'completed' ? success : piFileFeedback(result.output));
     }
     if (input.kind === 'ls') {
         if (input.limit !== undefined && (!Number.isSafeInteger(input.limit) || input.limit < 1 || input.limit > 100))
             return denied();
         const call = { id: input.id, name: 'list' as const, arguments: { path, maxEntries: input.limit ?? 100 } };
         const result = await brokerLocalRead(request, call, signal, workspace);
-        if (result.status !== 'completed') return denied(result.status, result.output);
+        if (result.status !== 'completed') return denied(result.status, piFileFeedback(result.output));
         const entries = JSON.parse(result.output) as { name: string; kind: string }[];
         return denied('completed', entries.map(entry => `${entry.name}${entry.kind === 'directory' ? '/' : ''}`)
             .sort().join('\n') + (result.truncated ? '\n[Listing truncated at 100 entries]' : ''));
@@ -117,9 +137,10 @@ export async function brokerPiFileOperation(request: AgentExecutionRequest, work
     while (more && byteOffset < 65536) {
         const result = await brokerIsolatedFileOperation({ ...request, executionMode: 'isolated' }, workspace, { kind: 'read', path,
             offset: byteOffset, maxBytes: 4096, ...(sourceHash ? { expectedSourceHash: sourceHash } : {}) }, signal);
-        if (result.status !== 'completed') return denied(result.status === 'recovery-required' ? 'failed' : result.status, result.output);
+        if (result.status !== 'completed') return denied(result.status === 'recovery-required' ? 'failed' : result.status,
+            piFileFeedback(result.output));
         const page = JSON.parse(result.output) as { text: string; nextOffset: number | null; sourceHash: string };
-        if (sourceHash && page.sourceHash !== sourceHash) return denied('failed', 'SOURCE_HASH_MISMATCH');
+        if (sourceHash && page.sourceHash !== sourceHash) return denied('failed', piFileFeedback('SOURCE_HASH_MISMATCH'));
         sourceHash = page.sourceHash;
         contents += page.text;
         more = page.nextOffset !== null;
@@ -183,8 +204,14 @@ export async function brokerDirectFileOperation(request: AgentExecutionRequest, 
             return outcome('failed', 'DIRECT_EDIT_APPLIED_MODEL_VIEW_UNAVAILABLE');
         if (effects.some(change => change.result === 'prepared' || change.result === 'uncertain'))
             return outcome('failed', 'DIRECT_EDIT_RECONCILE_REQUIRED');
-        if (error instanceof Error && /conflict|source changed|owner edit|unsaved editor|dirty/iu.test(error.message))
-            return outcome('failed', 'DIRECT_EDIT_SOURCE_CONFLICT');
+        if (error instanceof Error) {
+            if (error.message.includes('exact edit target conflict')) return outcome('failed', piFileFeedback('MISSING_FILE'));
+            if (error.message.includes('exact edit match conflict') || error.message.includes('exact edit overlap conflict'))
+                return outcome('failed', piFileFeedback('EDIT_MATCH_CONFLICT'));
+            if (error.message.includes('create/modify conflict')) return outcome('failed', piFileFeedback('EXISTING_TARGET'));
+            if (/source changed|source identity|owner edit|unsaved editor|dirty|source conflict/iu.test(error.message))
+                return outcome('failed', piFileFeedback('DIRECT_EDIT_SOURCE_CONFLICT'));
+        }
         return outcome(signal.aborted ? 'cancelled' : 'denied');
     }
 }

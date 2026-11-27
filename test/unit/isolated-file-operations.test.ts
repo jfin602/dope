@@ -84,16 +84,17 @@ test('isolated denials leave no new parent and exact edits reject stale, duplica
     assert.equal(existsSync(join(workspace.root, 'new')), false);
     await writeFile(join(workspace.root, 'duplicate.txt'), 'one one');
     const edit = (path: string, edits: any[]) => op({ kind: 'edit', path, edits });
-    assert.equal((await edit('duplicate.txt', [{ oldText: 'one', newText: 'two' }])).status, 'denied');
-    assert.equal((await edit('duplicate.txt', [{ oldText: 'missing', newText: 'two' }])).status, 'denied');
+    assert.equal((await edit('duplicate.txt', [{ oldText: 'one', newText: 'two' }])).output, 'EDIT_MATCH_CONFLICT');
+    assert.equal((await edit('duplicate.txt', [{ oldText: 'missing', newText: 'two' }])).output, 'EDIT_MATCH_CONFLICT');
     assert.equal((await edit('duplicate.txt', [
         { oldText: 'one one', newText: 'two' }, { oldText: 'one', newText: 'three' }
-    ])).status, 'denied');
+    ])).output, 'EDIT_MATCH_CONFLICT');
     assert.equal(await readFile(join(workspace.root, 'duplicate.txt'), 'utf8'), 'one one');
     const prior = await op({ kind: 'read', path: 'index.html' });
     assert.equal(prior.status, 'completed');
     await writeFile(join(workspace.root, 'index.html'), 'concurrent replacement');
-    assert.equal((await edit('index.html', [{ oldText: '<html>first</html>', newText: 'new' }])).status, 'denied');
+    assert.equal((await edit('index.html', [{ oldText: '<html>first</html>', newText: 'new' }])).output,
+        'EDIT_MATCH_CONFLICT');
     assert.equal(await readFile(join(workspace.root, 'index.html'), 'utf8'), 'concurrent replacement');
     const abort = new AbortController(); abort.abort();
     assert.equal((await brokerIsolatedFileOperation(request, workspace,

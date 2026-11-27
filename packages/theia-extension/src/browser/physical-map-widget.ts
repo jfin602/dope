@@ -1122,7 +1122,9 @@ export class PhysicalMapWidget extends BaseWidget {
         }
         for (const run of this.planning.linkedRuns) {
             const validation = run.validationResults?.map(value => `${value.label}: ${value.status}`).join(', ') || 'none';
-            line(`AgentRun ${run.id} · task ${run.taskId} · ${run.status} · validation ${validation} · candidate promotion ${run.appliedFiles ? 'applied' : 'not observed'} · Git ${run.finalGit?.head ?? 'not recorded'}. Physical reconciliation and owner closeout remain separate.`);
+            line(`AgentRun ${run.id} · task ${run.taskId} · ${run.status} · validation ${validation} · ${run.executionMode === 'direct' ?
+                `Direct applied files ${run.appliedFiles?.length ?? 0}` :
+                `candidate promotion ${run.appliedFiles ? 'applied' : 'not observed'}`} · Git ${run.finalGit?.head ?? 'not recorded'}. Physical reconciliation and owner closeout remain separate.`);
         }
         line(`History references: ${this.planning.historyReferenceState === 'observed' ?
             this.planning.historyReferences.map(item => `${item.source}:${item.sourceId}`).join(', ') :
