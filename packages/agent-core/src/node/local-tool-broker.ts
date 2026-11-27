@@ -6,7 +6,7 @@ import { launchLocalSandboxedTool } from './local-tool-sandbox';
 import { ExecutionWorkspace } from './execution-workspace';
 import { createHash } from 'node:crypto';
 
-const privatePart = (part: string): boolean => {
+export const privatePart = (part: string): boolean => {
     const p = part.toLowerCase();
     return ['.git', '.dope', '.codex', '.agents', '.ssh', '.aws', '.config', '.gnupg', '.kube',
         '.docker', '.azure', '.npmrc', '.yarnrc', '.yarnrc.yml', '.netrc', '.pypirc', '.gitconfig', '.git-credentials',

@@ -6,6 +6,7 @@ import { parseExecutionGrant, checkEffect, checkWorkMCPObservationApproval,
 import type { WorkMCPObservationCallApproval } from '@dope/agent-core/lib/authority';
 import { parseLocalToolRequests, recoverableLocalWorkError } from '@dope/agent-core/lib/node/local-tool-contracts';
 import type { LocalProcessCommand } from '@dope/agent-core/lib/node/local-tool-broker';
+import { privatePart } from '@dope/agent-core/lib/node/local-tool-broker';
 import { preflightLocalToolSandbox } from '@dope/agent-core/lib/node/local-tool-sandbox';
 import { ExecutionWorkspace } from '@dope/agent-core/lib/node/execution-workspace';
 import { DirectWorkJournal } from '@dope/agent-core/lib/node/direct-work-journal';
@@ -30,6 +31,30 @@ const expectedTools: string[] = WORK_TOOL_REGISTRY.map(tool => tool.id);
 // Native Pi file calls above always use the whole-operation broker.
 const workToolNames = { run_command: 'process', read_command_output: 'output' } as const;
 const nativeFileNames = new Set(['read', 'write', 'edit', 'ls']);
+export function piFileArgumentDetail(value: unknown): Record<string, unknown> {
+    if (!value || typeof value !== 'object' || Array.isArray(value))
+        return { argumentType: Array.isArray(value) ? 'array' : typeof value };
+    const args = value as Record<string, unknown>;
+    const path = args.path;
+    const detail: Record<string, unknown> = {
+        fields: Object.keys(args).filter(key => /^[A-Za-z][A-Za-z0-9]{0,40}$/u.test(key)).slice(0, 8)
+    };
+    if (path === undefined) detail.pathStatus = 'omitted';
+    else if (typeof path !== 'string') detail.pathStatus = 'non-string';
+    else if (path.startsWith('/') || /^[A-Za-z]:[\\/]/u.test(path)) detail.pathStatus = 'absolute';
+    else if (path.startsWith('~')) detail.pathStatus = 'home-relative';
+    else if (path.includes('\\')) detail.pathStatus = 'backslash';
+    else if (path.split('/').some(privatePart)) detail.pathStatus = 'protected';
+    else if (path !== '.' && path.split('/').some(part => part === '..' || part === '.')) detail.pathStatus = 'dot-segment';
+    else if (Buffer.byteLength(path, 'utf8') > 512) detail.pathStatus = 'too-long';
+    else if (/[:\u0000-\u001f\u007f]/u.test(path)) detail.pathStatus = 'invalid-character';
+    else if (path) { detail.path = path; detail.pathStatus = 'project-relative'; }
+    else detail.pathStatus = 'empty';
+    for (const field of ['offset', 'limit']) if (Number.isSafeInteger(args[field])) detail[field] = args[field];
+    if (typeof args.content === 'string') detail.contentBytes = Buffer.byteLength(args.content, 'utf8');
+    if (Array.isArray(args.edits)) detail.editCount = args.edits.length;
+    return detail;
+}
 function parsePiFileOperation(id: number, name: string, value: unknown): PiFileOperation {
     if (!nativeFileNames.has(name) || !value || typeof value !== 'object' || Array.isArray(value))
         throw new Error('Invalid Pi file arguments');
@@ -266,12 +291,6 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
         const outputs = new Map<string, { text: string; status: 'completed' | 'failed';
             captureTruncated: boolean; identity: string; commandId: string; kind: 'test' | 'build';
             candidateHash: string; expiresAt: number }>();
-        const issuedOutputHandles = new Set<string>();
-        const omitOutputHandles = (value: string): string => {
-            let redacted = value;
-            for (const handle of issuedOutputHandles) redacted = redacted.split(handle).join('[output handle omitted]');
-            return redacted;
-        };
         let lastPiSequence = 0;
         let pendingReasoning = '';
         let reasoningGap = false;
@@ -280,10 +299,9 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
         let wakeSession: (() => void) | undefined;
         const wake = () => { wakeSession?.(); wakeSession = undefined; };
         const emitReasoning = (value: string) => {
-            const cleaned = omitOutputHandles(safe(value, value.length));
-            for (let index = 0; index < cleaned.length; index += 1800) {
-                const text = cleaned.slice(index, index + 1800);
-                if (text.trim()) request.onEvent({ kind: 'reasoning', text });
+            for (let index = 0; index < value.length; index += 1800) {
+                const text = value.slice(index, index + 1800);
+                if (text) request.onEvent({ kind: 'reasoning', text });
             }
         };
         const flushReasoning = () => {
@@ -338,16 +356,26 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                   let brokerInvoked = false;
                   let directEditNeedsReview = false;
                   let terminalObserved = false;
+                  let rawOutput: string | undefined;
+                  let modelOutput: string | undefined;
                   const observe = (phase: 'requested' | 'validating' | 'executing' | 'completed' | 'failed' | 'recoverable' | 'denied' | 'cancelled',
                       extra: { detail?: string; stage?: string; code?: string; effectExecuted?: boolean } = {}) => {
                       const terminal = ['completed', 'failed', 'recoverable', 'denied', 'cancelled'].includes(phase);
                       if (terminalObserved) return;
                       if (terminal) terminalObserved = true;
+                      if (terminal && (rawOutput !== undefined || modelOutput !== undefined)) {
+                          let detail: Record<string, unknown> = {};
+                          try { detail = extra.detail ? JSON.parse(extra.detail) : {}; } catch { /* Keep raw result. */ }
+                          extra = { ...extra, detail: JSON.stringify({ ...detail,
+                              ...(rawOutput === undefined ? {} : { rawOutput }),
+                              ...(modelOutput === undefined ? {} : { modelOutput }) }) };
+                      }
                       request.onEvent({ kind: 'work-observation', toolId, toolName, phase,
                           brokerInvoked, ...extra });
                   };
                   try {
-                    observe('requested', { detail: JSON.stringify({ fields: raw.arguments && typeof raw.arguments === 'object' &&
+                    observe('requested', { detail: JSON.stringify({ rawArguments: raw.arguments,
+                        fields: raw.arguments && typeof raw.arguments === 'object' &&
                         !Array.isArray(raw.arguments) ? Object.keys(raw.arguments).filter(key => /^[A-Za-z][A-Za-z0-9]{0,40}$/u.test(key)).slice(0, 8) : [],
                         argumentType: Array.isArray(raw.arguments) ? 'array' : typeof raw.arguments,
                         ...(raw.piCallIdHash ? { piCallIdHash: raw.piCallIdHash } : {}) }) });
@@ -381,12 +409,15 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     }
                     if (raw.argumentError) {
                         const feedback = 'INVALID_ARGUMENTS: Use the selected tool schema and retry with valid fields.';
+                        rawOutput = feedback;
                         observe('recoverable', { stage: 'request-parse', code: 'INVALID_ARGUMENTS',
                             detail: JSON.stringify({ feedback }), effectExecuted: false });
                         return { status: 'failed' as const, output: feedback };
                     }
                     if (nativeFileNames.has(raw.name)) {
                         stage = 'request-parse';
+                        observe('validating', { stage, detail: JSON.stringify(piFileArgumentDetail(raw.arguments)),
+                            effectExecuted: false });
                         const operation = parsePiFileOperation(raw.id, raw.name, raw.arguments);
                         stage = 'workspace-check';
                         this.workspace(request);
@@ -403,6 +434,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                         if (nested) {
                             request.onEvent({ kind: 'provider-event',
                                 summary: 'Applicable nested AGENTS instructions supplied before requested Work tool; retry after considering them' });
+                            rawOutput = `AGENTS_SCOPE_CHANGED: Review applicable instructions before retrying.\n${nested}`;
                             observe('recoverable', { stage, code: 'AGENTS_SCOPE_CHANGED', effectExecuted: false });
                             return { status: 'failed' as const,
                                 output: `AGENTS_SCOPE_CHANGED: Review applicable instructions before retrying.\n${nested}` };
@@ -410,11 +442,13 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                         stage = 'broker-execute';
                         brokerInvoked = true;
                         const response = await broker.executePiFileOperation(operation, abort.signal);
+                        rawOutput = response.output;
                         const uncertain = response.output.startsWith('DIRECT_EDIT_APPLIED_MODEL_VIEW_UNAVAILABLE') ||
                             response.output.startsWith('DIRECT_EDIT_RECONCILE_REQUIRED') ||
                             response.output.startsWith('RECONCILE_CANDIDATE');
                         const recoverable = /^(?:MISSING_FILE|EXISTING_TARGET|EDIT_MATCH_CONFLICT|STALE_SOURCE|SOURCE_CONFLICT):/u
                             .exec(response.output)?.[0].slice(0, -1);
+                        modelOutput = safe(response.output, 16384, true);
                         observe(response.status === 'completed' ? 'completed' : recoverable ? 'recoverable' :
                             response.status === 'denied' ? 'denied' : response.status === 'cancelled' ? 'cancelled' : 'failed', {
                             stage, code: uncertain ? 'FILE_EFFECT_REVIEW_REQUIRED' : recoverable,
@@ -437,7 +471,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                                 summary: request.executionMode === 'direct' ? 'Project file changed through Direct Work broker' :
                                     'Candidate file changed', path: operation.path });
                         }
-                        return { status: response.status, output: safe(response.output, 16384, true) };
+                        return { status: response.status, output: modelOutput };
                     }
                     if (isMCP) {
                         if (!scope || !this.mcp || !mcpObservation || !request.runId || mcpCallsUsed !== 0 ||
@@ -498,6 +532,8 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                             if (await workspace.fingerprint() !== current.candidateFingerprint)
                                 throw new Error('Work MCP observation candidate changed');
                             const sanitized = safe(output, 4096, true);
+                            rawOutput = output;
+                            modelOutput = sanitized;
                             outputSha256 = createHash('sha256').update(sanitized).digest('hex');
                             status = 'completed';
                             observe('completed', { stage, detail: JSON.stringify({ serverId: scope.serverId,
@@ -523,6 +559,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     if (call.name === 'process' && !commands.some(command =>
                         command.id === call.arguments.commandId && command.kind === call.arguments.kind)) {
                         const feedback = 'COMMAND_UNAVAILABLE: Use an approved command ID and kind shown for this Work, or let Dope run required validation.';
+                        rawOutput = feedback;
                         observe('recoverable', { stage, code: 'COMMAND_UNAVAILABLE',
                             detail: JSON.stringify({ feedback }), effectExecuted: false });
                         return { status: 'failed' as const, output: feedback };
@@ -550,6 +587,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                             const additionalPointers = documents?.additionalInstructions(nested, call.arguments.path) ?? '';
                             request.onEvent({ kind: 'provider-event',
                                 summary: 'Applicable nested AGENTS instructions supplied before requested Work tool; retry the tool after considering them' });
+                            rawOutput = `AGENTS_SCOPE_CHANGED: Applicable instructions for this path were read through the Dope Work broker. Review them before retrying the requested action.\n${nested}${additionalPointers ? `\n\n${additionalPointers}` : ''}`;
                             observe('recoverable', { stage: 'agents-routing', code: 'AGENTS_SCOPE_CHANGED', effectExecuted: false });
                             return { status: 'failed' as const,
                                 output: `AGENTS_SCOPE_CHANGED: Applicable instructions for this path were read through the Dope Work broker. Review them before retrying the requested action.\n${nested}${additionalPointers ? `\n\n${additionalPointers}` : ''}` };
@@ -570,6 +608,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                             outputs.delete(call.arguments.handle);
                             request.onEvent({ kind: 'provider-event',
                                 summary: 'Pi Work read_command_output: OUTPUT_HANDLE_EXPIRED; broker not executed' });
+                            rawOutput = 'OUTPUT_HANDLE_EXPIRED: This retained output is unavailable. A new approved command is required.';
                             observe('recoverable', { stage: 'output-read', code: 'OUTPUT_HANDLE_EXPIRED', effectExecuted: false });
                             return { status: 'failed' as const,
                                 output: 'OUTPUT_HANDLE_EXPIRED: This retained output is unavailable. A new approved command is required.' };
@@ -582,6 +621,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                         if (!page) {
                             request.onEvent({ kind: 'provider-event',
                                 summary: 'Pi Work read_command_output: INVALID_OFFSET; broker not executed' });
+                            rawOutput = 'INVALID_OFFSET: Use a UTF-8 byte offset within the retained output.';
                             observe('recoverable', { stage: 'output-read', code: 'INVALID_OFFSET', effectExecuted: false });
                             return { status: 'failed' as const,
                                 output: 'INVALID_OFFSET: Use a UTF-8 byte offset within the retained output.' };
@@ -594,10 +634,12 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                                 nextOffset: page.endOffset < outputBytes ? page.endOffset : null,
                                 outputBytes, text: page.text, sanitized: true,
                                 captureTruncated: record.captureTruncated }) };
+                        rawOutput = response.output;
                     } else {
                         observe('validating', { detail: workToolDetail(call), stage: 'broker-dispatch', effectExecuted: false });
                         brokerInvoked = true;
                         response = await broker.execute(call, abort.signal);
+                        rawOutput = response.output;
                         if (response.status === 'completed' || response.status === 'failed')
                             observe('executing', { stage: 'broker-execute' });
                     }
@@ -647,7 +689,6 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                     if (call.name === 'process' && (response.status === 'completed' || response.status === 'failed')) {
                         const sanitized = safeCommandOutput(response.output);
                         const handle = randomBytes(16).toString('hex');
-                        issuedOutputHandles.add(handle);
                         const identity = createHash('sha256').update(JSON.stringify([
                             request.taskId, workspace.id, call.arguments.kind, call.arguments.commandId,
                             response.status, sanitized])).digest('hex');
@@ -663,6 +704,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                             nextOffset: first.endOffset < Buffer.byteLength(sanitized, 'utf8') ? first.endOffset : null,
                             outputBytes: Buffer.byteLength(sanitized, 'utf8'), text: first.text,
                             sanitized: true, captureTruncated: response.truncated }) };
+                        modelOutput = response.output;
                     }
                     if (call.name === 'process' && (response.status === 'completed' || response.status === 'failed'))
                         request.onEvent({ kind: 'command-started', summary: 'Approved Work command started',
@@ -681,6 +723,9 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                         response.output.startsWith('INVALID_OFFSET:') ? 'INVALID_OFFSET' :
                         call.name === 'list' && response.output.startsWith('NOT_A_DIRECTORY:') ?
                             'NOT_A_DIRECTORY' : undefined : undefined;
+                    modelOutput = (call.name === 'read' && call.arguments.offset !== undefined ||
+                        call.name === 'process' || call.name === 'output') ?
+                        response.output : safe(response.output, 1024);
                     observe(response.status === 'completed' ? 'completed' : response.status === 'denied' ? 'denied' :
                         response.status === 'cancelled' ? 'cancelled' :
                         resultCode ? 'recoverable' : 'failed', {
@@ -705,10 +750,9 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                             summary: request.executionMode === 'direct' ? 'Project file changed through Direct Work broker' :
                                 'Candidate file changed', path: call.arguments.path });
                     }
-                    return { status: response.status, output: (call.name === 'read' &&
-                        call.arguments.offset !== undefined || call.name === 'process' || call.name === 'output') ?
-                        response.output : safe(response.output, 1024) };
+                    return { status: response.status, output: modelOutput };
                   } catch (error) {
+                    if (rawOutput === undefined) rawOutput = error instanceof Error ? error.message : String(error);
                     if (cancelled || this.disposed) {
                         observe('cancelled', { stage, ...(brokerInvoked ? {} : { effectExecuted: false }) });
                         throw new Error('Pi Work stopped');
@@ -752,6 +796,10 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                             stage === 'model-check' ? 'MODEL_SELECTION_CHANGED' :
                             stage === 'workspace-check' || stage === 'candidate-check' ? 'WORKSPACE_AUTHORITY_UNAVAILABLE' :
                             stage === 'request-check' ? 'INVALID_TOOL_REQUEST' : 'UNEXPECTED_RUNTIME_FAILURE'),
+                        ...(stage === 'request-parse' && nativeFileNames.has(raw.name) ? {
+                            detail: JSON.stringify({ ...piFileArgumentDetail(raw.arguments),
+                                reason: error instanceof Error && /^Invalid Pi (?:file|write|exact)/u.test(error.message) ?
+                                    error.message : 'File argument validation failed' }) } : {}),
                         ...(brokerInvoked ? {} : { effectExecuted: false }) });
                     request.onEvent({ kind: 'provider-event', summary: `Pi Work tool stopped at ${stage}` });
                     request.onEvent({ kind: 'authority-denied',
@@ -776,12 +824,12 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                             pendingReasoning = pendingReasoning.slice(boundary + 1);
                         }
                         if (pendingReasoning.length > 2048) {
+                            emitReasoning(pendingReasoning);
                             pendingReasoning = '';
-                            if (!reasoningGap) { reasoningGap = true; request.onEvent({ kind: 'observation-gap' }); }
                         }
                     } else {
                         if (event.kind === 'reasoning_omitted') {
-                            pendingReasoning = '';
+                            flushReasoning();
                             if (!reasoningGap) { reasoningGap = true; request.onEvent({ kind: 'observation-gap' }); }
                         } else {
                             flushReasoning();
@@ -816,10 +864,9 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                 if (typeof answer.text !== 'string' || Buffer.byteLength(answer.text, 'utf8') > 262144 ||
                     answer.textTruncated !== undefined && typeof answer.textTruncated !== 'boolean')
                     throw new Error('Invalid Pi Work final answer');
-                const text = omitOutputHandles(safe(answer.text, 12_000, true));
+                const text = answer.text;
                 if (text.trim()) request.onEvent({ kind: 'agent-message', summary: 'Pi Work response', text,
-                    truncated: answer.textTruncated === true || answer.text.length > 12_000,
-                    redacted: text !== answer.text });
+                    truncated: answer.textTruncated === true, redacted: false });
                 if (!request.workSession) break;
                 await request.workSession.onTurnSettled();
                 while (!finishRequested && !cancelled && !pendingMessages.length)
@@ -828,7 +875,7 @@ export class PiWorkExecutionAdapter implements AgentExecutionAdapter {
                 const next = pendingMessages.shift()!;
                 turnMessage = { id: next.id, text: `${next.text}\n\nDope Work session continuation. The original model, tool ceiling, sandbox, ExecutionGrant and source basis remain authoritative. ${request.executionMode === 'direct' ? 'Applied-source review remains authoritative.' : 'Candidate review remains authoritative.'}` };
                 }
-            } finally { outputs.clear(); issuedOutputHandles.clear(); abort.abort();
+            } finally { outputs.clear(); abort.abort();
                 await mcpObservation?.close().catch(() => undefined);
                 unregisterMCP?.();
                 this.factory.release(host); this.active.delete(host); }

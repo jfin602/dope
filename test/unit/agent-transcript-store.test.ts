@@ -88,6 +88,30 @@ test('Work without emitted reasoning retains tools and final only', async () => 
     assert.deepEqual(entries.map(entry => entry.kind), ['work', 'message']);
 }));
 
+test('Pi Work tool arguments and results survive saved transcript reload exactly', async () => fixture(async (root, store) => {
+    const argumentsJson = JSON.stringify({ rawArguments: { path: '/workspace/src/main.ts',
+        content: 'password=abc123\nsource body' } });
+    const resultJson = JSON.stringify({ rawOutput: 'Bearer abcdefghijklmnopqrstuvwxyz\nfull result' });
+    await store.appendTranscript(root, 'run-1', { kind: 'work', at, toolId: 'pi-1', toolName: 'write',
+        phase: 'requested', detail: argumentsJson });
+    await store.appendTranscript(root, 'run-1', { kind: 'work', at, toolId: 'pi-1', toolName: 'write',
+        phase: 'completed', detail: resultJson });
+    const entries = (await new AgentStore().readTranscript(root, 'run-1', 0, 10)).entries;
+    assert.equal(entries[0].detail, argumentsJson);
+    assert.equal(entries[1].detail, resultJson);
+}));
+
+test('local Pi Work text can be retained verbatim without changing legacy transcript filtering', async () => fixture(async (root, store) => {
+    await store.appendTranscript(root, 'run-1', { kind: 'reasoning', at,
+        text: 'password=abc123 /home/owner/project', verbatim: true });
+    await store.appendTranscript(root, 'run-1', { kind: 'message', at,
+        text: '<think>visible local model text</think>', verbatim: true });
+    const entries = (await new AgentStore().readTranscript(root, 'run-1', 0, 10)).entries;
+    assert.equal(entries[0].text, 'password=abc123 /home/owner/project');
+    assert.equal(entries[1].text, '<think>visible local model text</think>');
+    assert.equal(entries[0].verbatim, true);
+}));
+
 test('cancelled Work retains its partial request without inventing a result or final answer', async () => fixture(async (root, store) => {
     await store.appendTranscript(root, 'run-1', { kind: 'marker', at, code: 'run-started' });
     await store.appendTranscript(root, 'run-1', { kind: 'work', at, toolId: 'pi-1',

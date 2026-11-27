@@ -523,7 +523,8 @@ export class AgentExecutionRuntime {
             if (observation.kind === 'observation-gap') {
                 await this.transcript(active, { kind: 'marker', at: '', code: 'observation-omitted' });
             } else if (observation.kind === 'reasoning' && observation.text) {
-                await this.transcript(active, { kind: 'reasoning', at: '', text: observation.text });
+                await this.transcript(active, { kind: 'reasoning', at: '', text: observation.text,
+                    ...(active.run?.provenance?.adapterId === 'pi-local-work' ? { verbatim: true } : {}) });
             } else if (observation.kind === 'work-observation') {
                 const prior = active.workCalls.get(observation.toolId);
                 if (prior && ['completed', 'failed', 'recoverable', 'denied', 'cancelled', 'interrupted'].includes(prior.phase))
@@ -538,7 +539,8 @@ export class AgentExecutionRuntime {
                     ...(observation.effectExecuted === undefined ? {} : { effectExecuted: observation.effectExecuted }) });
             } else if (observation.kind === 'agent-message' && observation.text && observation.text !== active.lastMessage) {
                 await this.transcript(active, { kind: 'message', at: '', text: observation.text,
-                    truncated: observation.truncated });
+                    truncated: observation.truncated,
+                    ...(active.run?.provenance?.adapterId === 'pi-local-work' ? { verbatim: true } : {}) });
                 active.lastMessage = observation.text;
             } else if (observation.kind === 'command-started' && observation.commandId && observation.command &&
                 !active.transcriptCommands.has(observation.commandId)) {

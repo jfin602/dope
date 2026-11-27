@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { WorkSelectionController, workManualGateReady, workRunOverview } from '../../packages/theia-extension/lib/browser/work-selection-controller.js';
 import { restoreWorkScroll, workCommandLabel,
-    workCommandOutput, workToolStatus, workToolCall, workToolFeedback,
+    workCommandOutput, workToolStatus, workToolCall, workToolOutput, workToolFeedback,
     workToolLabel } from '../../packages/theia-extension/lib/browser/work-transcript-presentation.js';
 import { ChatScrollFollow } from '../../packages/theia-extension/lib/browser/chat-panel-presentation.js';
 import { renderUntrustedMessageHtml } from '../../packages/theia-extension/lib/browser/untrusted-message-markdown.js';
@@ -153,6 +153,10 @@ test('Work tool calls show validated arguments and withhold unavailable values',
     assert.equal(workToolCall(events), 'read_file({ path: "src/main.ts", offset: 100 })');
     assert.equal(workToolCall([events[0], { ...base, phase: 'denied', code: 'INVALID_OR_UNAUTHORIZED_ARGUMENTS' }]),
         'read_file({ path: [withheld], offset: [withheld] })');
+    assert.equal(workToolCall([events[0], { ...base, phase: 'validating',
+        detail: '{"fields":["path","limit"],"pathStatus":"absolute","limit":12}' },
+    { ...base, phase: 'denied', code: 'INVALID_OR_UNAUTHORIZED_ARGUMENTS' }]),
+    'read_file({ path: [absolute], offset: [withheld], limit: 12 })');
     assert.doesNotMatch(workToolCall(events), /grantRevision|contentSha256/u);
     assert.equal(workToolStatus('recoverable'), 'Needs action');
     assert.equal(workToolStatus('denied'), 'Authority denied');
@@ -163,6 +167,19 @@ test('Work tool calls show validated arguments and withhold unavailable values',
         detail: '{"feedback":"INVALID_ENTRY_LIMIT: maxEntries must be an integer from 1 to 100."}' }),
     'INVALID_ENTRY_LIMIT: maxEntries must be an integer from 1 to 100.');
     assert.equal(workToolFeedback({ ...base, phase: 'denied', code: 'AUTHORITY_DENIED' }), undefined);
+    assert.equal(workToolFeedback({ ...base, phase: 'denied', stage: 'request-parse',
+        code: 'INVALID_OR_UNAUTHORIZED_ARGUMENTS',
+        detail: '{"pathStatus":"absolute","reason":"Invalid Pi file path"}' }),
+    'Invalid Pi file path (absolute)');
+    assert.equal(workToolCall([{ ...base, phase: 'requested',
+        detail: '{"rawArguments":{"path":"/workspace","content":"source bytes"}}' },
+    { ...base, phase: 'denied' }]),
+    'read_file({"path":"/workspace","content":"source bytes"})');
+    assert.equal(workToolOutput([{ ...base, phase: 'requested' }, { ...base, phase: 'completed',
+        detail: '{"rawOutput":"full tool result"}' }]), 'full tool result');
+    assert.equal(workToolOutput([{ ...base, phase: 'completed',
+        detail: '{"rawOutput":"original bytes","modelOutput":"short result"}' }]),
+    'Broker result:\noriginal bytes\n\nResult sent to model:\nshort result');
 });
 
 test('dockable Work conversation uses safe Markdown, correlated cards and paged saved evidence', async () => {

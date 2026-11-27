@@ -67,20 +67,30 @@ export function workToolLabel(entry: WorkToolEntry, history: WorkToolEntry[] = [
 }
 
 export function workToolFeedback(entry: WorkToolEntry): string | undefined {
+    if (entry.phase === 'denied' && entry.stage === 'request-parse') {
+        const data = metadata(entry.detail);
+        if (typeof data.reason === 'string' && /^Invalid Pi (?:file|write|exact)/u.test(data.reason) &&
+            typeof data.pathStatus === 'string' && /^[a-z-]{3,24}$/u.test(data.pathStatus))
+            return `${data.reason} (${data.pathStatus})`;
+    }
     if (entry.phase !== 'recoverable' || !entry.code || !/^[A-Z_]{3,40}$/u.test(entry.code)) return undefined;
     const feedback = metadata(entry.detail).feedback;
     return typeof feedback === 'string' && feedback.startsWith(`${entry.code}:`) &&
         feedback.length <= 240 && !/[\u0000-\u001f\u007f]/u.test(feedback) ? feedback : entry.code;
 }
 
-/** Reconstruct a CLI-style call from the saved, bounded metadata; raw arguments are intentionally not recorded. */
+/** Show exact Pi Work arguments when recorded; keep historical summary-only records readable. */
 export function workToolCall(entries: WorkToolEntry[]): string {
     const latest = entries.at(-1);
     if (!latest) return 'tool()';
+    const requested = entries.find(entry => entry.phase === 'requested');
+    const raw = metadata(requested?.detail);
+    if (Object.hasOwn(raw, 'rawArguments')) return `${latest.toolName}(${JSON.stringify(raw.rawArguments)})`;
     const validated = entries.find(entry => entry.phase === 'validating' &&
         Object.keys(metadata(entry.detail)).length > 0);
     const safeValues = metadata(validated?.detail);
-    const valueKeys = new Set(['path', 'offset', 'maxBytes', 'maxEntries', 'commandId', 'kind', 'operation']);
+    const valueKeys = new Set(['path', 'offset', 'limit', 'maxBytes', 'maxEntries', 'commandId', 'kind', 'operation',
+        'contentBytes', 'editCount']);
     const names = entries.flatMap(entry => {
         const data = metadata(entry.detail);
         return Array.isArray(data.fields) ? data.fields.filter((name): name is string =>
@@ -90,7 +100,20 @@ export function workToolCall(entries: WorkToolEntry[]): string {
     const args = [...new Set(names)].map(name => {
         const value = safeValues[name];
         return `${name}: ${valueKeys.has(name) && (typeof value === 'string' ||
-            typeof value === 'number' || typeof value === 'boolean') ? JSON.stringify(value) : '[withheld]'}`;
+            typeof value === 'number' || typeof value === 'boolean') ? JSON.stringify(value) :
+            name === 'path' && typeof safeValues.pathStatus === 'string' ?
+                `[${safeValues.pathStatus}]` : '[withheld]'}`;
     }).join(', ');
     return `${latest.toolName}(${args ? `{ ${args} }` : ''})`;
+}
+
+export function workToolOutput(entries: WorkToolEntry[]): string | undefined {
+    const terminal = entries.slice().reverse().find(entry => ['completed', 'failed', 'recoverable', 'denied',
+        'cancelled', 'interrupted'].includes(entry.phase));
+    const detail = metadata(terminal?.detail);
+    const output = detail.rawOutput;
+    const modelOutput = detail.modelOutput;
+    if (typeof output !== 'string') return typeof modelOutput === 'string' ? modelOutput : undefined;
+    return typeof modelOutput === 'string' && modelOutput !== output ?
+        `Broker result:\n${output}\n\nResult sent to model:\n${modelOutput}` : output;
 }

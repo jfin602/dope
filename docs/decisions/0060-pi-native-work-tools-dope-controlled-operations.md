@@ -4,6 +4,8 @@ Status: **Owner-approved forward design / documentation applied only**
 Date: 2026-11-26 (America/Chicago)  
 Amends: [ADR 0039](0039-bundled-pi-local-agent-runtime.md), [ADR 0059](0059-direct-and-isolated-work-execution-modes.md), and the [Work tool selection contract](../planning/p13/work-tool-selection-proposal.md)
 
+> **2026-11-27 owner debugging amendment:** For local Pi Work, saved and displayed transcripts retain the exact captured tool arguments, broker result and result sent to the model, including paths, source text and output handles. Captured local Pi reasoning and final text are retained verbatim. This supersedes the safe-summary and protected-argument redaction requirements below for this local Work transcript only. It does not broaden tool execution authority or restore data omitted from older runs or by the model provider. Existing storage ceilings must surface an incomplete transcript rather than silently claim a full one.
+
 ## Context
 
 Dope currently disables Pi's built-in Work tools and presents five custom wrappers. This preserves Dope's authority checks but changes Pi's tool contracts and feedback. A local Direct Work investigation in `meteor-dodge-dope` found a successful first `index.html` create followed by a denied second create, repeated denied attempts to create `src/main.ts` when `src/` did not exist, generic model-facing denial text, a missing terminal transcript receipt for one completed call, and a final candidate-promotion failure label for Direct Work. Opening the file in the editor was not established as the cause. The exact run remains historical diagnostic evidence, not a qualification receipt.

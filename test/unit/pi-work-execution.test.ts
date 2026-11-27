@@ -10,7 +10,7 @@ import { makeWorkToolSelection, workToolRegistration, WORK_PI_VERSION,
     WORK_TOOL_CATALOG_REVISION } from '../../packages/agent-core/lib/work-tool-selection.js';
 import { ExecutionWorkspace } from '../../packages/agent-core/lib/node/execution-workspace.js';
 import { DirectWorkJournal } from '../../packages/agent-core/lib/node/direct-work-journal.js';
-import { PiWorkExecutionAdapter } from '../../packages/theia-extension/lib/node/pi-work-execution.js';
+import { PiWorkExecutionAdapter, piFileArgumentDetail } from '../../packages/theia-extension/lib/node/pi-work-execution.js';
 import { dispatch } from '../../packages/pi-runtime/worker.mjs';
 
 const execute = promisify(execFile);
@@ -27,6 +27,17 @@ const brokerCall = (tool: (call: any) => Promise<any>, call: any) => {
         revision: WORK_TOOL_CATALOG_REVISION, piVersion: WORK_PI_VERSION,
         schemaHash: registration.schemaHash } : undefined });
 };
+
+test('Pi Work file diagnostics distinguish absolute paths without retaining private path bytes or source', () => {
+    assert.deepEqual(piFileArgumentDetail({ path: '/home/owner/private/project', limit: 12 }),
+        { fields: ['path', 'limit'], pathStatus: 'absolute', limit: 12 });
+    assert.deepEqual(piFileArgumentDetail({ path: '.', limit: 12 }),
+        { fields: ['path', 'limit'], path: '.', pathStatus: 'project-relative', limit: 12 });
+    assert.deepEqual(piFileArgumentDetail({ path: 'src/main.ts', content: 'private source' }),
+        { fields: ['path', 'content'], path: 'src/main.ts', pathStatus: 'project-relative', contentBytes: 14 });
+    assert.deepEqual(piFileArgumentDetail({ path: '.git/private-secret', content: 'x' }),
+        { fields: ['path', 'content'], pathStatus: 'protected', contentBytes: 1 });
+});
 
 test('Pi Work Direct write updates canonical source only through the broker', async () => {
     const project = await mkdtemp(join(tmpdir(), 'dope-pi-direct-'));
@@ -121,7 +132,10 @@ test(`Pi native selected file calls traverse the ${mode} Work bridge`, async () 
         for (let id = 1; id <= 6; id++) assert.equal(observations.filter(event =>
             event.kind === 'work-observation' && event.toolId === `pi-${id}` &&
             ['completed', 'failed', 'recoverable', 'denied', 'cancelled'].includes(event.phase)).length, 1);
-        assert.doesNotMatch(JSON.stringify(observations), /private-secret/u);
+        assert.match(JSON.stringify(observations), /private-secret/u);
+        assert.ok(observations.some(event => event.kind === 'work-observation' &&
+            event.toolId === 'pi-6' && event.phase === 'requested' &&
+            JSON.parse(event.detail).rawArguments.path === '.git/private-secret'));
         assert.equal(await readFile(join(workspace.root, 'src/nested/new.txt'), 'utf8'), 'three\n');
         assert.equal(await readFile(join(project, 'src/nested/new.txt'), 'utf8').catch(() => ''),
             mode === 'direct' ? 'three\n' : '');
@@ -443,7 +457,7 @@ test('Pi Work returns broker denials to the model and permits a corrected tool c
     }
 });
 
-test('Pi Work native read ranges return candidate content and redact reasoning', async () => {
+test('Pi Work native read ranges return candidate content and retain emitted reasoning', async () => {
     const parent = await mkdtemp(join(tmpdir(), 'dope-pi-work-recovery-'));
     const project = join(parent, 'project');
     let workspace: ExecutionWorkspace | undefined;
@@ -482,7 +496,7 @@ test('Pi Work native read ranges return candidate content and redact reasoning',
         assert.equal(observed[2].status, 'completed');
         assert.match(observed[2].output, /safe candidate line/);
         assert.ok(events.some(event => event.kind === 'reasoning'));
-        assert.doesNotMatch(JSON.stringify(events.filter(event => event.kind === 'reasoning')), /hiddenvalue|password=/);
+        assert.match(JSON.stringify(events.filter(event => event.kind === 'reasoning')), /hiddenvalue|password=/);
         assert.ok(events.some(event => event.kind === 'work-observation' && event.toolId === 'pi-1' &&
             event.phase === 'completed' && event.brokerInvoked === true));
         assert.ok(events.some(event => event.kind === 'work-observation' && event.toolId === 'pi-2' &&
@@ -610,11 +624,17 @@ test('Pi Work retains sanitized command pages without rerunning the approved com
         assert.ok(observations.some(event => event.kind === 'work-observation' &&
             event.toolName === 'run_command' && event.phase === 'recoverable' &&
             event.code === 'COMMAND_UNAVAILABLE' && event.effectExecuted === false));
-        assert.doesNotMatch(JSON.stringify(observations), /"handle"\s*:/);
+        const commandReceipt = observations.find(event => event.kind === 'work-observation' &&
+            event.toolName === 'run_command' && event.phase === 'completed');
+        assert.ok(commandReceipt);
+        const commandDetail = JSON.parse(commandReceipt.detail);
+        assert.match(commandDetail.rawOutput, /hidden-value/);
+        assert.match(commandDetail.modelOutput, /"handle"/);
+        assert.doesNotMatch(commandDetail.modelOutput, /hidden-value/);
     } finally { await workspace?.dispose(); await rm(parent, { recursive: true, force: true }); }
 });
 
-test('Pi Work omits issued output handles from saved reasoning and final messages', async () => {
+test('Pi Work retains issued output handles in the local Work transcript', async () => {
     const parent = await mkdtemp(join(tmpdir(), 'dope-pi-handle-'));
     const project = join(parent, 'project');
     let workspace: ExecutionWorkspace | undefined;
@@ -647,11 +667,11 @@ test('Pi Work omits issued output handles from saved reasoning and final message
             onEvent(event: unknown) { observations.push(event); } });
         await handle.result;
         assert.match(issuedHandle, /^[a-f0-9]{32}$/);
-        assert.doesNotMatch(JSON.stringify(observations), new RegExp(issuedHandle));
+        assert.match(JSON.stringify(observations), new RegExp(issuedHandle));
         assert.ok(observations.some(event => event.kind === 'agent-message' &&
-            event.text.includes('## Completed\n\nHandle [output handle omitted].\n\nResult: passed.') &&
-            event.redacted === true), JSON.stringify(observations.filter(event => event.kind === 'agent-message')));
+            event.text.includes(`## Completed\n\nHandle ${issuedHandle}.\n\nResult: passed.`) &&
+            event.redacted === false), JSON.stringify(observations.filter(event => event.kind === 'agent-message')));
         assert.ok(observations.some(event => event.kind === 'reasoning' &&
-            event.text.includes('[output handle omitted]')));
+            event.text.includes(issuedHandle)));
     } finally { await workspace?.dispose(); await rm(parent, { recursive: true, force: true }); }
 });

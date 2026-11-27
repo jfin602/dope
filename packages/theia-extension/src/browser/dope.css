@@ -1154,6 +1154,7 @@ body.theia-light:not(.dope-dark) {
 .dope-chat-content-work .dope-work-tool > summary { overflow-wrap: anywhere; cursor: pointer; }
 .dope-chat-content-work .dope-work-tool-call { display: block; margin: 6px 0 2px 11px; font-family: var(--theia-code-font-family, monospace); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .dope-chat-content-work .dope-work-tool-feedback { margin: 4px 0 6px 11px; color: var(--theia-warningForeground); font-size: 12px; overflow-wrap: anywhere; }
+.dope-chat-content-work .dope-work-tool-output { margin: 6px 0 8px 11px; max-height: 24rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--theia-code-font-family, monospace); font-size: 12px; }
 .dope-chat-content-work .dope-work-command-label { font-size: 12px; }
 .dope-chat-content-work .dope-work-final-divider { width: 100%; margin: 8px 0 14px; border: 0; border-top: 1px solid var(--theia-widget-border); }
 .dope-chat-content-work .dope-work-message > h3 { margin: 0 0 8px; font-size: 13px; }

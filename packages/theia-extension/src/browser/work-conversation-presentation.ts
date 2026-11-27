@@ -1,7 +1,7 @@
 import type { AgentRun, AgentRunEvent, AgentSteeringState, AgentTask, AgentTranscriptEntry, WorkSession } from '@dope/agent-core';
 import type { MarkdownRenderer } from '@theia/core/lib/browser/markdown-rendering/markdown-renderer';
 import { renderUntrustedMessageMarkdown } from './untrusted-message-markdown';
-import { workCommandLabel, workCommandOutput, workToolCall, workToolFeedback, workToolLabel,
+import { workCommandLabel, workCommandOutput, workToolCall, workToolOutput, workToolFeedback, workToolLabel,
     type WorkToolEntry } from './work-transcript-presentation';
 import { formatRunElapsedCompact } from './run-elapsed';
 import { copyChatText } from './chat-copy-text';
@@ -124,7 +124,7 @@ export function renderWorkConversation(markdown: MarkdownRenderer, entries: read
     if (firstPrompt?.trim()) userMessage(firstPrompt, 'Work request',
         initialSegment?.startedAt ?? initialRun?.createdAt);
     const tools = new Map<string, { history: WorkToolEntry[]; node: HTMLDetailsElement; summary: HTMLElement;
-        call: HTMLElement; feedback: HTMLElement }>();
+        call: HTMLElement; feedback: HTMLElement; output: HTMLElement }>();
     let reasoningGroup: { runId: string; body: HTMLElement } | undefined;
     let previousRunId = initialSegment?.runId ?? entries[0]?.runId ?? initialRun?.id;
     const activities = new Map<string, HTMLElement>();
@@ -231,8 +231,9 @@ export function renderWorkConversation(markdown: MarkdownRenderer, entries: read
                 const summary = document.createElement('summary');
                 const call = document.createElement('code'); call.className = 'dope-work-tool-call';
                 const feedback = document.createElement('p'); feedback.className = 'dope-work-tool-feedback';
-                node.append(summary, call, feedback); activity.append(node);
-                tool = { history: [], node, summary, call, feedback };
+                const output = document.createElement('pre'); output.className = 'dope-work-tool-output';
+                node.append(summary, call, feedback, output); activity.append(node);
+                tool = { history: [], node, summary, call, feedback, output };
                 tools.set(toolKey, tool);
             }
             tool.history.push(entry);
@@ -243,6 +244,8 @@ export function renderWorkConversation(markdown: MarkdownRenderer, entries: read
             tool.call.textContent = workToolCall(tool.history);
             tool.feedback.textContent = workToolFeedback(entry) ?? '';
             tool.feedback.hidden = !tool.feedback.textContent;
+            tool.output.textContent = workToolOutput(tool.history) ?? '';
+            tool.output.hidden = !tool.output.textContent;
         } else if (entry.kind === 'command') {
             reasoningGroup = undefined;
             const command = document.createElement('div');
